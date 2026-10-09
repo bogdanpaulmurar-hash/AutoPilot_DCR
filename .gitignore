@@ -1,0 +1,17 @@
+## OS / editor
+Thumbs.db
+.DS_Store
+desktop.ini
+.vscode/
+*.user
+*.suo
+
+## Secrets / env
+.env
+.envs
+
+## Archives / exports (not source)
+*.zip
+*.7z
+*_Export*.txt
+codeexport/

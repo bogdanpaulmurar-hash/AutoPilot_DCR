@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>AutoPilotDC.Infrastructure</RootNamespace>
+    <AssemblyName>AutoPilotDC.Infrastructure</AssemblyName>
+    <Version>3.9.0</Version>
+    <Authors>Bogdan Murar (Z003FU5C)</Authors>
+    <Company>Siemens AG</Company>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\AutoPilotDC.Models\AutoPilotDC.Models.csproj" />
+    <ProjectReference Include="..\AutoPilotDC.Core\AutoPilotDC.Core.csproj" />
+	<ProjectReference Include="..\AutoPilotDC.Playwright\AutoPilotDC.Playwright.csproj" />
+  	<PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.*" />
+    <PackageReference Include="System.Drawing.Common" Version="8.0.0" />
+	  <PackageReference Include="ClosedXML" Version="0.102.2" />
+  </ItemGroup>
+  <!-- NuGet packages added in Phase 2 -->
+  <!-- ClosedXML (Excel), Serilog, etc. -->
+</Project>

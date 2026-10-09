@@ -1,0 +1,27 @@
+{
+  "theme": "light",
+  "step_delay": 0.05,
+  "mouse_move_delay": 0.05,
+  "record_mouse_move": false,
+  "mouse_move_threshold": 5,
+  "shortcuts": {
+    "start_rec": "F5",
+    "stop_rec": "F6",
+    "play": "F7",
+    "pause": "F7",
+    "stop_play": "F9",
+    "emergency": "F12",
+    "save": "Ctrl+S"
+  },
+  "max_steps_warning": 50,
+  "auto_save": true,
+  "font_size": 13,
+  "playback_speed": 0.1,
+  "countdown_before_play": 3,
+  "repeat_count": 2,
+  "show_floating_controls": true,
+  "show_emergency_btn": true,
+  "active_monitor": 0,
+  "save_location": "C:\\Users\\z003fu5c\\OneDrive - Siemens AG\\GSP SpecialTopics_OneDrive\\python\\siemensgpt\\DC_tool_2026",
+  "button_corner_radius": 8
+}

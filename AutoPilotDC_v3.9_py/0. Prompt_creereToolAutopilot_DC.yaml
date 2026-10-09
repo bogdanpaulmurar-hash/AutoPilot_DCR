@@ -1,0 +1,695 @@
+Cerinta scrisa de mine:
+
+    Ajuta-ma sa creez o aplicatie python. Fa-mi tot codul care sa includa urmatoarele functii:
+
+        1. O aplicatie GUI cu butoane si interacitiuni multe si avansate.
+        2. Posibilitatea de a inregistra gesturi fie cu mouse, fie cu tastatura, fie combinatie de taste fie toate intr-o singura inregistrare
+        3. Aplicatia sa documenteze fiecare pas pe care il face, fiecare gest fiecare apasare de taste, totul sa inregistreze intr-un log care poate fi downloadat in diferite formate insa important ar fi .xslx
+        4. Designul sa fie modern, butoane necesare incluse, totul sa fie cumva in culorile Siemens si sa urmeze cumva ui si ux cat mai noi si mai relevante in domeniul interacitiuni.
+        5. Logul sa fie fie in tab separat de cel in care se inregistreaza toata actiunea, rutina pe care o inregistrez cand apas un buton si sa existe optiuni da a marca in textul din log campuri, sau celule (excel) in care rutina a intampinat probleme, s-a oprit si a trecut un comentariu, sau daca rezultatul acelei rutine nu a urmat cursul inregistrat.
+        6. Daca rutina, gesturile intampina un pop up sau o eroare, sa extraga tot din eroare si sa logheze mesajul in log si sa intrebe daca se contonua rutina sau daca se opreste, iar actiunea sa aiba posibilitatea ca sa apese pe diferite butoane in functie de decizia celui pe care o foloseste.
+        7. Sa existe posibilitatea sau un buton floating in rutina sau undeva care sa permita oprirea de urgenta a rutinei, daca cel care verifica ce face rutina, considera ca trebuie oprita. Poate si optiunea de a seta individual de fiecare data o combinatie de taste pentru functia aceasta in rutina.
+        8. Optiuni avansate in rutina care urmeaza sa fie creata, + optiunea de a seta key shortcuts pentru start, stop, pauze.. samd. Oricum aceste combinatii sa fie vizualizate intr-un gui tot asa floating in timp ce rutina ruleaza, si sa poti apasa orice combinatie ca sa poti pune pe pauza rutina sau sa faci alta actiune.
+        9. Posibilitatea de a inregistra o anumita rutina care poate fi refolosita si aceasta sa apara intr-un camp special de unde poate fi uploaded, in caz de nevoie.
+        10. Posibilitatea ca rutina sa porneasca utilizand un excel cu date. De ex. pe coloana si celula a1:a100 am o lista de valori care trebuie pe rand copiate si incarcate intr-un tool din care se va face o extractie de date si se va insera totul in excel. Eu incarc lista, aleg rutina, si pornesc rutina deja inregistrata mai demult care performeaza exact aceeasi pasi utilizand doar liste noi.
+        11. Posibiltiatea ca in rutina sa introduc un timp de asteptare dupa un anumit pas.
+        12. Posibilitatea ca o rutina sa contina mai multi pasi programati. Pasul 1 pasul 2...etc si intre pasi sa am optiuni avansate de a introduce diferse functii. Tipuri de click, dreapta sau stanga, 2-3 5 clickuri.. la alegere, timp de asteptare, butoane de a muta pasii rutinei sus sau jos, omite pas, pune o intrebare si insereaza butoane personalizate pentru continuare sau oprire sau a sari peste acest pas... si altele pe care le vezi relevante pentru subiectul acesta. Sa am optiuni in rutine sa inregistrez ecranul si sa recunoasca butoanele si ele sa fie apasate prin diferite tiputi de clickuri, (1,2,3,...la alegere), sau click dreapta. Acea inregistrare sa repereze toate butoanele, toti locatorii de pe acea captura si sa aiba posibilitatea ca pe acelasi ecran, pe aceeasi rezolutie sa inregistreze locatorii fiecarui buton sau camp care trebuie selectat, fie copiate datele din acel camp in excel sau sa extraga date din campuri needitabile sau neselectabile, sau sa actioneze un oare care buton de pe acea pagina. totul sa poata fi realizat prin acea captura, care poate fi editata, pot fi pastrate anumite detalii de acolo de ex, butonul OK, Submit... etc. Sau campul Ibase, sau UEID.. sau oricare alt camp identificat cu care poate face o rutina, o actiune combo intr-un planificator de rutine avansat, descris mai sus. Adauga optiunea de a nu vedea cum se deplaseaza mouse-ul si actioneaza un buton ci de a muta direct mouse-ul pe locator si a actiona in functie de cum este setat.
+        13. Aplicatia desi avansata si cu un cod foarte bine structurat (tot codul sa fie explicat in detaliu cu // si cu despartitoare pe tot randul si pas cu pas...cu 1 - 2 - 3..  si ce face fiecare linie, functie... etc si sa fie structurata pe parti ca daca vreau sa modific ulterior ceva in cod, sa pot lua doar partea relevanta) sa aiba o performanta buna, sa fie asa gandita ca sa mearga bine, fluent sa nu se opreasca pentru ca a colidat o parte din cod cu alta din cauza acestor multe functii avansate, si sa poata preintampina in functie de rutina probleme de performanta. daca e prea incarcata rutina sa apara mesaj care sa informeze acest lucru, si sa se poata alege la a omite unii pasi pe care ii recomanda rutina ca sa imbunatateasca performanta aplicatiei
+        14. Aplicatia sa fie disponibila pe culori diferite, dar alese bine sa se potriveasca contrasturile
+        15. Sa am optiuni avansate in dropdownuri gen file edit section view help... etc care sa fie deja functionale si sa includa setari relevante pentru toata aplicatia, sa pot seta culori  pentru butoane, sa pot alege forme pentru butoane, sa pot customiza cat crezi ca este in limitele performantei bune, ca sa nu am probleme cu aplciatia din cauza tuturor acestor functii.
+        16. Posibilitatea de a avea un tab destinat de notite pentru corectie aplicatie, un alt log in care in timp ce testez aplicatia, sa pot nota ce trebuie adaptat in format text cu bulletpoints
+        17. Posibilitatea de a realiza o rutina sau a inregistra pe mai multe ecrane. sa pot alege ecranul sau cand inregistrez sa mearga inregistrarea unde merge mouse-ul.
+        18. Foloseste GUI mai multe daca ajuta la performanta aplicatiei si cauta librarii avansate care chiar pun accent pe performanta, ca sa nu am crashuri sau sa risc sa stric ceva in toolul in care actioneaza o rutina. Nu uita cel mai important sa am cateva optiuni vizibile pe ecran si usor de folosit in timpul rutinei ca sa intrerup o rutina sau ca sa pun pe pauza si sa vina un set de intrebari care permite incheierea rutinei sau continuarea ei. gen miscare de mouse, sau o combinatie de taste, orice gasesti mai relevant si mai usor de implementat dar sa fie si 100% functional. 
+        19. In Help sau Support sa treci Datele mele de contact si sa evidentiezi ca aplicatia este facuta cu ajutorul tau (AI) si sa dai cateva detalii despre aplciatie si despre functionalitatile ei. Datele mele sunt: "Bo... (completam mai tarziu)"
+
+    Descriere: Ideea este ca aceasta aplicatie sa fie un tool de data ceansing sau RPA (Robotic Process Automation), Automatizare care intrgistreaza gesturi, locatori de executat (butoane), gesturi relativ scurte si repetitive pe 1 sau mai multe monitoare. Gesturile sa poata fi inregistrate fara a avea nevoie de cod sau de a adapta un cod. Totul sa fie la indemana celui care crea sa pregateasca o rutina care sa permita o actiune repetitiva, identica pentru o lista lunga de obiecte, ca sa asigure ca acele obiecte sunt prelucrate sigur dupa cerinta clientului, intervin mai putine erori de procesare si iesi din rutina de a procesa acelasi task simtindu-te epuizat.
+
+Interpretare Copilot
+    Corectat si reformulat:
+        Creează un prompt AI optimizat si arhitectura aplicatiei dupa aceasta cerinta:
+        CERINȚĂ:
+
+            Ajută-mă să creez o aplicație Python. Oferă-mi întregul cod, astfel încât aplicația să includă următoarele funcționalități:
+
+            1. O aplicație GUI complexă, cu multe butoane și interacțiuni avansate între componente, gândită pentru utilizare intensivă.
+
+            2. Posibilitatea de a înregistra gesturi realizate cu mouse-ul, tastatura, combinații de taste sau orice combinație a acestora, inclusiv toate într-o singură sesiune de înregistrare.
+
+            3. Aplicația trebuie să documenteze fiecare pas executat: fiecare gest, fiecare apăsare de tastă, fiecare acțiune, toate fiind salvate într-un log detaliat, care să poată fi exportat și descărcat în mai multe formate, cu prioritate pentru .xlsx (Excel).
+
+            4. Interfața să aibă un design modern, cu butoane relevante și bine poziționate, folosind o paletă de culori inspirată din culorile Siemens, respectând principii actuale de UI & UX, relevante pentru aplicații de interacțiune și automatizare.
+
+            5. Logul să fie afișat într-un tab separat față de zona de înregistrare a rutinei. Să existe opțiuni pentru:
+                - marcarea pașilor unde rutina a întâmpinat probleme;
+                - evidențierea celulelor sau câmpurilor din Excel unde au apărut erori;
+                - inserarea de comentarii automate sau manuale atunci când rutina se oprește sau rezultatul diferă de cel așteptat.
+
+            6. Dacă rutina sau gesturile întâmpină un popup, mesaj de eroare sau o excepție, aplicația trebuie:
+                - să extragă automat mesajul complet;
+                - să îl salveze în log;
+                - să întrebe utilizatorul dacă dorește continuarea sau oprirea rutinei;
+                - în funcție de decizie, să poată apăsa automat butoanele necesare (ex: OK, Cancel, Retry).
+
+            7. Să existe un buton de oprire de urgență (Emergency Stop), vizibil și/sau floating, care să permită oprirea imediată a rutinei. De asemenea, utilizatorul să poată seta combinații de taste personalizate pentru această funcție.
+
+            8. Opțiuni avansate pentru controlul rutinei, inclusiv:
+                - setarea de shortcut-uri pentru start, stop, pauză, reluare etc.;
+                - afișarea acestor shortcut-uri într-un GUI floating în timpul executării rutinei;
+                - posibilitatea de a controla rutina în timp real folosind aceste combinații de taste.
+
+            9. Posibilitatea de a salva o rutină înregistrată pentru reutilizare ulterioară și de a o afișa într-o secțiune dedicată, de unde poate fi selectată și încărcată din nou la nevoie.
+
+            10. Posibilitatea ca o rutină să ruleze pe baza unui fișier Excel cu date externe. De exemplu:
+                - utilizatorul încarcă o listă de valori dintr-un interval (A1:A100);
+                - selectează o rutină deja înregistrată;
+                - pornește rutina care execută aceiași pași asupra fiecărei valori din listă;
+                - rezultatele sunt extrase și scrise automat în Excel.
+
+            11. Posibilitatea de a introduce timpi de așteptare (delay) după anumiți pași sau înainte de executarea unor acțiuni specifice.
+
+            12. Rutina să poată conține mai mulți pași structurați (Pasul 1, Pasul 2 etc.), fiecare cu opțiuni avansate, precum:
+                - tipuri diferite de click (stânga, dreapta, dublu, triplu etc.);
+                - timpi de așteptare configurați;
+                - mutarea pașilor în sus sau jos;
+                - omiterea unuia sau mai multor pași;
+                - introducerea de întrebări pentru utilizator, cu butoane personalizate (Continuă / Oprește / Sari peste);
+                - recunoaștere vizuală a elementelor de pe ecran (butoane, câmpuri);
+                - click pe baza locatorilor extrași din capturi de ecran;
+                - extragerea sau inserarea de date din câmpuri editabile sau needitabile;
+                - posibilitatea de a executa acțiuni direct pe locator, fără a afișa mișcarea mouse-ului.
+
+            13. Codul aplicației trebuie să fie:
+                - foarte bine structurat modular;
+                - explicat pas cu pas, cu comentarii clare (1, 2, 3…) pentru fiecare funcție și secțiune;
+                - ușor de extins sau modificat ulterior;
+                - optimizat pentru performanță, astfel încât funcțiile să nu intre în conflict.
+
+                Dacă o rutină devine prea încărcată, aplicația trebuie:
+                - să afișeze un mesaj de avertizare;
+                - să recomande eliminarea sau omisiunea unor pași pentru creșterea performanței.
+
+            14. Aplicația să suporte mai multe teme de culoare, bine alese și cu contraste corecte pentru lizibilitate și ergonomie.
+
+            15. Să existe meniuri dropdown avansate (File, Edit, Section, View, Help etc.), deja funcționale, care să includă:
+                - setări globale ale aplicației;
+                - personalizarea culorilor și formelor butoanelor;
+                - alte opțiuni de customizare, fără a afecta stabilitatea sau performanța aplicației.
+
+            16. Posibilitatea de a avea un tab dedicat pentru notițe, în care utilizatorul să poată scrie observații, feedback, idei de corecție sau îmbunătățiri, folosind liste și bullet points.
+
+            17. Posibilitatea de a înregistra și rula rutine pe mai multe monitoare, cu opțiunea de a:
+                - selecta manual monitorul;
+                - sau de a lăsa aplicația să urmărească automat unde se deplasează mouse-ul.
+
+            18. Utilizarea uneia sau mai multor librării GUI performante, orientate spre stabilitate și execuție fluentă, pentru a preveni crash-uri sau interacțiuni riscante cu aplicațiile externe. Să existe permanent controale vizibile și ușor accesibile pentru pauză, oprire sau reluare în siguranță a rutinei.
+
+            19. În secțiunea Help / Support să fie afișate:
+                - datele mele de contact (placeholder: "Bo… (completăm mai târziu)");
+                - mențiunea că aplicația a fost realizată cu ajutorul unui AI;
+                - o descriere succintă a aplicației și a funcționalităților principale.
+
+            DESCRIERE
+
+                Aplicația este un tool de tip RPA (Robotic Process Automation) / Data Cleansing, care permite automatizarea task-urilor repetitive prin înregistrarea și rularea de gesturi și interacțiuni vizuale, fără a fi nevoie de scriere de cod.
+
+                Utilizatorul creează rutine vizual, rapid și intuitiv, folosind mouse-ul, tastatura și recunoașterea elementelor de pe ecran. Aplicația contribuie la reducerea erorilor umane, creșterea eficienței și eliminarea oboselii cauzate de repetarea acelorași sarcini.
+        PROMPT:
+            Ești un Senior Python Architect + Senior Desktop UI Engineer. Construiești o aplicație RPA / Data Cleansing cross-platform (prioritate Windows), cu GUI modern, stabilă și performantă, care înregistrează și rulează rutine (mouse/keyboard/hotkeys + recunoaștere vizuală). 
+
+            OBIECTIV:
+            Generează un proiect complet în Python (cod integral), modular, extensibil, cu o GUI modernă și multe interacțiuni avansate între componente. Aplicația trebuie să includă absolut toate funcționalitățile din specificația de mai jos.
+
+            CERINȚE FUNCȚIONALE (trebuie implementate):
+            1) GUI complexă (multi-tab, multe butoane, meniu complet File/Edit/Section/View/Help, panouri, toolbar, statusbar).
+            2) Înregistrare gesturi: mouse, tastatură, combinații de taste, inclusiv mixate în aceeași sesiune.
+            3) Log detaliat pentru fiecare pas, exportabil în multiple formate, prioritar .xlsx.
+            4) Design modern, paletă inspirată din culorile Siemens; UI/UX actual; butoane bine poziționate.
+            5) Log în tab separat față de recorder; opțiuni: marcare pași cu probleme, evidențiere celule Excel cu erori, comentarii manuale/automate.
+            6) Popup/eroare/exception handling: extrage mesaj complet, salvează în log, întreabă user Continue/Stop, poate apăsa automat OK/Cancel/Retry.
+            7) Emergency Stop vizibil și/sau floating; hotkey configurabil.
+            8) Control avansat: shortcut-uri start/stop/pause/resume; overlay/floating panel ce afișează shortcut-urile în runtime; control în timp real din hotkeys.
+            9) Salvare rutină pentru reutilizare; listă rutine (select/load).
+            10) Execuție rutină pe date externe din Excel: user încarcă interval (ex A1:A100), selectează rutină, rulează pe fiecare valoare, scrie rezultate în Excel.
+            11) Delay configurabil după/înainte de pași.
+            12) Pași structurați (Step 1, Step 2...) cu opțiuni: click type, delay, move up/down, skip, întrebări cu butoane Continue/Stop/Skip, recunoaștere vizuală (OpenCV), click pe locator din screenshot, read/write din câmpuri, execuție fără mouse visible (pe locator).
+            13) Cod modular, explicat, comentarii numerotate (1,2,3...), ușor de extins, optimizat; avertizare dacă rutina are prea mulți pași și recomandare de simplificare.
+            14) Multiple teme de culoare (contrast corect, ergonomie).
+            15) Dropdown menus avansate (funcționale) + setări globale + customizare UI (culori/forme butoane) fără instabilitate.
+            16) Tab Notes: editor cu bullet lists.
+            17) Multi-monitor: select monitor manual sau tracking automat după mouse.
+            18) Bibliotecă GUI performantă și stabilă, execuție fluentă, controale vizibile pentru pause/stop/resume.
+            19) Help/Support: contact placeholder "Bo… (completăm mai târziu)", mențiunea că aplicația a fost realizată cu ajutorul unui AI, descriere scurtă a aplicației.
+
+            CONSTRÂNGERI TEHNICE:
+            - Arhitectură stratificată: UI / Application Services / Domain / Infrastructure.
+            - Pattern-uri: Command pattern pentru Step-uri + Event Sourcing pentru log.
+            - Threading sigur: runner/recorder în thread separat; UI thread never-blocking.
+            - Plugin system: adaptoare OS pentru input, ferestre/popups, multi-monitor.
+            - Persistență: SQLite pentru log + export XLSX/CSV/JSON; rutinele în JSON + versionare.
+            - Type hints, dataclasses/pydantic (dacă e cazul), logging robust, error boundaries.
+            - Config global în YAML/JSON + UI pentru editare.
+            - Teste de bază: unit tests pentru parser/export/log, mock pentru runner.
+            - Packaging: pyproject.toml + requirements (sau Poetry), README cu instrucțiuni.
+
+            STACK RECOMANDAT (dar poți justifica alternativa):
+            - GUI: PySide6 (Qt) cu Qt Widgets sau QML (alege ce e mai stabil pentru multi-tab/meniu/teme).
+            - Recorder input: pynput (mouse+keyboard).
+            - Hotkeys globale: keyboard (Windows) sau fallback pynput; abstractizează.
+            - Runner automation: pyautogui + pynput; pentru Windows popups: pywinauto; fallback generic.
+            - Screen capture / multi-monitor: mss + screeninfo.
+            - Vision/locators: OpenCV template matching + optional OCR (pytesseract) dacă e disponibil.
+            - Excel: openpyxl (XLSX) + pandas opțional.
+            - Export XLSX pentru log: openpyxl cu styling (highlight errors).
+
+            DELIVERABLES (obligatoriu):
+            1) Tree complet de proiect (structură de foldere).
+            2) Tot codul, pe fișiere, fiecare fișier în bloc separat, cu numele fișierului ca titlu.
+            3) Explicație scurtă a arhitecturii + diagramă text (flow).
+            4) Instrucțiuni de instalare și rulare.
+            5) Set de date demo + rutină demo + exemplu de Excel input/output.
+            6) Asigură-te că aplicația pornește și are MVP funcțional imediat: record, stop, save routine, play routine, log tab, export xlsx, emergency stop, multi-theme, notes tab.
+
+            IMPORTANT:
+            - Nu omite cerințe. Dacă ceva e dificil cross-platform, implementează Windows complet și pune fallback+warning pentru celelalte OS.
+            - Nu bloca UI. Folosește signals/slots.
+            - Scrie comentarii numerotate (1,2,3…) pentru funcții/zone importante.
+            - Include mecanism de “safe mode” când runner interacționează cu aplicații externe.
+            - Include validări, rate limiting, debouncing și protecție anti-spam în recorder.
+            - Arată exemple reale de Step types în cod.
+        STRUCTURA aplicației:
+            rpa_tool/
+            app.py
+            pyproject.toml
+            README.md
+            assets/
+                themes/
+                siemens_light.qss
+                siemens_dark.qss
+                high_contrast.qss
+                icons/
+            rpa/
+                __init__.py
+                ui/
+                main_window.py
+                theme_manager.py
+                tabs/
+                    record_tab.py
+                    log_tab.py
+                    routines_tab.py
+                    excel_tab.py
+                    notes_tab.py
+                    help_tab.py
+                widgets/
+                    floating_hotkeys.py
+                    step_editor.py
+                    routine_canvas.py
+                domain/
+                models.py
+                step_types.py
+                validators.py
+                application/
+                recorder_service.py
+                runner_service.py
+                routine_service.py
+                excel_service.py
+                log_service.py
+                settings_service.py
+                popup_service.py
+                hotkey_service.py
+                infrastructure/
+                storage/
+                    sqlite_repo.py
+                    routine_repo.py
+                    export_excel.py
+                    export_csv.py
+                    export_json.py
+                automation/
+                    input_adapter.py
+                    win_input_adapter.py
+                    generic_input_adapter.py
+                    window_adapter.py
+                    win_window_adapter.py
+                    generic_window_adapter.py
+                vision/
+                    screen_capture.py
+                    locator_engine.py
+                monitors/
+                    monitor_manager.py
+                utils/
+                threading.py
+                rate_limit.py
+                errors.py
+                constants.py
+            tests/
+                test_models.py
+                test_validators.py
+                test_export.py
+            demo/
+                demo_routine.json
+                input.xlsx
+        STRUCTURA detaliată:            
+            I. RPA / Data Cleansing Tool — Prompt AI + Arhitectură
+
+            ## 0) Context & Obiectiv
+
+                Aplicația este un tool de tip **RPA (Robotic Process Automation) / Data Cleansing**, care permite automatizarea task-urilor repetitive prin:
+                - înregistrarea și rularea de gesturi (mouse/tastatură/hotkeys),
+                - recunoaștere vizuală a elementelor de pe ecran (locatori din screenshot),
+                - rulare pe seturi de date externe din Excel,
+                - logging detaliat, exportabil prioritar în **.xlsx**.
+
+                Obiectiv: utilizatorul creează rutine **vizual, rapid și intuitiv**, fără scriere de cod, reducând erori și oboseală.
+
+            ## 1) PROMPT AI OPTIMIZAT (Copy/Paste)
+
+                > Folosește promptul de mai jos într-un AI (ex. Copilot/ChatGPT) pentru a genera proiectul complet (tree + fișiere + README + demo).
+
+                Ești un Senior Python Architect + Senior Desktop UI Engineer. Construiești o aplicație RPA / Data Cleansing, cu GUI modern, stabilă și performantă, care înregistrează și rulează rutine (mouse/keyboard/hotkeys + recunoaștere vizuală). Prioritate Windows (cross-platform doar cu fallback + warning).
+
+                OBIECTIV:
+                Generează un proiect complet în Python (cod integral), modular, extensibil, cu o GUI modernă și multe interacțiuni avansate. Aplicația trebuie să includă absolut toate funcționalitățile din specificația de mai jos.
+
+                CERINȚE FUNCȚIONALE (obligatoriu):
+                1) GUI complexă (multi-tab, multe butoane, meniu complet File/Edit/Section/View/Help, panouri, toolbar, statusbar).
+                2) Înregistrare gesturi: mouse, tastatură, combinații de taste, inclusiv mixate în aceeași sesiune.
+                3) Log detaliat pentru fiecare pas, exportabil în multiple formate, prioritar .xlsx.
+                4) Design modern, paletă inspirată din culorile Siemens; UI/UX actual; butoane bine poziționate.
+                5) Log în tab separat față de recorder; opțiuni: marcare pași cu probleme, evidențiere celule Excel cu erori, comentarii manuale/automate.
+                6) Popup/eroare/exception handling: extrage mesaj complet, salvează în log, întreabă user Continue/Stop, poate apăsa automat OK/Cancel/Retry.
+                7) Emergency Stop vizibil și/sau floating; hotkey configurabil.
+                8) Control avansat: shortcut-uri start/stop/pause/resume; overlay/floating panel ce afișează shortcut-urile în runtime; control în timp real din hotkeys.
+                9) Salvare rutină pentru reutilizare; listă rutine (select/load).
+                10) Execuție rutină pe date externe din Excel: user încarcă interval (ex A1:A100), selectează rutină, rulează pe fiecare valoare, scrie rezultate în Excel.
+                11) Delay configurabil după/înainte de pași.
+                12) Pași structurați (Step 1, Step 2...) cu opțiuni: click type, delay, move up/down, skip, întrebări cu Continue/Stop/Skip, recunoaștere vizuală (OpenCV), click pe locator din screenshot, read/write din câmpuri, execuție fără mouse visible (pe locator).
+                13) Cod modular, comentarii numerotate (1,2,3…), ușor de extins, performant; avertizare dacă rutina are prea mulți pași și recomandare de simplificare.
+                14) Multiple teme de culoare (contrast corect, ergonomie).
+                15) Dropdown menus avansate (funcționale) + setări globale + customizare UI (culori/forme butoane) fără instabilitate.
+                16) Tab Notes: editor cu bullet lists.
+                17) Multi-monitor: select monitor manual sau tracking automat după mouse.
+                18) GUI performantă și stabilă, execuție fluentă; controale vizibile pentru pause/stop/resume.
+                19) Help/Support: contact placeholder "Bo… (completăm mai târziu)", mențiunea că aplicația a fost realizată cu ajutorul unui AI, descriere scurtă a aplicației.
+
+                CONSTRÂNGERI TEHNICE:
+                - Arhitectură stratificată: UI / Application Services / Domain / Infrastructure.
+                - Pattern-uri: Command Pattern pentru Steps + Event Sourcing pentru log.
+                - Concurență sigură: recorder/runner în thread separat; UI thread never-blocking.
+                - Plugin system: adaptoare OS pentru input, ferestre/popups, multi-monitor.
+                - Persistență: SQLite pentru log + export XLSX/CSV/JSON; rutinele în JSON + versionare.
+                - Type hints, dataclasses, logging robust, error boundaries.
+                - Config global în YAML/JSON + UI pentru editare.
+                - Teste minime: unit tests pentru export/log/validare, mock pentru runner.
+                - Packaging: pyproject.toml + requirements (sau Poetry), README.
+
+                STACK RECOMANDAT (poți justifica alternative):
+                - GUI: PySide6 (Qt Widgets) pentru stabilitate multi-tab/meniu/teme.
+                - Recorder input: pynput (mouse+keyboard).
+                - Hotkeys globale: keyboard (Windows) sau fallback pynput; abstractizează.
+                - Runner automation: pyautogui + pynput; Windows popups: pywinauto; fallback generic.
+                - Screen capture / multi-monitor: mss + screeninfo.
+                - Vision/locators: OpenCV template matching + OCR optional (pytesseract).
+                - Excel: openpyxl (XLSX) + pandas optional.
+                - Export XLSX log: openpyxl cu styling (highlight errors).
+
+                DELIVERABLES (obligatoriu):
+                1) Tree complet de proiect (structură foldere).
+                2) Tot codul pe fișiere, fiecare fișier în bloc separat, cu numele fișierului ca titlu.
+                3) Explicație arhitectură + diagramă text (flow).
+                4) Instrucțiuni instalare/rulare.
+                5) Date demo + rutină demo + exemplu Excel input/output.
+                6) MVP funcțional imediat: record, stop, save routine, play routine, log tab, export xlsx, emergency stop, multi-theme, notes tab.
+
+                IMPORTANT:
+                - Nu omite cerințe. Dacă ceva e dificil cross-platform, implementează Windows complet + fallback warning pe rest.
+                - Nu bloca UI. Folosește signals/slots.
+                - Comentarii numerotate (1,2,3…) la funcții/zone importante.
+                - Include “safe mode” pentru interacțiuni cu aplicații externe.
+                - Include debouncing/rate limiting pentru recorder.
+                - Include exemple reale de Step types.
+        ARHITECTURA aplicației:
+            II. ARHITECTURĂ — Viziune de ansamblu
+                2.1 Principii-cheie
+
+                Separation of Concerns: UI ≠ logică ≠ infrastructură (OS/Excel/vision).
+                Command Pattern pentru Steps: fiecare pas este o comandă executabilă și serializabilă.
+                Event Sourcing pentru Log: orice acțiune devine un eveniment (audit complet).
+                Threading sigur: runner și recorder rulează în threads separate (UI never-blocking).
+                Adapters OS: popups și hotkeys globale sunt OS-specific → abstractizate prin interfețe.
+                Extensibilitate: Step Types + Adapters + Exporters ca module plug‑in.
+                Stabilitate: emergency stop + safe mode + rate limiting + error boundaries.
+            
+            III. STACK TEHNIC RECOMANDAT
+                III.1 GUI
+
+                PySide6 (Qt Widgets): tab-uri, meniuri, dock panels, QThread + signals/slots, QSS themes.
+                    3.2 Recorder & Hotkeys
+
+                pynput: mouse + keyboard events, sesiuni mixte.
+                    keyboard (Windows): hotkeys globale (fallback pynput dacă e nevoie).
+
+                III.3 Runner Automation
+                    pyautogui: click/type/move/scroll.
+                    pynput fallback pentru input dispatch.
+
+                III.4 Popups / Window Control
+                    Windows: pywinauto pentru detectare popups + extragere text + apăsare OK/Cancel/Retry.
+                    Generic fallback: heuristici + dialog manual.
+
+                III.5 Vision / Locators
+                    mss pentru screen capture.
+                    opencv-python: template matching (locatori), ROI regions.
+                    OCR optional: pytesseract (dacă disponibil).
+
+                III.6 Excel I/O & Export
+                    openpyxl: citire/scriere intervale + styling (highlight).
+                    Export log: XLSX/CSV/JSON.
+
+                III.7 Persistență
+                    SQLite (log + run history).
+                    Rutine: JSON versionat.
+
+Interpretare SiemnensGPT
+    Arhitectura aplicatiei 
+        Arhitectura în 6 Straturi
+
+        main.py                          ← Entry Point
+            │
+            ├── config/
+            │   ├── settings.py          ← Constante, culori, shortcut-uri
+            │   └── theme_manager.py     ← Teme: Light / Dark / High Contrast
+            │
+            ├── gui/                     ← 10 module GUI (CustomTkinter)
+            │   ├── main_window.py       ← Root, MenuBar, TabView, StatusBar
+            │   ├── tab_recorder.py      ← Înregistrare pași, opțiuni step
+            │   ├── tab_log.py           ← Tabel log, filtre, export
+            │   ├── tab_routines.py      ← Rutine salvate, load/delete
+            │   ├── tab_excel.py         ← Data-driven execution
+            │   ├── tab_notes.py         ← Notițe cu bullet points
+            │   ├── floating_controls.py ← Overlay shortcut-uri (always-on-top)
+            │   ├── emergency_stop.py    ← 🔴 Buton roșu floating
+            │   ├── dialogs.py           ← Dialoguri reutilizabile
+            │   └── settings_dialog.py   ← Setări globale (4 tab-uri)
+            │
+            ├── core/                    ← 8 module logică business
+            │   ├── recorder.py          ← pynput → înregistrare mouse/tastatură
+            │   ├── player.py            ← pyautogui → redare în thread separat
+            │   ├── routine_manager.py   ← JSON persistence
+            │   ├── step_model.py        ← @dataclass cu toate câmpurile
+            │   ├── popup_handler.py     ← Detectare & gestionare popup-uri
+            │   ├── excel_engine.py      ← openpyxl: citire/scriere/export
+            │   ├── visual_recognizer.py ← Pillow + pytesseract (OCR)
+            │   └── logger.py            ← Log structurat + export XLSX/CSV/JSON
+            │
+            ├── utils/                   ← 3 module utilitare
+            │   ├── shortcut_manager.py  ← GlobalHotKeys (pynput)
+            │   ├── monitor_utils.py     ← Multi-monitor + coord mapping
+            │   └── helpers.py           ← Timestamp, paths, validators
+            │
+            └── storage/                 ← Fișiere persistente
+                ├── routines/*.json
+                ├── logs/*.xlsx / *.csv
+                ├── notes/notes.txt
+                ├── locators/*.png
+                └── config.json
+    Prompt SiemensGPT:
+        You are an expert Python developer specializing in GUI applications, RPA (Robotic Process Automation), 
+        and UI/UX design. Your task is to generate a complete, production-ready, modular Python application 
+        following the exact architecture and blueprint provided below.
+    ### APPLICATION OVERVIEW
+            Build a **Python RPA & Data Cleansing Desktop Tool** that allows users to record, manage, and replay 
+            mouse/keyboard routines visually — without writing code. The application must feel professional, 
+            stable, and intuitive, inspired by enterprise tools like UiPath or Power Automate, but lightweight 
+            and fully Python-based.
+    ### STRICT IMPLEMENTATION RULES
+            1. Follow the **multi-file modular architecture** exactly as specified.
+            2. Every file, class, and function must have **PEP 8-compliant** code with full **type hints** 
+            and **docstrings**.
+            3. Use **numbered inline comments** (# 1., # 2., etc.) inside every function body.
+            4. For unimplemented complex logic, use `pass` + `# TODO:` comments.
+            5. Do NOT combine files — output each file in its own labeled code block.
+            6. Use **CustomTkinter** as the primary GUI framework for modern styling.
+            7. Use **pynput** for keyboard/mouse recording and **pyautogui** for playback.
+            8. Use **openpyxl** for all Excel operations.
+            9. Use **Pillow** for screenshot and visual recognition support.
+            10. All GUI interactions must be **thread-safe** (use `threading`, `queue.Queue` for inter-thread 
+                communication).
+            11. The color palette must follow **Siemens brand colors**: 
+                - Primary: #009999 (Siemens Teal)
+                - Secondary: #000028 (Siemens Dark Navy)
+                - Accent: #00D7A0 (Siemens Green)
+                - Warning: #FF6600
+                - Error: #CC0000
+                - Background Light: #F5F5F5
+                - Background Dark: #1A1A2E
+            12. Support **multi-monitor** environments using `screeninfo` or `tkinter` geometry detection.
+            13. The Emergency Stop must be a **floating always-on-top widget**, visible at all times during 
+                playback.
+            14. The application must support **at least 3 color themes**: Siemens Light, Siemens Dark, 
+                High Contrast.
+    ### MANDATORY FILE ARCHITECTURE
+
+            Generate the following files, in order:
+
+            1. `main.py` — Entry point, app initialization, theme loading
+            2. `config/settings.py` — Global constants, theme definitions, default shortcuts
+            3. `config/theme_manager.py` — Theme switching logic, color palette management
+            4. `core/recorder.py` — Mouse & keyboard event recording engine (pynput)
+            5. `core/player.py` — Routine playback engine with delay support (pyautogui + threading)
+            6. `core/routine_manager.py` — Save/load/manage routines (JSON serialization)
+            7. `core/step_model.py` — Data models for steps (dataclass-based)
+            8. `core/popup_handler.py` — Auto-detect and handle popups/error dialogs
+            9. `core/excel_engine.py` — Excel read/write, log export, data-driven execution (openpyxl)
+            10. `core/visual_recognizer.py` — Screen element recognition (Pillow + pyautogui)
+            11. `core/logger.py` — Structured event logging with timestamps and error flags
+            12. `gui/main_window.py` — Root window, menu bar, tab controller
+            13. `gui/tab_recorder.py` — Recording tab: step list, controls, step options
+            14. `gui/tab_log.py` — Log tab: filterable table, error highlighting, export buttons
+            15. `gui/tab_routines.py` — Saved routines tab: list, load, delete, rename
+            16. `gui/tab_excel.py` — Excel data-driven tab: file picker, range selector, routine linker
+            17. `gui/tab_notes.py` — Notes tab: rich text editor with bullet points
+            18. `gui/floating_controls.py` — Floating shortcut overlay shown during playback
+            19. `gui/emergency_stop.py` — Always-on-top Emergency Stop floating button
+            20. `gui/dialogs.py` — Reusable dialog windows (confirm, input, popup handler UI)
+            21. `gui/settings_dialog.py` — Global settings window (shortcuts, themes, behavior)
+            22. `utils/shortcut_manager.py` — Global hotkey registration and management
+            23. `utils/monitor_utils.py` — Multi-monitor detection and coordinate mapping
+            24. `utils/helpers.py` — General utility functions (timestamp, file paths, validators)
+    ### PER-FILE SPECIFICATIONS
+
+            #### `main.py`
+            - Initialize the CustomTkinter app
+            - Load settings from `config/settings.py`
+            - Apply the default theme via `ThemeManager`
+            - Instantiate `MainWindow` and start the mainloop
+            - Register global hotkeys via `ShortcutManager`
+            - Handle uncaught exceptions with a user-friendly error dialog
+
+            #### `config/settings.py`
+            - Define `APP_NAME`, `VERSION`, `AUTHOR_CONTACT` (placeholder)
+            - Define `DEFAULT_SHORTCUTS` dict: start, stop, pause, resume, emergency_stop
+            - Define `SIEMENS_COLORS` dict with all brand colors
+            - Define `THEMES` dict containing Light, Dark, High Contrast palettes
+            - Define `DEFAULT_DELAYS` for step execution
+            - Define `MAX_STEPS_WARNING` = 50 (warn user if routine exceeds this)
+
+            #### `config/theme_manager.py`
+            - Class `ThemeManager` with methods:
+            - `apply_theme(theme_name: str) -> None`
+            - `get_color(key: str) -> str`
+            - `list_themes() -> list[str]`
+            - `save_preference(theme_name: str) -> None`
+
+            #### `core/recorder.py`
+            - Class `Recorder` with:
+            - `start_recording() -> None` — starts pynput listeners
+            - `stop_recording() -> list[StepModel]` — stops and returns recorded steps
+            - `pause_recording() -> None`
+            - `resume_recording() -> None`
+            - `_on_mouse_event(...)` — internal callback
+            - `_on_keyboard_event(...)` — internal callback
+            - Thread-safe event queue
+
+            #### `core/player.py`
+            - Class `Player` with:
+            - `play(steps: list[StepModel], speed: float) -> None`
+            - `pause() -> None`
+            - `resume() -> None`
+            - `stop() -> None`
+            - `emergency_stop() -> None`
+            - `_execute_step(step: StepModel) -> bool`
+            - Runs in a separate thread; communicates via `queue.Queue`
+
+            #### `core/routine_manager.py`
+            - Class `RoutineManager` with:
+            - `save_routine(name: str, steps: list[StepModel]) -> None`
+            - `load_routine(name: str) -> list[StepModel]`
+            - `list_routines() -> list[str]`
+            - `delete_routine(name: str) -> None`
+            - `rename_routine(old: str, new: str) -> None`
+            - Persists to `routines/` folder as JSON files
+
+            #### `core/step_model.py`
+            - `@dataclass StepModel` with fields:
+            - `step_id: int`, `step_type: str` (click/key/delay/screenshot/extract/insert/question)
+            - `x: int`, `y: int`, `button: str`, `click_type: str` (single/double/triple/right)
+            - `key_combo: str`, `delay_before: float`, `delay_after: float`
+            - `description: str`, `skip: bool`, `monitor_id: int`
+            - `locator_image: str` (path to screenshot crop)
+            - `expected_value: str`, `extracted_value: str`
+            - `has_error: bool`, `error_message: str`, `comment: str`
+            - `question_text: str`, `question_buttons: list[str]`
+
+            #### `core/popup_handler.py`
+            - Class `PopupHandler` with:
+            - `scan_for_popups() -> dict | None` — uses pyautogui + win32 API
+            - `extract_popup_message() -> str`
+            - `click_popup_button(button_label: str) -> bool`
+            - `ask_user_action(message: str) -> str` — returns "continue"/"stop"
+
+            #### `core/excel_engine.py`
+            - Class `ExcelEngine` with:
+            - `load_data(file_path: str, sheet: str, cell_range: str) -> list`
+            - `write_results(file_path: str, results: list, start_cell: str) -> None`
+            - `export_log(log_entries: list, file_path: str) -> None`
+            - `highlight_error_cells(file_path: str, cells: list[str]) -> None`
+            - `add_comment(file_path: str, cell: str, comment: str) -> None`
+
+            #### `core/visual_recognizer.py`
+            - Class `VisualRecognizer` with:
+            - `capture_screen(monitor_id: int) -> Image`
+            - `find_element(template_path: str, confidence: float) -> tuple | None`
+            - `click_element(template_path: str) -> bool`
+            - `extract_text_from_region(x, y, w, h) -> str` (OCR via pytesseract)
+
+            #### `core/logger.py`
+            - Class `Logger` with:
+            - `log_event(step_id, action, result, error, comment) -> None`
+            - `mark_error(step_id: int, message: str) -> None`
+            - `add_comment(step_id: int, comment: str) -> None`
+            - `get_all_entries() -> list[dict]`
+            - `export_to_xlsx(path: str) -> None`
+            - `export_to_csv(path: str) -> None`
+            - `export_to_json(path: str) -> None`
+            - `clear() -> None`
+
+            #### `gui/main_window.py`
+            - Class `MainWindow(ctk.CTk)` with:
+            - Full menu bar: File, Edit, View, Routines, Tools, Help
+            - `CTkTabview` with tabs: Recorder, Log, Routines, Excel Data, Notes
+            - Status bar at bottom showing: current status, active monitor, step count
+            - Instantiates all tab classes and passes shared state
+
+            #### `gui/tab_recorder.py`
+            - Class `RecorderTab(ctk.CTkFrame)` with:
+            - Step list (scrollable, each row shows: #, type, description, skip toggle, move up/down)
+            - Controls: Record, Stop, Play, Pause, Resume
+            - Step options panel: click type, delay, description, locator capture button
+            - "Add Question Step" button
+            - "Add Delay Step" button
+            - Performance warning label (shown when steps > MAX_STEPS_WARNING)
+
+            #### `gui/tab_log.py`
+            - Class `LogTab(ctk.CTkFrame)` with:
+            - Scrollable table (ttk.Treeview styled) with columns: #, Time, Action, Result, Error, Comment
+            - Filter bar: by step, by error, by time range
+            - Error rows highlighted in red/orange
+            - Buttons: Export XLSX, Export CSV, Export JSON, Clear Log, Add Comment
+            - "Mark as Problem" button for selected row
+
+            #### `gui/tab_routines.py`
+            - Class `RoutinesTab(ctk.CTkFrame)` with:
+            - Scrollable list of saved routines
+            - Buttons: Load, Delete, Rename, Duplicate
+            - Routine details panel (step count, last modified, description)
+            - Search/filter bar
+
+            #### `gui/tab_excel.py`
+            - Class `ExcelTab(ctk.CTkFrame)` with:
+            - File picker for Excel input
+            - Sheet selector dropdown
+            - Cell range input (e.g., A1:A100)
+            - Routine selector dropdown
+            - Output cell range input
+            - "Run Data-Driven Routine" button
+            - Progress bar and live result table
+
+            #### `gui/tab_notes.py`
+            - Class `NotesTab(ctk.CTkFrame)` with:
+            - Rich text area (CTkTextbox)
+            - Toolbar: Bold, Italic, Bullet, Numbered List, Clear, Save, Load
+            - Auto-save to `notes/notes.txt`
+
+            #### `gui/floating_controls.py`
+            - Class `FloatingControls(ctk.CTkToplevel)` with:
+            - Always-on-top, semi-transparent window
+            - Displays active shortcuts: Pause (key), Resume (key), Stop (key)
+            - Draggable by user
+            - Auto-hides when routine is not running
+
+            #### `gui/emergency_stop.py`
+            - Class `EmergencyStop(ctk.CTkToplevel)` with:
+            - Large red button, always-on-top
+            - Calls `Player.emergency_stop()` on click
+            - Displays current shortcut key
+            - Draggable, cannot be closed during active routine
+
+            #### `gui/dialogs.py`
+            - Functions:
+            - `confirm_dialog(title, message) -> bool`
+            - `input_dialog(title, prompt) -> str`
+            - `popup_action_dialog(popup_message) -> str` — returns "continue"/"stop"
+            - `error_dialog(title, message) -> None`
+            - `warning_dialog(title, message) -> None`
+
+            #### `gui/settings_dialog.py`
+            - Class `SettingsDialog(ctk.CTkToplevel)` with:
+            - Tab: Shortcuts (editable key bindings for all actions)
+            - Tab: Appearance (theme selector, button style, font size)
+            - Tab: Behavior (default delays, max steps warning threshold, auto-save)
+            - Tab: Monitors (list detected monitors, set default)
+            - Save/Cancel buttons
+
+            #### `utils/shortcut_manager.py`
+            - Class `ShortcutManager` with:
+            - `register(action: str, key_combo: str, callback: callable) -> None`
+            - `unregister(action: str) -> None`
+            - `update(action: str, new_combo: str) -> None`
+            - `list_shortcuts() -> dict`
+            - Uses `pynput.keyboard.GlobalHotKeys`
+
+            #### `utils/monitor_utils.py`
+            - Functions:
+            - `get_all_monitors() -> list[dict]`
+            - `get_monitor_at_cursor() -> dict`
+            - `map_coordinates(x, y, from_monitor, to_monitor) -> tuple`
+            - `get_primary_monitor() -> dict`
+
+            #### `utils/helpers.py`
+            - Functions:
+            - `get_timestamp() -> str`
+            - `ensure_dir(path: str) -> None`
+            - `sanitize_filename(name: str) -> str`
+            - `format_duration(seconds: float) -> str`
+            - `validate_cell_range(range_str: str) -> bool`
+            - `get_app_data_path() -> str`
+    ### HELP / SUPPORT CONTENT (to embed in Help menu)
+
+            Application: RPA & Data Cleansing Tool
+            Version: 1.0.0
+            Author: Bo… (details to be completed later)
+            Built with: Python, CustomTkinter, pynput, pyautogui, openpyxl, Pillow
+            AI Assistance: This application was designed and implemented with the help of an AI assistant.
+
+            Description:
+            A no-code RPA tool for automating repetitive desktop tasks through visual routine recording.
+            Record mouse/keyboard interactions, replay them with data from Excel, and log every action 
+            with full error tracking and export capabilities.
+
+            Contact: [placeholder — to be completed]
+    ### FINAL INSTRUCTION
+
+            Generate all 24 files in order, each in its own labeled code block.
+            Do not skip any file. Do not merge files.
+            Every function must have a docstring, type hints, and numbered inline comments.
+            Use `# TODO:` for complex logic placeholders.
+            The application must be importable and runnable with `python main.py`.

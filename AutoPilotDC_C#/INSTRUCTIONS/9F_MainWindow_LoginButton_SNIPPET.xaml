@@ -1,0 +1,23 @@
+﻿<!-- ============================================================
+     AutoPilot DC v3.9 -> C# WPF .NET 8
+     MainWindow.xaml � Faza 9: Adaugat buton "?? Login Rutina"
+     INSTRUCTIUNI: Adauga acest buton in ToolBar-ul Tab Recorder,
+     dupa butonul "?? Debug Pas" si inainte de "? Simulator".
+     ============================================================
+
+     ADAUGA IN TOOLBAR TAB RECORDER (langa Debug Pas):
+
+     <Button Content="?? Login Rutina"
+             Command="{Binding LoginConfigCmd}"
+             Background="#2D5A8E"
+             Foreground="White"
+             Height="32"
+             Padding="10,0"
+             Margin="4,0"
+             Cursor="Hand"
+             BorderThickness="0"
+             FontSize="12"
+             FontWeight="SemiBold"
+             ToolTip="Configurare autentificare pentru rutina curenta"/>
+
+     ============================================================ -->

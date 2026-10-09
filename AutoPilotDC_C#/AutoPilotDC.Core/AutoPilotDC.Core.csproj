@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>AutoPilotDC.Core</RootNamespace>
+    <AssemblyName>AutoPilotDC.Core</AssemblyName>
+    <Version>3.9.0</Version>
+    <Authors>Bogdan Murar (Z003FU5C)</Authors>
+    <Company>Siemens AG</Company>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\AutoPilotDC.Models\AutoPilotDC.Models.csproj" />
+  </ItemGroup>
+</Project>

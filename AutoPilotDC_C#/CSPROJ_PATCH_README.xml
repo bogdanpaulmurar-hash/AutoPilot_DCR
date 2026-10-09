@@ -1,0 +1,29 @@
+<!-- ============================================================
+     AutoPilotDC.UI\AutoPilotDC.UI.csproj
+     Faza 8: Adauga <UseWindowsForms>true</UseWindowsForms>
+     in <PropertyGroup> (necesar pentru System.Windows.Forms.Cursor.Position)
+     ============================================================
+
+MODIFICARE NECESARA in AutoPilotDC.UI.csproj:
+
+Gaseste <PropertyGroup> principal si adauga:
+
+    <UseWindowsForms>true</UseWindowsForms>
+
+Exemplu rezultat final:
+
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>    <!-- ADAUGAT Faza 8 -->
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+  ...
+</Project>
+
+NOTA: Daca <UseWindowsForms>true</UseWindowsForms> exista deja (din Faza 7),
+nu mai este necesar sa il adaugi din nou.
+============================================================ -->

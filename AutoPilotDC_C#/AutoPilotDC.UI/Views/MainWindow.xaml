@@ -1,0 +1,927 @@
+﻿<Window x:Class="AutoPilotDC.UI.Views.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="clr-namespace:AutoPilotDC.UI.ViewModels"
+        xmlns:conv="clr-namespace:AutoPilotDC.UI.Converters"
+        xmlns:sys="clr-namespace:System;assembly=mscorlib"
+        Title="AutoPilot DC v3.9 — Bogdan Murar (Z003FU5C) @ Siemens AG"
+        Height="780" Width="1200"
+        MinHeight="600" MinWidth="900"
+        Background="{DynamicResource BgMainBrush}"
+        WindowStartupLocation="CenterScreen">
+
+    <Window.Resources>
+        <conv:BoolToVisibilityConverter        x:Key="BoolToVis"/>
+        <conv:InverseBoolToVisibilityConverter x:Key="InvBoolToVis"/>
+        <conv:StepTypeToBrushConverter         x:Key="StepTypeBrush"/>
+        <conv:SkipToOpacityConverter           x:Key="SkipOpacity"/>
+        <conv:CountdownToStringConverter       x:Key="CdToStr"/>
+        <conv:BoolToStatusBrushConverter       x:Key="BoolToStatusBrush"/>
+    </Window.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <!-- Toolbar -->
+            <RowDefinition Height="*"/>
+            <!-- Main content -->
+            <RowDefinition Height="Auto"/>
+            <!-- Status bar -->
+        </Grid.RowDefinitions>
+
+        <!-- ═══════════════════════════════════════════════════════════
+             TOOLBAR
+        ════════════════════════════════════════════════════════════ -->
+        <Border Grid.Row="0"
+                Background="{DynamicResource BgCardBrush}"
+                BorderBrush="{DynamicResource BorderBrush}"
+                BorderThickness="0,0,0,1"
+                Padding="8,6">
+            <DockPanel>
+
+                <!-- Logo / Title -->
+                <TextBlock DockPanel.Dock="Left"
+                           Text="⚡ AutoPilot DC"
+                           Foreground="{DynamicResource PrimaryBrush}"
+                           FontFamily="Segoe UI" FontSize="16" FontWeight="Bold"
+                           VerticalAlignment="Center" Margin="0,0,16,0"/>
+
+                <!-- Countdown display -->
+                <TextBlock DockPanel.Dock="Right"
+                           Text="{Binding CountdownValue, Converter={StaticResource CdToStr}}"
+                           Foreground="{DynamicResource WarningBrush}"
+                           FontFamily="Segoe UI" FontSize="22" FontWeight="Bold"
+                           VerticalAlignment="Center" Margin="8,0" Width="50"
+                           TextAlignment="Center"/>
+
+                <!-- Iter display -->
+                <TextBlock DockPanel.Dock="Right"
+                           Text="{Binding IterText}"
+                           Foreground="{DynamicResource AccentBrush}"
+                           FontFamily="Segoe UI" FontSize="11" FontWeight="Bold"
+                           VerticalAlignment="Center" Margin="8,0"/>
+
+                <!-- REC indicator -->
+                <TextBlock DockPanel.Dock="Right"
+                           Text="{Binding RecIndicatorText}"
+                           Foreground="{Binding IsRecording, Converter={StaticResource BoolToStatusBrush}}"
+                           FontFamily="Segoe UI" FontSize="12" FontWeight="Bold"
+                           VerticalAlignment="Center" Margin="8,0"/>
+
+                <!-- Separator -->
+                <Separator DockPanel.Dock="Right" Style="{x:Null}"
+                           Background="{DynamicResource BorderBrush}"
+                           Width="1" Margin="4,4"/>
+
+                <!-- EMERGENCY STOP -->
+                <Button DockPanel.Dock="Right"
+                        Content="🚨 STOP !!!"
+                        Command="{Binding EmergencyStopCmd}"
+                        Style="{DynamicResource EmergencyButtonStyle}"
+                        Margin="4,0" Padding="12,6" Width="101" RenderTransformOrigin="0.5,0.5">
+                    <Button.RenderTransform>
+                        <TransformGroup>
+                            <ScaleTransform/>
+                            <SkewTransform/>
+                            <RotateTransform Angle="-0.684"/>
+                            <TranslateTransform/>
+                        </TransformGroup>
+                    </Button.RenderTransform>
+                </Button>
+
+                <!-- Toolbar buttons -->
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+
+                    <!-- Recorder group -->
+                    <Button Content="⏺ Start Rec [F5]"
+                            Command="{Binding StartRecordingCmd}"
+                            Style="{DynamicResource DangerButtonStyle}"
+                            Margin="2,0" ToolTip="Incepe inregistrarea (F5)"/>
+
+                    <Button Content="⏹ Stop Rec [F6]"
+                            Command="{Binding StopRecordingCmd}"
+                            Style="{DynamicResource NeutralButtonStyle}"
+                            Margin="2,0" ToolTip="Opreste inregistrarea (F6)"/>
+
+                    <Separator Width="1" Background="{DynamicResource BorderBrush}" Margin="6,4"/>
+
+                    <!-- Player group -->
+                    <Button Content="▶ Play [F7]"
+                            Command="{Binding PlayCmd}"
+                            Style="{DynamicResource SuccessButtonStyle}"
+                            Margin="2,0" ToolTip="Porneste redarea (F7)"/>
+
+                    <Button Content="{Binding PauseButtonText}"
+                            Command="{Binding PauseResumeCmd}"
+                            Style="{DynamicResource NeutralButtonStyle}"
+                            Margin="2,0" ToolTip="Pauza/Reia (F8)"/>
+
+                    <Button Content="⏹ Stop [F9]"
+                            Command="{Binding StopPlayCmd}"
+                            Style="{DynamicResource NeutralButtonStyle}"
+                            Margin="2,0" ToolTip="Opreste redarea (F9)"/>
+
+                    <Separator Width="1" Background="{DynamicResource BorderBrush}" Margin="6,4"/>
+
+                    <!-- ═══════════════════════════════════════════════
+                         FAZA 9: Login Rutina
+                    ════════════════════════════════════════════════ -->
+                    <Button Content="🔐 Login Rutină"
+                            Command="{Binding LoginConfigCmd}"
+                            Background="#2D5A8E"
+                            Foreground="White"
+                            Height="32"
+                            Padding="10,0"
+                            Margin="4,0"
+                            Cursor="Hand"
+                            BorderThickness="0"
+                            FontSize="12"
+                            FontWeight="SemiBold"
+                            ToolTip="Configurare autentificare pentru rutina curenta"/>
+
+                    <!-- ═══════════════════════════════════════════════
+                         FAZA 10: Simulator
+                    ════════════════════════════════════════════════ -->
+                    <Button Content="► Simulator"
+                            Command="{Binding SimulatorCmd}"
+                            Background="#6A5ACD"
+                            Foreground="White"
+                            Height="32"
+                            Padding="10,0"
+                            Margin="4,0"
+                            Cursor="Hand"
+                            BorderThickness="0"
+                            FontSize="12"
+                            FontWeight="SemiBold"
+                            ToolTip="Simuleaza rutina pas cu pas (fara executie reala)"/>
+
+                    <!-- Toggle Dry Run -->
+                    <CheckBox Content="Dry Run"
+                              IsChecked="{Binding IsDryRun}"
+                              Foreground="#B0B0C0"
+                              VerticalAlignment="Center"
+                              Margin="8,0,4,0"
+                              ToolTip="Simuleaza fara actiuni reale (mouse/keyboard)"/>
+                    <Button Content="Dry Run"
+                            Command="{Binding SimulatorCmd}"
+                            IsEnabled="{Binding IsNotSimulating}"/>
+
+                    <!-- Buton Pas Urmator (vizibil doar cand Simulator e activ) -->
+                    <Button Content="⏭ Pas Următor"
+                            Command="{Binding NextStepCmd}"
+                            Background="#4A4A8A"
+                            Foreground="White"
+                            Height="32"
+                            Padding="10,0"
+                            Margin="4,0"
+                            Cursor="Hand"
+                            BorderThickness="0"
+                            FontSize="12"
+                            FontWeight="SemiBold"
+                            ToolTip="Avanseaza la pasul urmator in modul manual">
+                        <Button.Style>
+                            <Style TargetType="Button">
+                                <Setter Property="Visibility" Value="Collapsed"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsNextStepVisible}" Value="True">
+                                        <Setter Property="Visibility" Value="Visible"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Button.Style>
+                    </Button>
+
+                    <Separator Width="1" Background="{DynamicResource BorderBrush}" Margin="6,4"/>
+
+                    <!-- File group -->
+                    <Button Content="💾 Salveaza"
+                            Command="{Binding SaveRoutineCmd}"
+                            Style="{DynamicResource PrimaryButtonStyle}"
+                            Margin="2,0" ToolTip="Salveaza rutina (Ctrl+S)"/>
+
+                    <Button Content="📂 Deschide"
+                            Command="{Binding LoadRoutineCmd}"
+                            Style="{DynamicResource NeutralButtonStyle}"
+                            Margin="2,0" ToolTip="Deschide rutina (Ctrl+O)"/>
+
+                    <Button Content="🆕 Nou"
+                            Command="{Binding NewRoutineCmd}"
+                            Style="{DynamicResource NeutralButtonStyle}"
+                            Margin="2,0" ToolTip="Rutina noua (Ctrl+N)"/>
+
+                </StackPanel>
+            </DockPanel>
+        </Border>
+
+        <!-- ═══════════════════════════════════════════════════════════
+             MAIN CONTENT — Left Panel + TabControl
+        ════════════════════════════════════════════════════════════ -->
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="220" MinWidth="180" MaxWidth="300"/>
+                <ColumnDefinition Width="4"/>
+                <!-- Splitter -->
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- ── LEFT PANEL ── -->
+            <Border Grid.Column="0"
+                    Background="{DynamicResource BgPanelBrush}"
+                    BorderBrush="{DynamicResource BorderBrush}"
+                    BorderThickness="0,0,1,0"
+                    Padding="12,10">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel>
+
+                        <!-- Delay -->
+                        <Label Content="⏱ Delay pas (s):" Style="{DynamicResource DarkLabelStyle}"/>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="45"/>
+                            </Grid.ColumnDefinitions>
+                            <Slider Grid.Column="0"
+                                    Value="{Binding StepDelay}"
+                                    Minimum="0.05" Maximum="10.0"
+                                    TickFrequency="0.05"
+                                    Style="{DynamicResource DarkSliderStyle}"
+                                    VerticalAlignment="Center"/>
+                            <TextBox Grid.Column="1"
+                                     Text="{Binding StepDelay, StringFormat=F2}"
+                                     Style="{DynamicResource DarkTextBoxStyle}"
+                                     Margin="4,0,0,0" FontSize="11"/>
+                        </Grid>
+
+                        <Separator Margin="0,8"/>
+
+                        <!-- Speed -->
+                        <Label Content="⚡ Viteza redare:" Style="{DynamicResource DarkLabelStyle}"/>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="45"/>
+                            </Grid.ColumnDefinitions>
+                            <Slider Grid.Column="0"
+                                    Value="{Binding PlaybackSpeed}"
+                                    Minimum="0.1" Maximum="5.0"
+                                    TickFrequency="0.1"
+                                    Style="{DynamicResource DarkSliderStyle}"
+                                    VerticalAlignment="Center"/>
+                            <TextBox Grid.Column="1"
+                                     Text="{Binding PlaybackSpeed, StringFormat=F1}"
+                                     Style="{DynamicResource DarkTextBoxStyle}"
+                                     Margin="4,0,0,0" FontSize="11"/>
+                        </Grid>
+
+                        <Separator Margin="0,8"/>
+
+                        <!-- Repeat -->
+                        <Label Content="🔁 Repetari:" Style="{DynamicResource DarkLabelStyle}"/>
+                        <TextBox Text="{Binding RepeatCount}"
+                                 Style="{DynamicResource DarkTextBoxStyle}"/>
+
+                        <Separator Margin="0,8"/>
+
+                        <!-- Countdown -->
+                        <Label Content="⏳ Countdown (s):" Style="{DynamicResource DarkLabelStyle}"/>
+                        <TextBox Text="{Binding CountdownSetting}"
+                                 Style="{DynamicResource DarkTextBoxStyle}"/>
+
+                        <Separator Margin="0,8"/>
+
+                        <!-- Step count -->
+                        <Border Background="{DynamicResource BgCardBrush}"
+                                CornerRadius="4" Padding="8,6" Margin="0,4">
+                            <TextBlock Text="{Binding StepCountText}"
+                                       Foreground="{DynamicResource PrimaryBrush}"
+                                       FontFamily="Segoe UI" FontSize="13" FontWeight="Bold"
+                                       HorizontalAlignment="Center"/>
+                        </Border>
+
+                        <Separator Margin="0,8"/>
+
+                        <!-- Step actions -->
+                        <Label Content="🔧 Actiuni pas:" Style="{DynamicResource DarkLabelStyle}"/>
+
+                        <Button Content="➕ Adauga pas [Ctrl+M]"
+                                Command="{Binding AddStepCmd}"
+                                Style="{DynamicResource PrimaryButtonStyle}"
+                                Margin="0,2" HorizontalAlignment="Stretch"/>
+
+                        <Button Content="✏ Editeaza [Ctrl+E]"
+                                Command="{Binding EditStepCmd}"
+                                Style="{DynamicResource NeutralButtonStyle}"
+                                Margin="0,2" HorizontalAlignment="Stretch"/>
+
+                        <Button Content="🗑 Sterge [Del]"
+                                Command="{Binding DeleteStepCmd}"
+                                Style="{DynamicResource DangerButtonStyle}"
+                                Margin="0,2" HorizontalAlignment="Stretch"/>
+
+                        <Button Content="⬆ Sus [Ctrl+↑]"
+                                Command="{Binding MoveStepUpCmd}"
+                                Style="{DynamicResource NeutralButtonStyle}"
+                                Margin="0,2" HorizontalAlignment="Stretch"/>
+
+                        <Button Content="⬇ Jos [Ctrl+↓]"
+                                Command="{Binding MoveStepDownCmd}"
+                                Style="{DynamicResource NeutralButtonStyle}"
+                                Margin="0,2" HorizontalAlignment="Stretch"/>
+
+                        <Button Content="⏭ Skip [Ctrl+K]"
+                                Command="{Binding ToggleSkipCmd}"
+                                Style="{DynamicResource NeutralButtonStyle}"
+                                Margin="0,2" HorizontalAlignment="Stretch"/>
+
+                        <Button Content="🐛 Debug pas [Ctrl+B]"
+                                Command="{Binding DebugStepCmd}"
+                                Style="{DynamicResource NeutralButtonStyle}"
+                                Margin="0,2" HorizontalAlignment="Stretch"/>
+
+                        <Button Content="🗑 Sterge tot"
+                                Command="{Binding ClearStepsCmd}"
+                                Style="{DynamicResource NeutralButtonStyle}"
+                                Margin="0,8,0,2" HorizontalAlignment="Stretch" Click="Button_Click"/>
+
+                    </StackPanel>
+                </ScrollViewer>
+            </Border>
+
+            <!-- GridSplitter -->
+            <GridSplitter Grid.Column="1"
+                          Width="4"
+                          HorizontalAlignment="Stretch"
+                          Background="{DynamicResource BorderBrush}"
+                          ResizeBehavior="PreviousAndNext"/>
+
+            <!-- ── TAB CONTROL ── -->
+            <TabControl Grid.Column="2"
+                        Style="{DynamicResource DarkTabControlStyle}"
+                        Padding="0">
+
+                <!-- ════════════════════════════════════════════════
+                     TAB 1: RECORDER
+                ════════════════════════════════════════════════ -->
+                <TabItem Header="🎬 Recorder" Style="{DynamicResource DarkTabItemStyle}" Visibility="{Binding ShowTabRecorder, Converter={StaticResource BoolToVis}}">
+                    <Grid Margin="8">
+                        <DataGrid x:Name="StepsGrid"
+                                  ItemsSource="{Binding Steps}"
+                                  SelectedItem="{Binding SelectedStep}"
+                                  Style="{DynamicResource DarkDataGridStyle}"
+                                  ColumnHeaderStyle="{DynamicResource DarkColumnHeaderStyle}"
+                                  SelectionChanged="StepsGrid_SelectionChanged">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="#"
+                                                    Binding="{Binding StepId}"
+                                                    Width="40" IsReadOnly="True"/>
+                                <DataGridTextColumn Header="Tip"
+                                                    Binding="{Binding StepType}"
+                                                    Width="110" IsReadOnly="True"/>
+                                <DataGridTextColumn Header="X"
+                                                    Binding="{Binding X}"
+                                                    Width="55" IsReadOnly="True"/>
+                                <DataGridTextColumn Header="Y"
+                                                    Binding="{Binding Y}"
+                                                    Width="55" IsReadOnly="True"/>
+                                <DataGridTextColumn Header="Info / Descriere"
+                                                    Binding="{Binding Description}"
+                                                    Width="*" IsReadOnly="True"/>
+                                <DataGridTextColumn Header="Delay"
+                                                    Binding="{Binding DelayBefore, StringFormat=F2}"
+                                                    Width="60" IsReadOnly="True"/>
+                                <DataGridCheckBoxColumn Header="Skip"
+                                                        Binding="{Binding Skip}"
+                                                        Width="50" IsReadOnly="True"/>
+                                <DataGridTextColumn Header="Comentariu"
+                                                    Binding="{Binding Comment}"
+                                                    Width="150" IsReadOnly="True"/>
+                            </DataGrid.Columns>
+                            <DataGrid.RowStyle>
+                                <Style TargetType="DataGridRow">
+                                    <Setter Property="Opacity"
+                                            Value="{Binding Skip, Converter={StaticResource SkipOpacity}}"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding HasError}" Value="True">
+                                            <Setter Property="Background"
+                                                    Value="{DynamicResource RowErrorBrush}"/>
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding Skip}" Value="True">
+                                            <Setter Property="Background"
+                                                    Value="{DynamicResource RowSkipBrush}"/>
+                                        </DataTrigger>
+                                        <Trigger Property="IsSelected" Value="True">
+                                            <Setter Property="Background"
+                                                    Value="{DynamicResource RowActiveBrush}"/>
+                                        </Trigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </DataGrid.RowStyle>
+                        </DataGrid>
+                    </Grid>
+                </TabItem>
+
+                <!-- ════════════════════════════════════════════════
+                     TAB 2: STEP BUILDER
+                ════════════════════════════════════════════════ -->
+                <TabItem Header="🔧 Step Builder" Style="{DynamicResource DarkTabItemStyle}" Visibility="{Binding ShowTabStepBuilder, Converter={StaticResource BoolToVis}}">
+                    <Grid Margin="8">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+
+                        <!-- Toolbar Step Builder -->
+                        <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,8">
+                            <Button Content="➕ Adauga [Ctrl+M]"
+                                    Command="{Binding AddStepCmd}"
+                                    Style="{DynamicResource PrimaryButtonStyle}"
+                                    Margin="0,0,4,0"/>
+                            <Button Content="✏ Editeaza [Ctrl+E]"
+                                    Command="{Binding EditStepCmd}"
+                                    Style="{DynamicResource NeutralButtonStyle}"
+                                    Margin="0,0,4,0"/>
+                            <Button Content="🗑 Sterge [Del]"
+                                    Command="{Binding DeleteStepCmd}"
+                                    Style="{DynamicResource DangerButtonStyle}"
+                                    Margin="0,0,4,0"/>
+                            <Button Content="⬆ Sus"
+                                    Command="{Binding MoveStepUpCmd}"
+                                    Style="{DynamicResource NeutralButtonStyle}"
+                                    Margin="0,0,4,0"/>
+                            <Button Content="⬇ Jos"
+                                    Command="{Binding MoveStepDownCmd}"
+                                    Style="{DynamicResource NeutralButtonStyle}"
+                                    Margin="0,0,4,0"/>
+                            <Button Content="⏭ Skip [Ctrl+K]"
+                                    Command="{Binding ToggleSkipCmd}"
+                                    Style="{DynamicResource NeutralButtonStyle}"
+                                    Margin="0,0,4,0"/>
+                            <Button Content="🐛 Debug [Ctrl+B]"
+                                    Command="{Binding DebugStepCmd}"
+                                    Style="{DynamicResource NeutralButtonStyle}"/>
+                        </StackPanel>
+
+                        <!-- Acelasi DataGrid ca Recorder -->
+                        <DataGrid Grid.Row="1"
+                                  ItemsSource="{Binding Steps}"
+                                  SelectedItem="{Binding SelectedStep}"
+                                  Style="{DynamicResource DarkDataGridStyle}"
+                                  ColumnHeaderStyle="{DynamicResource DarkColumnHeaderStyle}">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="#"        Binding="{Binding StepId}"    Width="40"/>
+                                <DataGridTextColumn Header="Tip"      Binding="{Binding StepType}"  Width="110"/>
+                                <DataGridTextColumn Header="X"        Binding="{Binding X}"         Width="55"/>
+                                <DataGridTextColumn Header="Y"        Binding="{Binding Y}"         Width="55"/>
+                                <DataGridTextColumn Header="Info"     Binding="{Binding Description}" Width="*"/>
+                                <DataGridTextColumn Header="Delay"    Binding="{Binding DelayBefore, StringFormat=F2}" Width="60"/>
+                                <DataGridCheckBoxColumn Header="Skip" Binding="{Binding Skip}"      Width="50"/>
+                                <DataGridTextColumn Header="Comment"  Binding="{Binding Comment}"   Width="150"/>
+                            </DataGrid.Columns>
+                            <DataGrid.RowStyle>
+                                <Style TargetType="DataGridRow">
+                                    <Setter Property="Opacity"
+                                            Value="{Binding Skip, Converter={StaticResource SkipOpacity}}"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding HasError}" Value="True">
+                                            <Setter Property="Background" Value="{DynamicResource RowErrorBrush}"/>
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding Skip}" Value="True">
+                                            <Setter Property="Background" Value="{DynamicResource RowSkipBrush}"/>
+                                        </DataTrigger>
+                                        <Trigger Property="IsSelected" Value="True">
+                                            <Setter Property="Background" Value="{DynamicResource RowActiveBrush}"/>
+                                        </Trigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </DataGrid.RowStyle>
+                        </DataGrid>
+                    </Grid>
+                </TabItem>
+
+                <!-- ════════════════════════════════════════════════
+                     TAB 3: LOG
+                ════════════════════════════════════════════════ -->
+                <TabItem Header="📋 Log" Style="{DynamicResource DarkTabItemStyle}" Visibility="{Binding ShowTabLog, Converter={StaticResource BoolToVis}}">
+                    <Grid Margin="8">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+
+                        <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,8">
+                            <Button Content="📊 Export XLSX"
+                                    Command="{Binding ExportLogXlsxCmd}"
+                                    Style="{DynamicResource SuccessButtonStyle}"
+                                    Margin="0,0,4,0"/>
+                            <Button Content="📄 Export CSV"
+                                    Command="{Binding ExportLogCsvCmd}"
+                                    Style="{DynamicResource NeutralButtonStyle}"
+                                    Margin="0,0,4,0"/>
+                            <Button Content="📋 Export JSON"
+                                    Command="{Binding ExportLogJsonCmd}"
+                                    Style="{DynamicResource NeutralButtonStyle}"
+                                    Margin="0,0,4,0"/>
+                            <Button Content="🗑 Sterge Log"
+                                    Command="{Binding ClearLogCmd}"
+                                    Style="{DynamicResource DangerButtonStyle}"/>
+                        </StackPanel>
+
+                        <DataGrid Grid.Row="1"
+                                  ItemsSource="{Binding LogItems}"
+                                  SelectedItem="{Binding SelectedLog}"
+                                  Style="{DynamicResource DarkDataGridStyle}"
+                                  ColumnHeaderStyle="{DynamicResource DarkColumnHeaderStyle}">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="Timestamp"  Binding="{Binding Timestamp}"  Width="160"/>
+                                <DataGridTextColumn Header="Pas #"      Binding="{Binding StepId}"     Width="55"/>
+                                <DataGridTextColumn Header="Actiune"    Binding="{Binding Action}"     Width="110"/>
+                                <DataGridTextColumn Header="Rezultat"   Binding="{Binding Result}"     Width="*"/>
+                                <DataGridTextColumn Header="Durata (ms)" Binding="{Binding DurationMs}" Width="90"/>
+                                <DataGridTextColumn Header="Iteratie"   Binding="{Binding Iteration}"  Width="70"/>
+                            </DataGrid.Columns>
+                            <DataGrid.RowStyle>
+                                <Style TargetType="DataGridRow">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding HasError}" Value="True">
+                                            <Setter Property="Background" Value="{DynamicResource RowErrorBrush}"/>
+                                            <Setter Property="Foreground" Value="{DynamicResource DangerBrush}"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </DataGrid.RowStyle>
+                        </DataGrid>
+                    </Grid>
+                </TabItem>
+
+                <!-- ════════════════════════════════════════════════
+                     TAB 4: RUTINE
+                ════════════════════════════════════════════════ -->
+                <TabItem Header="📁 Rutine" Style="{DynamicResource DarkTabItemStyle}" Visibility="{Binding ShowTabRutine, Converter={StaticResource BoolToVis}}">
+                    <Grid Margin="8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="250"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Lista rutine -->
+                        <Border Grid.Column="0"
+                                Background="{DynamicResource BgPanelBrush}"
+                                BorderBrush="{DynamicResource BorderBrush}"
+                                BorderThickness="1" CornerRadius="4"
+                                Margin="0,0,8,0">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="*"/>
+                                </Grid.RowDefinitions>
+                                <Border Grid.Row="0"
+                                        Background="{DynamicResource BgCardBrush}"
+                                        Padding="8,6">
+                                    <TextBlock Text="📁 Rutine salvate"
+                                               Foreground="{DynamicResource PrimaryBrush}"
+                                               FontFamily="Segoe UI" FontSize="13" FontWeight="SemiBold"/>
+                                </Border>
+                                <ListBox Grid.Row="1"
+                                         ItemsSource="{Binding Routines}"
+                                         SelectedItem="{Binding SelectedRoutine}"
+                                         Background="{DynamicResource BgPanelBrush}"
+                                         Foreground="{DynamicResource TextBrush}"
+                                         BorderThickness="0"
+                                         FontFamily="Segoe UI" FontSize="13"/>
+                            </Grid>
+                        </Border>
+
+                        <!-- Actiuni rutine -->
+                        <StackPanel Grid.Column="1" Margin="0,0,0,0">
+                            <Label Content="Actiuni rutina selectata:"
+                                   Style="{DynamicResource DarkLabelStyle}"
+                                   Margin="0,0,0,8"/>
+                            <Button Content="📂 Incarca rutina [Ctrl+O]"
+                                    Command="{Binding LoadRoutineCmd}"
+                                    Style="{DynamicResource PrimaryButtonStyle}"
+                                    HorizontalAlignment="Left" Margin="0,0,0,8" MinWidth="200"/>
+                            <Button Content="💾 Salveaza rutina curenta [Ctrl+S]"
+                                    Command="{Binding SaveRoutineCmd}"
+                                    Style="{DynamicResource SuccessButtonStyle}"
+                                    HorizontalAlignment="Left" Margin="0,0,0,8" MinWidth="200"/>
+                            <Button Content="🗑 Sterge rutina"
+                                    Command="{Binding DeleteRoutineCmd}"
+                                    Style="{DynamicResource DangerButtonStyle}"
+                                    HorizontalAlignment="Left" Margin="0,0,0,8" MinWidth="200"/>
+                            <Button Content="🆕 Rutina noua [Ctrl+N]"
+                                    Command="{Binding NewRoutineCmd}"
+                                    Style="{DynamicResource NeutralButtonStyle}"
+                                    HorizontalAlignment="Left" MinWidth="200"/>
+                        </StackPanel>
+                    </Grid>
+                </TabItem>
+
+                <!-- ════════════════════════════════════════════════
+                     TAB 5: EXCEL
+                ════════════════════════════════════════════════ -->
+                <TabItem Header="📊 Excel" Style="{DynamicResource DarkTabItemStyle}" Visibility="{Binding ShowTabExcel, Converter={StaticResource BoolToVis}}">
+                    <Grid Margin="16">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="120"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+
+                        <Label Grid.Row="0" Grid.Column="0" Content="Fisier Excel:"
+                               Style="{DynamicResource DarkLabelStyle}" VerticalAlignment="Center"/>
+                        <TextBox Grid.Row="0" Grid.Column="1"
+                                 Text="{Binding ExcelPath}"
+                                 Style="{DynamicResource DarkTextBoxStyle}"
+                                 Margin="0,4"/>
+                        <Button Grid.Row="0" Grid.Column="2"
+                                Content="📂 Browse"
+                                Style="{DynamicResource NeutralButtonStyle}"
+                                Margin="8,4,0,4"
+                                Click="BrowseExcel_Click"/>
+
+                        <Label Grid.Row="1" Grid.Column="0" Content="Sheet:"
+                               Style="{DynamicResource DarkLabelStyle}" VerticalAlignment="Center"/>
+                        <TextBox Grid.Row="1" Grid.Column="1"
+                                 Text="{Binding ExcelSheet}"
+                                 Style="{DynamicResource DarkTextBoxStyle}"
+                                 Margin="0,4"/>
+
+                        <Label Grid.Row="2" Grid.Column="0" Content="Range:"
+                               Style="{DynamicResource DarkLabelStyle}" VerticalAlignment="Center"/>
+                        <TextBox Grid.Row="2" Grid.Column="1"
+                                 Text="{Binding ExcelRange}"
+                                 Style="{DynamicResource DarkTextBoxStyle}"
+                                 Margin="0,4"/>
+
+                        <Button Grid.Row="3" Grid.Column="1"
+                                Content="▶ Ruleaza Excel Automation"
+                                Style="{DynamicResource SuccessButtonStyle}"
+                                HorizontalAlignment="Left"
+                                Margin="0,12"
+                                Click="RunExcel_Click"/>
+                    </Grid>
+                </TabItem>
+
+                <!-- ════════════════════════════════════════════════
+                     TAB 6: NOTITE
+                ════════════════════════════════════════════════ -->
+                <TabItem Header="📝 Notite" Style="{DynamicResource DarkTabItemStyle}" Visibility="{Binding ShowTabNotite, Converter={StaticResource BoolToVis}}">
+                    <Grid Margin="8">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+
+                        <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,8">
+                            <Button Content="• Bullet"
+                                    Style="{DynamicResource NeutralButtonStyle}"
+                                    Margin="0,0,4,0"
+                                    Click="NoteBullet_Click"/>
+                            <Button Content="1. Numbered"
+                                    Style="{DynamicResource NeutralButtonStyle}"
+                                    Margin="0,0,4,0"
+                                    Click="NoteNumbered_Click"/>
+                            <Button Content="💾 Salveaza nota"
+                                    Style="{DynamicResource PrimaryButtonStyle}"
+                                    Margin="0,0,4,0"
+                                    Click="NoteSave_Click"/>
+                            <Button Content="🗑 Sterge"
+                                    Style="{DynamicResource DangerButtonStyle}"
+                                    Click="NoteClear_Click"/>
+                        </StackPanel>
+
+                        <TextBox Grid.Row="1"
+                                 Text="{Binding NotesText, UpdateSourceTrigger=PropertyChanged}"
+                                 Style="{DynamicResource DarkTextBoxStyle}"
+                                 AcceptsReturn="True"
+                                 AcceptsTab="True"
+                                 TextWrapping="Wrap"
+                                 VerticalScrollBarVisibility="Auto"
+                                 FontFamily="Consolas"
+                                 FontSize="13"/>
+                    </Grid>
+                </TabItem>
+
+                <!-- ════════════════════════════════════════════════
+                     TAB 7: SETARI
+                ════════════════════════════════════════════════ -->
+                <TabItem Header="⚙ Setari" Style="{DynamicResource DarkTabItemStyle}" Visibility="{Binding ShowTabSetari, Converter={StaticResource BoolToVis}}">
+                    <ScrollViewer Margin="16" VerticalScrollBarVisibility="Auto">
+                        <StackPanel>
+
+                            <!-- Tema -->
+                            <GroupBox Header="🎨 Tema" Style="{DynamicResource DarkGroupBoxStyle}" Margin="0,0,0,12">
+                                <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                                    <Label Content="Tema:" Style="{DynamicResource DarkLabelStyle}"
+                                           VerticalAlignment="Center"/>
+                                    <ComboBox SelectedItem="{Binding CurrentTheme, Mode=TwoWay}"
+                                              Style="{DynamicResource DarkComboBoxStyle}"
+                                              Width="150" Margin="8,0">
+                                        <sys:String>dark</sys:String>
+                                        <sys:String>light</sys:String>
+                                    </ComboBox>
+                                </StackPanel>
+                            </GroupBox>
+
+                            <!-- Inregistrare -->
+
+							<!-- Tab Visibility -->
+							<GroupBox Header="&#x1F4CB; Taburi vizibile" Style="{DynamicResource DarkGroupBoxStyle}" Margin="0,0,0,12">
+								<StackPanel Margin="0,8,0,0">
+									<TextBlock Text="Selecteaza taburile afisate la pornire:" Foreground="{DynamicResource TextDimBrush}" Margin="0,0,0,6"/>
+									<CheckBox Content="&#x1F3AC; Recorder"    IsChecked="{Binding ShowTabRecorder,    Mode=TwoWay}" Style="{DynamicResource DarkCheckBoxStyle}" Margin="0,3"/>
+									<CheckBox Content="&#x1F527; Step Builder" IsChecked="{Binding ShowTabStepBuilder, Mode=TwoWay}" Style="{DynamicResource DarkCheckBoxStyle}" Margin="0,3"/>
+									<CheckBox Content="&#x1F4CB; Log"          IsChecked="{Binding ShowTabLog,         Mode=TwoWay}" Style="{DynamicResource DarkCheckBoxStyle}" Margin="0,3"/>
+									<CheckBox Content="&#x1F4C1; Rutine"       IsChecked="{Binding ShowTabRutine,      Mode=TwoWay}" Style="{DynamicResource DarkCheckBoxStyle}" Margin="0,3"/>
+									<CheckBox Content="&#x1F4CA; Excel"        IsChecked="{Binding ShowTabExcel,       Mode=TwoWay}" Style="{DynamicResource DarkCheckBoxStyle}" Margin="0,3"/>
+									<CheckBox Content="&#x1F4DD; Notite"       IsChecked="{Binding ShowTabNotite,      Mode=TwoWay}" Style="{DynamicResource DarkCheckBoxStyle}" Margin="0,3"/>
+									<CheckBox Content="&#x2699; Setari"        IsChecked="{Binding ShowTabSetari,      Mode=TwoWay}" Style="{DynamicResource DarkCheckBoxStyle}" Margin="0,3"/>
+									<CheckBox Content="&#x2753; Ajutor"        IsChecked="{Binding ShowTabAjutor,      Mode=TwoWay}" Style="{DynamicResource DarkCheckBoxStyle}" Margin="0,3"/>
+								</StackPanel>
+							</GroupBox>
+
+							<!-- End-of-Cycle Power Action -->
+							<GroupBox Header="&#x23CF; Actiune la final de ciclu" Style="{DynamicResource DarkGroupBoxStyle}" Margin="0,0,0,12">
+								<StackPanel Margin="0,8,0,0">
+									<TextBlock Foreground="{DynamicResource TextDimBrush}" TextWrapping="Wrap" Margin="0,0,0,8"
+											   Text="Ce se intampla dupa ce rutina isi termina toate ciclurile de repetare:"/>
+									<ComboBox SelectedItem="{Binding EndOfCycleActionSetting, Mode=TwoWay}"
+											  ItemsSource="{Binding EndOfCycleOptions}"
+											  Style="{DynamicResource DarkComboBoxStyle}"
+											  Width="180" HorizontalAlignment="Left"/>
+									<TextBlock Margin="0,6,0,0" Foreground="{DynamicResource TextMutedBrush}" FontSize="11"
+											   Text="None = nu face nimic | Sleep = repaus | Hibernate = hibernare | Shutdown = oprire"/>
+								</StackPanel>
+							</GroupBox>
+
+                            <GroupBox Header="🎙 Inregistrare" Style="{DynamicResource DarkGroupBoxStyle}" Margin="0,0,0,12">
+                                <StackPanel Margin="0,8,0,0">
+                                    <CheckBox Content="Inregistreaza miscari mouse (MOVE)"
+                                              Style="{DynamicResource DarkCheckBoxStyle}"
+                                              IsChecked="{Binding RecordMouseMove}"
+                                              Margin="0,4"/>
+                                    <StackPanel Orientation="Horizontal" Margin="0,4">
+                                        <Label Content="Threshold mouse move (px):"
+                                               Style="{DynamicResource DarkLabelStyle}"
+                                               VerticalAlignment="Center"/>
+                                        <TextBox Text="{Binding MouseMoveThreshold}"
+                                                 Style="{DynamicResource DarkTextBoxStyle}"
+                                                 Width="60" Margin="8,0"/>
+                                    </StackPanel>
+                                </StackPanel>
+                            </GroupBox>
+
+                            <!-- Scurtaturi -->
+                            <GroupBox Header="⌨ Scurtaturi implicite" Style="{DynamicResource DarkGroupBoxStyle}" Margin="0,0,0,12">
+                                <Grid Margin="0,8,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="180"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                    </Grid.RowDefinitions>
+
+                                    <Label Grid.Row="0" Grid.Column="0" Content="Start Rec:"     Style="{DynamicResource DarkLabelStyle}"/>
+                                    <TextBlock Grid.Row="0" Grid.Column="1" Text="F5"            Foreground="{DynamicResource PrimaryBrush}" VerticalAlignment="Center"/>
+                                    <Label Grid.Row="1" Grid.Column="0" Content="Stop Rec:"      Style="{DynamicResource DarkLabelStyle}"/>
+                                    <TextBlock Grid.Row="1" Grid.Column="1" Text="F6"            Foreground="{DynamicResource PrimaryBrush}" VerticalAlignment="Center"/>
+                                    <Label Grid.Row="2" Grid.Column="0" Content="Play:"          Style="{DynamicResource DarkLabelStyle}"/>
+                                    <TextBlock Grid.Row="2" Grid.Column="1" Text="F7"            Foreground="{DynamicResource PrimaryBrush}" VerticalAlignment="Center"/>
+                                    <Label Grid.Row="3" Grid.Column="0" Content="Pauza/Reia:"    Style="{DynamicResource DarkLabelStyle}"/>
+                                    <TextBlock Grid.Row="3" Grid.Column="1" Text="F8"            Foreground="{DynamicResource PrimaryBrush}" VerticalAlignment="Center"/>
+                                    <Label Grid.Row="4" Grid.Column="0" Content="Stop Play:"     Style="{DynamicResource DarkLabelStyle}"/>
+                                    <TextBlock Grid.Row="4" Grid.Column="1" Text="F9"            Foreground="{DynamicResource PrimaryBrush}" VerticalAlignment="Center"/>
+                                    <Label Grid.Row="5" Grid.Column="0" Content="Emergency:"     Style="{DynamicResource DarkLabelStyle}"/>
+                                    <TextBlock Grid.Row="5" Grid.Column="1" Text="F12"           Foreground="{DynamicResource DangerBrush}" VerticalAlignment="Center"/>
+                                </Grid>
+                            </GroupBox>
+
+                        </StackPanel>
+                    </ScrollViewer>
+                </TabItem>
+
+                <!-- ════════════════════════════════════════════════
+                     TAB 8: AJUTOR
+                ════════════════════════════════════════════════ -->
+                <TabItem Header="❓ Ajutor" Style="{DynamicResource DarkTabItemStyle}" Visibility="{Binding ShowTabAjutor, Converter={StaticResource BoolToVis}}">
+                    <ScrollViewer Margin="16" VerticalScrollBarVisibility="Auto">
+                        <StackPanel>
+                            <TextBlock Text="AutoPilot DC v3.9"
+                                       Foreground="{DynamicResource PrimaryBrush}"
+                                       FontFamily="Segoe UI" FontSize="20" FontWeight="Bold"
+                                       Margin="0,0,0,4"/>
+                            <TextBlock Text="RPA &amp; Desktop/Browser Automation Tool"
+                                       Foreground="{DynamicResource TextDimBrush}"
+                                       FontFamily="Segoe UI" FontSize="13"
+                                       Margin="0,0,0,16"/>
+                            <TextBlock Text="Autor: Bogdan Murar (Z003FU5C) @ Siemens AG"
+                                       Foreground="{DynamicResource TextMutedBrush}"
+                                       FontFamily="Segoe UI" FontSize="12"
+                                       Margin="0,0,0,24"/>
+
+                            <TextBlock Text="⌨ Scurtaturi rapide:"
+                                       Foreground="{DynamicResource PrimaryBrush}"
+                                       FontFamily="Segoe UI" FontSize="14" FontWeight="SemiBold"
+                                       Margin="0,0,0,8"/>
+
+                            <Border Background="{DynamicResource BgCardBrush}"
+                                    CornerRadius="4" Padding="16" Margin="0,0,0,16">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="200"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                    </Grid.RowDefinitions>
+
+                                    <TextBlock Grid.Row="0"  Grid.Column="0" Text="F5"           Foreground="{DynamicResource WarningBrush}" FontWeight="Bold" Margin="0,3"/>
+                                    <TextBlock Grid.Row="0"  Grid.Column="1" Text="Start inregistrare" Foreground="{DynamicResource TextBrush}" Margin="0,3"/>
+                                    <TextBlock Grid.Row="1"  Grid.Column="0" Text="F6"           Foreground="{DynamicResource WarningBrush}" FontWeight="Bold" Margin="0,3"/>
+                                    <TextBlock Grid.Row="1"  Grid.Column="1" Text="Stop inregistrare"  Foreground="{DynamicResource TextBrush}" Margin="0,3"/>
+                                    <TextBlock Grid.Row="2"  Grid.Column="0" Text="F7"           Foreground="{DynamicResource SuccessBrush}" FontWeight="Bold" Margin="0,3"/>
+                                    <TextBlock Grid.Row="2"  Grid.Column="1" Text="Play rutina"         Foreground="{DynamicResource TextBrush}" Margin="0,3"/>
+                                    <TextBlock Grid.Row="3"  Grid.Column="0" Text="F8"           Foreground="{DynamicResource AccentBrush}"  FontWeight="Bold" Margin="0,3"/>
+                                    <TextBlock Grid.Row="3"  Grid.Column="1" Text="Pauza / Reia"        Foreground="{DynamicResource TextBrush}" Margin="0,3"/>
+                                    <TextBlock Grid.Row="4"  Grid.Column="0" Text="F3"           Foreground="{DynamicResource AccentBrush}"  FontWeight="Bold" Margin="0,3"/>
+                                    <TextBlock Grid.Row="4"  Grid.Column="1" Text="Resume play"         Foreground="{DynamicResource TextBrush}" Margin="0,3"/>
+                                    <TextBlock Grid.Row="5"  Grid.Column="0" Text="F9"           Foreground="{DynamicResource DangerBrush}"  FontWeight="Bold" Margin="0,3"/>
+                                    <TextBlock Grid.Row="5"  Grid.Column="1" Text="Stop play"           Foreground="{DynamicResource TextBrush}" Margin="0,3"/>
+                                    <TextBlock Grid.Row="6"  Grid.Column="0" Text="F12"          Foreground="{DynamicResource EmergencyBrush}" FontWeight="Bold" Margin="0,3"/>
+                                    <TextBlock Grid.Row="6"  Grid.Column="1" Text="EMERGENCY STOP"      Foreground="{DynamicResource DangerBrush}" FontWeight="Bold" Margin="0,3"/>
+                                    <TextBlock Grid.Row="7"  Grid.Column="0" Text="Ctrl+S"       Foreground="{DynamicResource PrimaryBrush}" FontWeight="Bold" Margin="0,3"/>
+                                    <TextBlock Grid.Row="7"  Grid.Column="1" Text="Salveaza rutina"     Foreground="{DynamicResource TextBrush}" Margin="0,3"/>
+                                    <TextBlock Grid.Row="8"  Grid.Column="0" Text="Ctrl+N"       Foreground="{DynamicResource PrimaryBrush}" FontWeight="Bold" Margin="0,3"/>
+                                    <TextBlock Grid.Row="8"  Grid.Column="1" Text="Rutina noua"         Foreground="{DynamicResource TextBrush}" Margin="0,3"/>
+                                    <TextBlock Grid.Row="9"  Grid.Column="0" Text="Ctrl+M"       Foreground="{DynamicResource PrimaryBrush}" FontWeight="Bold" Margin="0,3"/>
+                                    <TextBlock Grid.Row="9"  Grid.Column="1" Text="Adauga pas manual"   Foreground="{DynamicResource TextBrush}" Margin="0,3"/>
+                                    <TextBlock Grid.Row="10" Grid.Column="0" Text="Ctrl+E"       Foreground="{DynamicResource PrimaryBrush}" FontWeight="Bold" Margin="0,3"/>
+                                    <TextBlock Grid.Row="10" Grid.Column="1" Text="Editeaza pas selectat" Foreground="{DynamicResource TextBrush}" Margin="0,3"/>
+                                    <TextBlock Grid.Row="11" Grid.Column="0" Text="Delete"       Foreground="{DynamicResource DangerBrush}"  FontWeight="Bold" Margin="0,3"/>
+                                    <TextBlock Grid.Row="11" Grid.Column="1" Text="Sterge pas selectat"  Foreground="{DynamicResource TextBrush}" Margin="0,3"/>
+                                </Grid>
+                            </Border>
+
+                            <TextBlock Text="📋 Tipuri de pasi suportati:"
+                                       Foreground="{DynamicResource PrimaryBrush}"
+                                       FontFamily="Segoe UI" FontSize="14" FontWeight="SemiBold"
+                                       Margin="0,0,0,8"/>
+                            <TextBlock TextWrapping="Wrap"
+                                       Foreground="{DynamicResource TextDimBrush}"
+                                       FontFamily="Segoe UI" FontSize="12"
+                                       Text="Desktop: CLICK, DBLCLICK, RIGHTCLICK, KEY, TYPE, SCROLL, MOVE, DELAY, SCREENSHOT, QUESTION&#10;Browser: browser_open, browser_navigate, browser_click, browser_fill, browser_wait, browser_screenshot, browser_close"/>
+                        </StackPanel>
+                    </ScrollViewer>
+                </TabItem>
+
+            </TabControl>
+        </Grid>
+
+        <!-- ═══════════════════════════════════════════════════════════
+             STATUS BAR
+        ════════════════════════════════════════════════════════════ -->
+        <Border Grid.Row="2"
+                Background="{DynamicResource BgCardBrush}"
+                BorderBrush="{DynamicResource BorderBrush}"
+                BorderThickness="0,1,0,0"
+                Padding="12,4">
+            <DockPanel>
+                <TextBlock DockPanel.Dock="Right"
+                           Text="AutoPilot DC v3.9 | Siemens AG"
+                           Foreground="{DynamicResource TextMutedBrush}"
+                           FontFamily="Segoe UI" FontSize="11"
+                           VerticalAlignment="Center"/>
+                <TextBlock Text="{Binding StatusText}"
+                           Foreground="{DynamicResource TextBrush}"
+                           FontFamily="Segoe UI" FontSize="12"
+                           VerticalAlignment="Center"/>
+            </DockPanel>
+        </Border>
+
+    </Grid>
+</Window>
+

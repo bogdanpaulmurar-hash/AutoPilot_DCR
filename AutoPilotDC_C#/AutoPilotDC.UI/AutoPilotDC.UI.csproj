@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+	<PropertyGroup>
+		<OutputType>WinExe</OutputType>
+		<TargetFramework>net8.0-windows</TargetFramework>
+		<Nullable>enable</Nullable>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<UseWPF>true</UseWPF>
+		<UseWindowsForms>true</UseWindowsForms>
+		<RootNamespace>AutoPilotDC.UI</RootNamespace>
+		<AssemblyName>AutoPilotDC.UI</AssemblyName>
+		<Version>3.9.0</Version>
+		<Authors>Bogdan Murar (Z003FU5C)</Authors>
+		<Company>Siemens AG</Company>
+		<StartupObject>AutoPilotDC.UI.App</StartupObject>
+	</PropertyGroup>
+	<ItemGroup>
+		<ProjectReference Include="..\AutoPilotDC.Models\AutoPilotDC.Models.csproj" />
+		<ProjectReference Include="..\AutoPilotDC.Core\AutoPilotDC.Core.csproj" />
+		<ProjectReference Include="..\AutoPilotDC.Application\AutoPilotDC.Application.csproj" />
+		<ProjectReference Include="..\AutoPilotDC.Infrastructure\AutoPilotDC.Infrastructure.csproj" />
+		<ProjectReference Include="..\AutoPilotDC.Playwright\AutoPilotDC.Playwright.csproj" />
+	</ItemGroup>
+</Project>
