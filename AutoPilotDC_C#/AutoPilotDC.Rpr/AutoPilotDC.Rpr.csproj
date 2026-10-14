@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    AutoPilotDC.Rpr — nucleul "Rutine Reale care Proceseaza" (RPR).
+    Contine: modelul de rutina (arbore de noduri), Object Repository,
+    conditii, variabile, interpretorul si sursa de date Excel.
+    NU depinde de WPF / Windows -> poate fi testat oriunde.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>AutoPilotDC.Rpr</RootNamespace>
+    <AssemblyName>AutoPilotDC.Rpr</AssemblyName>
+    <Version>4.0.0</Version>
+    <Authors>Bogdan Murar</Authors>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\AutoPilotDC.Models\AutoPilotDC.Models.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="ClosedXML" Version="0.102.2" />
+  </ItemGroup>
+</Project>

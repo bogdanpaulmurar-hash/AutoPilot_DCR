@@ -59,12 +59,12 @@
                            FontFamily="Segoe UI"
                            Margin="0,2,0,0"/>
                 <TextBlock x:Name="TxtCoords"
-                           Foreground="#909090"
+                           Foreground="#B4B4C4"
                            FontSize="10"
                            FontFamily="Segoe UI Mono"
                            Margin="0,2,0,0"/>
                 <TextBlock x:Name="TxtDelay"
-                           Foreground="#909090"
+                           Foreground="#B4B4C4"
                            FontSize="10"
                            FontFamily="Segoe UI"
                            Margin="0,1,0,0"/>

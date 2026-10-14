@@ -6,7 +6,7 @@ browser), dezvoltat în două variante:
 | Variantă | Folder | Stare |
 |---|---|---|
 | **Python** (CustomTkinter + pynput + Playwright) | [`AutoPilotDC_v3.9_py/`](AutoPilotDC_v3.9_py) | Versiunea curentă, mai stabilă/funcțională |
-| **C# WPF (.NET 8)** | [`AutoPilotDC_C#/`](AutoPilotDC_C%23) | Migrare în lucru a versiunii Python, nu încă la paritate completă |
+| **C# WPF (.NET 8)** | [`AutoPilotDC_C#/`](AutoPilotDC_C%23) | v4: Studio RPR — rutine pe obiecte (Web/SAP/Desktop + Excel), Spy, ghid pas cu pas |
 
 ## AutoPilotDC_v3.9_py (Python)
 

@@ -44,3 +44,17 @@
 - JsonRoutineRepository.cs
 - JsonLogRepository.cs
 - ExcelEngine.cs (ClosedXML)
+
+## v4 — STUDIO RPR (automatizare pe obiecte)
+- Motor nou `AutoPilotDC.Rpr`: rutina = arbore de pasi (Actiune, Asteapta, Daca/Altfel, Repeta,
+  Pentru fiecare rand Excel, Scrie in Excel, Variabila, Intrebare, Incearca/La eroare, Grup, Log, Stop),
+  conditii SI/SAU/NU, variabile {Rand.Coloana}, politici de eroare, reincercari, pauza / pas cu pas.
+- Object Repository + Spy: Web (Playwright, iframe-uri), Selenium, SAP GUI Scripting, Desktop (FlaUI).
+- Recorder web: actiunile din browser devin pasi pe obiecte.
+- Studio WPF: toolbox, arbore, panou de proprietati fara cod, log, variabile, bara plutitoare de control.
+- Rulare programata: `--run` + Windows Task Scheduler.
+- Import rutine v3.9 (pasii browser devin obiecte; pasii pe coordonate raman compatibili).
+- Lizibilitate: ComboBox cu sablon propriu (text deschis pe fundal deschis rezolvat), meniuri/tooltip-uri/
+  liste in culorile temei, butoane cu contrast >= 4.5:1, text secundar mai lizibil, comutare tema reala.
+- Erorile neprinse sunt afisate (nu mai sunt inghitite).
+- Ghid pas cu pas (docs + in aplicatie) si 5 rutine exemplu.

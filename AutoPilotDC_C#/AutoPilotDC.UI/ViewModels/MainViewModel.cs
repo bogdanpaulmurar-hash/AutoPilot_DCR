@@ -804,8 +804,18 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
 
     private static void ApplyTheme(string theme)
     {
-        // Placeholder — extinde daca ai ResourceDictionary switching
-        // ex: App.Current.Resources.MergedDictionaries[0] = new ResourceDictionary { ... }
+        // [0] = tema, [1] = Controls.xaml (stilurile lizibile raman mereu incarcate)
+        var app = System.Windows.Application.Current;
+        if (app == null) return;
+        var source = string.Equals(theme, "light", StringComparison.OrdinalIgnoreCase)
+            ? "Themes/LightTheme.xaml"
+            : "Themes/DarkTheme.xaml";
+        var dict = new System.Windows.ResourceDictionary
+        {
+            Source = new Uri($"pack://application:,,,/AutoPilotDC.UI;component/{source}", UriKind.Absolute),
+        };
+        var merged = app.Resources.MergedDictionaries;
+        if (merged.Count > 0) merged[0] = dict; else merged.Insert(0, dict);
     }
 
     // ── INotifyPropertyChanged ────────────────────────────────────────

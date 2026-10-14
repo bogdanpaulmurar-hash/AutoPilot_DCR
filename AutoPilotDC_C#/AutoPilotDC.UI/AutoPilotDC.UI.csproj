@@ -19,5 +19,13 @@
 		<ProjectReference Include="..\AutoPilotDC.Application\AutoPilotDC.Application.csproj" />
 		<ProjectReference Include="..\AutoPilotDC.Infrastructure\AutoPilotDC.Infrastructure.csproj" />
 		<ProjectReference Include="..\AutoPilotDC.Playwright\AutoPilotDC.Playwright.csproj" />
+		<!-- v4: Studio RPR -->
+		<ProjectReference Include="..\AutoPilotDC.Rpr\AutoPilotDC.Rpr.csproj" />
+		<ProjectReference Include="..\AutoPilotDC.Drivers.Web\AutoPilotDC.Drivers.Web.csproj" />
+		<ProjectReference Include="..\AutoPilotDC.Drivers.Windows\AutoPilotDC.Drivers.Windows.csproj" />
+	</ItemGroup>
+	<ItemGroup>
+		<!-- Ghidul pas cu pas, afisat in Studio (❓ Ghid / F1) -->
+		<EmbeddedResource Include="..\docs\GHID_STUDIO_RPR.md" Link="Studio\GHID_STUDIO_RPR.md" LogicalName="AutoPilotDC.UI.Ghid.md" />
 	</ItemGroup>
 </Project>

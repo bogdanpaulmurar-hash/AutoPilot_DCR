@@ -88,14 +88,14 @@
 
                                 <!-- Live coordinates display -->
                                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                    <TextBlock Text="🖱 Mouse:  X=" Foreground="#888888" FontSize="12"/>
+                                    <TextBlock Text="🖱 Mouse:  X=" Foreground="#B0B0C4" FontSize="12"/>
                                     <TextBlock x:Name="TxtMouseX"
                                                Text="0"
                                                Foreground="#009999"
                                                FontSize="12"
                                                FontWeight="Bold"
                                                MinWidth="45"/>
-                                    <TextBlock Text="  Y=" Foreground="#888888" FontSize="12"/>
+                                    <TextBlock Text="  Y=" Foreground="#B0B0C4" FontSize="12"/>
                                     <TextBlock x:Name="TxtMouseY"
                                                Text="0"
                                                Foreground="#009999"
@@ -108,7 +108,7 @@
                                 <Button Grid.Column="1"
                                         x:Name="BtnCapturePos"
                                         Content="📍 Captează poziție"
-                                        Background="#009999"
+                                        Background="#007777"
                                         Foreground="White"
                                         FontWeight="SemiBold"
                                         BorderBrush="#007777"
@@ -180,14 +180,14 @@
                                     <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
                                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                    <TextBlock Text="🖱 Mouse:  X=" Foreground="#888888" FontSize="12"/>
+                                    <TextBlock Text="🖱 Mouse:  X=" Foreground="#B0B0C4" FontSize="12"/>
                                     <TextBlock x:Name="TxtScrollMouseX"
                                                Text="0"
                                                Foreground="#009999"
                                                FontSize="12"
                                                FontWeight="Bold"
                                                MinWidth="45"/>
-                                    <TextBlock Text="  Y=" Foreground="#888888" FontSize="12"/>
+                                    <TextBlock Text="  Y=" Foreground="#B0B0C4" FontSize="12"/>
                                     <TextBlock x:Name="TxtScrollMouseY"
                                                Text="0"
                                                Foreground="#009999"
@@ -198,7 +198,7 @@
                                 <Button Grid.Column="1"
                                         x:Name="BtnCaptureScrollPos"
                                         Content="📍 Captează poziție"
-                                        Background="#009999"
+                                        Background="#007777"
                                         Foreground="White"
                                         BorderBrush="#007777"
                                         BorderThickness="1"

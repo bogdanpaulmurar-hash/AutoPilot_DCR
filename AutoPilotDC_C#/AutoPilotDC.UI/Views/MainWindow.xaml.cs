@@ -63,6 +63,13 @@ public partial class MainWindow : Window
         // Sincronizare selectie intre tab-uri (deja bound prin SelectedStep)
     }
 
+    // v4: Studio RPR (editorul vizual de rutine pe obiecte)
+    private void OpenStudio_Click(object sender, RoutedEventArgs e)
+    {
+        var studio = new AutoPilotDC.UI.Studio.StudioWindow(new AutoPilotDC.Infrastructure.Engines.DesktopEngine());
+        studio.Show();
+    }
+
     private void BrowseExcel_Click(object sender, RoutedEventArgs e)
     {
         var dlg = new OpenFileDialog

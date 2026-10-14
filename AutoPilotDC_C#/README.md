@@ -1,3 +1,31 @@
+# AutoPilot DC v4 — Studio RPR (nou)
+
+Versiunea 4 adaugă **Studio RPR**: automatizare pe **obiecte** (nu pe coordonate), în stilul SilkTest,
+pentru **web (Playwright / Selenium)**, **SAP GUI** și **aplicații desktop Windows**, combinate cu **Excel** — fără cod.
+
+- **Spy**: marchezi elementele o singură dată (contur pe ecran), cu locatori multipli și self-healing.
+- **Rutine vizuale**: Click, Scrie, Citește, Așteaptă, Dacă/Altfel, Repetă, Pentru fiecare rând Excel, Încearcă/La eroare, Întrebare — configurate din liste.
+- **Rulare**: elementul e marcat înainte de fiecare acțiune; Pas cu pas, Pauză, Stop (Ctrl+F11 / Ctrl+F12), log exportabil în Excel.
+- **Recorder web**: click-urile din browser devin pași reali + obiecte.
+- **Programare**: Windows Task Scheduler (`AutoPilotDC.UI.exe --run rutina.rpr.json`).
+- **5 rutine exemplu** și ghid complet pas cu pas: [`docs/GHID_STUDIO_RPR.md`](docs/GHID_STUDIO_RPR.md) (și în aplicație: ❓ Ghid / F1).
+
+Pornire: build `AutoPilotDC.sln` → rulează `AutoPilotDC.UI` → butonul **🧩 Studio RPR**.
+
+Proiecte noi:
+
+```
+AutoPilotDC.Rpr/             # nucleul: model rutina (arbore), Object Repository, conditii, variabile, motor, Excel
+AutoPilotDC.Drivers.Web/     # Playwright (Spy + Recorder + iframe-uri) si Selenium, acelasi contract IUiDriver
+AutoPilotDC.Drivers.Windows/ # Desktop (FlaUI / UI Automation) si SAP GUI Scripting (COM)
+AutoPilotDC.UI/Studio/       # editorul vizual (arbore, proprietati, Spy, rulare, ghid, exemple)
+docs/GHID_STUDIO_RPR.md      # instructiuni pas cu pas
+```
+
+Testele motorului: `AutoPilotDC.Tests/Unit/RprEngineTests.cs` (`dotnet test`).
+
+---
+
 # AutoPilot DC v3.9 — C# WPF .NET 8 Migration
 
 **Autor:** Bogdan Murar (Z003FU5C) — Siemens AG

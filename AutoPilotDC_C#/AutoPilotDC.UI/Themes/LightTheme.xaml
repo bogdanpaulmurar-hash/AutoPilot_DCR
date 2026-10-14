@@ -20,38 +20,52 @@
     <SolidColorBrush x:Key="EmergencyBrush"    Color="#8B0000"/>
     <SolidColorBrush x:Key="TextBrush"         Color="#1B1B2E"/>
     <SolidColorBrush x:Key="TextDimBrush"      Color="#404060"/>
-    <SolidColorBrush x:Key="TextMutedBrush"    Color="#808090"/>
+    <SolidColorBrush x:Key="TextMutedBrush"    Color="#5C5C6E"/>
     <SolidColorBrush x:Key="RowEvenBrush"      Color="#F5F5FA"/>
     <SolidColorBrush x:Key="RowOddBrush"       Color="#EAEAF0"/>
     <SolidColorBrush x:Key="RowActiveBrush"    Color="#CCE5FF"/>
     <SolidColorBrush x:Key="RowErrorBrush"     Color="#FFE0E0"/>
     <SolidColorBrush x:Key="RowSkipBrush"      Color="#FFFFF0"/>
     <SolidColorBrush x:Key="SeparatorBrush"    Color="#C0C0D0"/>
+    <SolidColorBrush x:Key="SelectionBrush"    Color="#007777"/>
+    <!-- butoane: fundaluri destul de inchise pentru text alb (contrast >= 4.5:1) -->
+    <SolidColorBrush x:Key="ButtonPrimaryBrush"   Color="#007777"/>
+    <SolidColorBrush x:Key="ButtonSuccessBrush"   Color="#00785A"/>
+    <SolidColorBrush x:Key="ButtonDangerBrush"    Color="#C62828"/>
 
     <!-- Refolosim stilurile din DarkTheme � culorile sunt override -->
     <Style x:Key="PrimaryButtonStyle" TargetType="Button">
-        <Setter Property="Background"      Value="{StaticResource PrimaryBrush}"/>
+        <Setter Property="Background"      Value="{StaticResource ButtonPrimaryBrush}"/>
         <Setter Property="Foreground"      Value="White"/>
         <Setter Property="BorderThickness" Value="0"/>
         <Setter Property="Padding"         Value="12,6"/>
         <Setter Property="FontFamily"      Value="Segoe UI"/>
         <Setter Property="FontSize"        Value="13"/>
         <Setter Property="Cursor"          Value="Hand"/>
+        <Setter Property="HorizontalContentAlignment" Value="Center"/>
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="Button">
-                    <Border Background="{TemplateBinding Background}"
-                            CornerRadius="4"
-                            Padding="{TemplateBinding Padding}">
-                        <ContentPresenter HorizontalAlignment="Center"
+                    <Grid>
+                        <Border Background="{TemplateBinding Background}" CornerRadius="4"/>
+                        <Border x:Name="HoverLayer" Background="#26FFFFFF" CornerRadius="4" Visibility="Collapsed"/>
+                        <Border x:Name="FocusRing" BorderBrush="#FFD700" BorderThickness="2" CornerRadius="4" Visibility="Collapsed"/>
+                        <ContentPresenter Margin="{TemplateBinding Padding}"
+                                          HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
                                           VerticalAlignment="Center"/>
-                    </Border>
+                    </Grid>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
-                            <Setter Property="Background" Value="{StaticResource PrimaryHoverBrush}"/>
+                            <Setter TargetName="HoverLayer" Property="Visibility" Value="Visible"/>
+                        </Trigger>
+                        <Trigger Property="IsKeyboardFocused" Value="True">
+                            <Setter TargetName="FocusRing" Property="Visibility" Value="Visible"/>
+                        </Trigger>
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter Property="Opacity" Value="0.85"/>
                         </Trigger>
                         <Trigger Property="IsEnabled" Value="False">
-                            <Setter Property="Opacity" Value="0.4"/>
+                            <Setter Property="Opacity" Value="0.45"/>
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
@@ -60,14 +74,14 @@
     </Style>
 
     <Style x:Key="DangerButtonStyle"    TargetType="Button" BasedOn="{StaticResource PrimaryButtonStyle}">
-        <Setter Property="Background" Value="{StaticResource DangerBrush}"/>
+        <Setter Property="Background" Value="{StaticResource ButtonDangerBrush}"/>
     </Style>
     <Style x:Key="EmergencyButtonStyle" TargetType="Button" BasedOn="{StaticResource PrimaryButtonStyle}">
         <Setter Property="Background" Value="{StaticResource EmergencyBrush}"/>
         <Setter Property="FontWeight" Value="Bold"/>
     </Style>
     <Style x:Key="SuccessButtonStyle"   TargetType="Button" BasedOn="{StaticResource PrimaryButtonStyle}">
-        <Setter Property="Background" Value="{StaticResource SuccessBrush}"/>
+        <Setter Property="Background" Value="{StaticResource ButtonSuccessBrush}"/>
     </Style>
     <Style x:Key="NeutralButtonStyle"   TargetType="Button" BasedOn="{StaticResource PrimaryButtonStyle}">
         <Setter Property="Background" Value="#AAAACC"/>
@@ -158,16 +172,6 @@
         <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
         <Setter Property="FontFamily" Value="Segoe UI"/>
         <Setter Property="FontSize"   Value="13"/>
-    </Style>
-
-    <Style x:Key="DarkComboBoxStyle" TargetType="ComboBox">
-        <Setter Property="Background"      Value="{StaticResource BgInputBrush}"/>
-        <Setter Property="Foreground"      Value="{StaticResource TextBrush}"/>
-        <Setter Property="BorderBrush"     Value="{StaticResource BorderBrush}"/>
-        <Setter Property="BorderThickness" Value="1"/>
-        <Setter Property="Padding"         Value="6,4"/>
-        <Setter Property="FontFamily"      Value="Segoe UI"/>
-        <Setter Property="FontSize"        Value="13"/>
     </Style>
 
 </ResourceDictionary>

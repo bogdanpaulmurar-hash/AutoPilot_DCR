@@ -28,11 +28,28 @@ public partial class App : System.Windows.Application
     {
         base.OnStartup(e);
 
+        // Erorile neprinse NU mai sunt ascunse: utilizatorul vede mesajul (inainte aplicatia "nu facea nimic")
         DispatcherUnhandledException += (s, ex) =>
         {
-            System.Diagnostics.Debug.WriteLine($"[APP ERROR] {ex.Exception.Message}");
+            System.Diagnostics.Debug.WriteLine($"[APP ERROR] {ex.Exception}");
             ex.Handled = true;
+            System.Windows.MessageBox.Show(ex.Exception.Message, "AutoPilot DC — eroare",
+                System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
         };
+
+        // Rulare programata fara interfata: AutoPilotDC.UI.exe --run "rutina.rpr.json"
+        var runIndex = Array.FindIndex(e.Args, a => string.Equals(a, "--run", StringComparison.OrdinalIgnoreCase));
+        if (runIndex >= 0 && runIndex + 1 < e.Args.Length)
+        {
+            ShutdownMode = ShutdownMode.OnExplicitShutdown;
+            var path = e.Args[runIndex + 1];
+            _ = Dispatcher.InvokeAsync(async () =>
+            {
+                int code = await AutoPilotDC.UI.Studio.HeadlessRunner.RunAsync(path);
+                System.Environment.Exit(code);
+            });
+            return;
+        }
 
         var services = new ServiceCollection();
         ConfigureServices(services);

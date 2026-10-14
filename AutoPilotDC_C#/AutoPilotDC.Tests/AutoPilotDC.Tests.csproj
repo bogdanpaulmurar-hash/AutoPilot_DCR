@@ -29,6 +29,7 @@
     <ProjectReference Include="..\AutoPilotDC.Infrastructure\AutoPilotDC.Infrastructure.csproj" />
     <ProjectReference Include="..\AutoPilotDC.Application\AutoPilotDC.Application.csproj" />
     <ProjectReference Include="..\AutoPilotDC.Playwright\AutoPilotDC.Playwright.csproj" />
+    <ProjectReference Include="..\AutoPilotDC.Rpr\AutoPilotDC.Rpr.csproj" />
   </ItemGroup>
 
 </Project>

@@ -24,7 +24,7 @@
     <Color x:Key="EmergencyColor">#8B0000</Color>
     <Color x:Key="TextColor">#E0E0F0</Color>
     <Color x:Key="TextDimColor">#A0A0C0</Color>
-    <Color x:Key="TextMutedColor">#606080</Color>
+    <Color x:Key="TextMutedColor">#8C8CAC</Color>
     <Color x:Key="RowEvenColor">#1E1E35</Color>
     <Color x:Key="RowOddColor">#252540</Color>
     <Color x:Key="RowActiveColor">#003355</Color>
@@ -54,34 +54,46 @@
     <SolidColorBrush x:Key="RowErrorBrush"       Color="{StaticResource RowErrorColor}"/>
     <SolidColorBrush x:Key="RowSkipBrush"        Color="{StaticResource RowSkipColor}"/>
     <SolidColorBrush x:Key="SeparatorBrush"      Color="{StaticResource SeparatorColor}"/>
+    <!-- selectie: text alb pe teal inchis (contrast > 4.5:1) -->
+    <SolidColorBrush x:Key="SelectionBrush"      Color="#007777"/>
+    <!-- butoane: fundaluri destul de inchise pentru text alb (contrast >= 4.5:1) -->
+    <SolidColorBrush x:Key="ButtonPrimaryBrush"   Color="#007777"/>
+    <SolidColorBrush x:Key="ButtonSuccessBrush"   Color="#00785A"/>
+    <SolidColorBrush x:Key="ButtonDangerBrush"    Color="#C62828"/>
 
     <!-- == Button Style (Primary � Siemens Teal) == -->
     <Style x:Key="PrimaryButtonStyle" TargetType="Button">
-        <Setter Property="Background"   Value="{StaticResource PrimaryBrush}"/>
+        <Setter Property="Background"   Value="{StaticResource ButtonPrimaryBrush}"/>
         <Setter Property="Foreground"   Value="White"/>
         <Setter Property="BorderThickness" Value="0"/>
         <Setter Property="Padding"      Value="12,6"/>
         <Setter Property="FontFamily"   Value="Segoe UI"/>
         <Setter Property="FontSize"     Value="13"/>
         <Setter Property="Cursor"       Value="Hand"/>
+        <Setter Property="HorizontalContentAlignment" Value="Center"/>
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="Button">
-                    <Border Background="{TemplateBinding Background}"
-                            CornerRadius="4"
-                            Padding="{TemplateBinding Padding}">
-                        <ContentPresenter HorizontalAlignment="Center"
+                    <Grid>
+                        <Border Background="{TemplateBinding Background}" CornerRadius="4"/>
+                        <Border x:Name="HoverLayer" Background="#26FFFFFF" CornerRadius="4" Visibility="Collapsed"/>
+                        <Border x:Name="FocusRing" BorderBrush="#FFD700" BorderThickness="2" CornerRadius="4" Visibility="Collapsed"/>
+                        <ContentPresenter Margin="{TemplateBinding Padding}"
+                                          HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
                                           VerticalAlignment="Center"/>
-                    </Border>
+                    </Grid>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
-                            <Setter Property="Background" Value="{StaticResource PrimaryHoverBrush}"/>
+                            <Setter TargetName="HoverLayer" Property="Visibility" Value="Visible"/>
+                        </Trigger>
+                        <Trigger Property="IsKeyboardFocused" Value="True">
+                            <Setter TargetName="FocusRing" Property="Visibility" Value="Visible"/>
                         </Trigger>
                         <Trigger Property="IsPressed" Value="True">
                             <Setter Property="Opacity" Value="0.85"/>
                         </Trigger>
                         <Trigger Property="IsEnabled" Value="False">
-                            <Setter Property="Opacity" Value="0.4"/>
+                            <Setter Property="Opacity" Value="0.45"/>
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
@@ -91,7 +103,7 @@
 
     <!-- == Button Style (Danger) == -->
     <Style x:Key="DangerButtonStyle" TargetType="Button" BasedOn="{StaticResource PrimaryButtonStyle}">
-        <Setter Property="Background" Value="{StaticResource DangerBrush}"/>
+        <Setter Property="Background" Value="{StaticResource ButtonDangerBrush}"/>
     </Style>
 
     <!-- == Button Style (Emergency) == -->
@@ -103,7 +115,7 @@
 
     <!-- == Button Style (Success) == -->
     <Style x:Key="SuccessButtonStyle" TargetType="Button" BasedOn="{StaticResource PrimaryButtonStyle}">
-        <Setter Property="Background" Value="{StaticResource SuccessBrush}"/>
+        <Setter Property="Background" Value="{StaticResource ButtonSuccessBrush}"/>
     </Style>
 
     <!-- == Button Style (Neutral/Gray) == -->
@@ -125,34 +137,6 @@
         <Setter Property="SelectionBrush"   Value="{StaticResource PrimaryBrush}"/>
     </Style>
 
-    <!-- == ComboBox Style � dark dropdown fix Faza 8 == -->
-    <Style x:Key="DarkComboBoxStyle" TargetType="ComboBox">
-        <Setter Property="Background"      Value="{StaticResource BgInputBrush}"/>
-        <Setter Property="Foreground"      Value="{StaticResource TextBrush}"/>
-        <Setter Property="BorderBrush"     Value="{StaticResource BorderBrush}"/>
-        <Setter Property="BorderThickness" Value="1"/>
-        <Setter Property="Padding"         Value="6,4"/>
-        <Setter Property="FontFamily"      Value="Segoe UI"/>
-        <Setter Property="FontSize"        Value="13"/>
-        <Setter Property="ItemContainerStyle">
-            <Setter.Value>
-                <Style TargetType="ComboBoxItem">
-                    <Setter Property="Background" Value="#1A1A2E"/>
-                    <Setter Property="Foreground" Value="#E0E0F0"/>
-                    <Setter Property="Padding"    Value="8,5"/>
-                    <Setter Property="FontFamily" Value="Segoe UI"/>
-                    <Setter Property="FontSize"   Value="13"/>
-                    <Style.Triggers>
-                        <Trigger Property="IsMouseOver" Value="True">
-                            <Setter Property="Background" Value="#009999"/>
-                            <Setter Property="Foreground" Value="White"/>
-                        </Trigger>
-                        <Trigger Property="IsSelected" Value="True">
-                            <Setter Property="Background" Value="#007777"/>
-                            <Setter Property="Foreground" Value="White"/>
-                        </Trigger>
-                    </Style.Triggers>
-                </Style>
             </Setter.Value>
         </Setter>
     </Style>
