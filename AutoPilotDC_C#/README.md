@@ -10,7 +10,13 @@ pentru **web (Playwright / Selenium)**, **SAP GUI** și **aplicații desktop Win
 - **Programare**: Windows Task Scheduler (`AutoPilotDC.UI.exe --run rutina.rpr.json`).
 - **5 rutine exemplu** și ghid complet pas cu pas: [`docs/GHID_STUDIO_RPR.md`](docs/GHID_STUDIO_RPR.md) (și în aplicație: ❓ Ghid / F1).
 
-Pornire: build `AutoPilotDC.sln` → rulează `AutoPilotDC.UI` → butonul **🧩 Studio RPR**.
+Pornire: `Start_AutoPilotDC.bat` (sau build `AutoPilotDC.sln` → rulează `AutoPilotDC.UI`) → butonul **🧩 Studio RPR**.
+
+**v4.1 — siguranța la rulare** (recorder/player și Studio): „Nu deranja” cât timp rulează,
+chenar roșu RUN / verde REC / portocaliu PAUZA, sistem de prevenție (pauză + întrebare când
+ecranul diferă de înregistrare, la ferestre de eroare, erori SAP, valori diferite). Detalii în
+[`../README.md`](../README.md) și în ghid, capitolul 10b. Cod: `AutoPilotDC.Infrastructure/Safety/`,
+`Services/DoNotDisturb.cs`, `UI/Overlays/RunFrame.cs`, `UI/Studio/StudioGuard.cs`.
 
 Proiecte noi:
 

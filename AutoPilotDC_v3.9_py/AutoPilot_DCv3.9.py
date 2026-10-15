@@ -86,6 +86,11 @@ try:
 except ImportError:
     PILLOW_AVAILABLE = False
 
+# 1.8b — Siguranta la rulare v4.1 (Nu deranja, chenar RUN/REC, sistem de preventie)
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from autopilot_safety import (DoNotDisturb, RunFrame, SafetyGuard, GuardAlert,
+                              CONTINUE, IGNORE_STEP, RETRY, SKIP_STEP, STOP)
+
 # 1.8 — OpenCV (recunoastere vizuala)
 try:
     import cv2
@@ -281,6 +286,11 @@ class StepModel:
     error_message:   str   = ""
     comment:         str   = ""
     timestamp:       str   = ""
+    # 3.11 — Context la inregistrare (v4.1, sistemul de preventie; identic cu C#)
+    window_title:     str  = ""     # fereastra in care s-a dat click / s-a tastat
+    window_process:   str  = ""     # ex: excel.exe
+    screen_signature: str  = ""     # amprenta zonei 40x40 din jurul click-ului
+    guard_ignore:     bool = False  # True = pasul nu mai e verificat
 
     def to_dict(self) -> dict:
         """Serializeaza pasul in dictionar."""
@@ -338,6 +348,11 @@ class SettingsManager:
         "show_floating_controls": True,
         "show_emergency_btn":     True,
         "active_monitor":         0,
+        # v4.1 — Siguranta la rulare
+        "dnd_during_run":         True,      # "Nu deranja" cat timp ruleaza / inregistreaza
+        "show_run_frame":         True,      # chenar rosu RUN / verde REC
+        "guard_enabled":          True,      # sistemul de preventie
+        "guard_sensitivity":      "normal",  # relaxed / normal / strict
     }
 
     def __init__(self):
@@ -819,23 +834,27 @@ class RecorderEngine:
         btn = getattr(button, "name", "left")
         stype = "RIGHTCLICK" if btn == "right" else "CLICK"
         self._last_pos = (x, y)
-        self._add(StepModel(
+        step = StepModel(
             step_type=stype, x=x, y=y, button=btn,
             click_type="right" if btn == "right" else "single",
             delay_before=self._elapsed(),
             description=f"Click {btn} la ({x}, {y})",
-        ))
+        )
+        SafetyGuard.record_context(step)  # v4.1: fereastra + amprenta, inainte ca aplicatia sa reactioneze
+        self._add(step)
 
     def _on_scroll(self, x: int, y: int, dx: int, dy: int) -> None:
         """Callback scroll mouse."""
         if not self._recording or self._paused:
             return
-        self._add(StepModel(
+        step = StepModel(
             step_type="SCROLL", x=x, y=y,
             scroll_dx=dx, scroll_dy=dy,
             delay_before=self._elapsed(),
             description=f"Scroll ({dx},{dy}) la ({x},{y})",
-        ))
+        )
+        SafetyGuard.record_context(step)
+        self._add(step)
 
     def _on_key_press(self, key) -> None:
         """Callback apasare tasta."""
@@ -872,11 +891,13 @@ class RecorderEngine:
         if any(m in self._modifiers for m in ("alt_l","alt_r")):
             mods.append("Alt")
         combo = "+".join(mods + [ks]) if mods else ks
-        self._add(StepModel(
+        step = StepModel(
             step_type="KEY", key_combo=combo,
             delay_before=self._elapsed(),
             description=f"Tasta: {combo}",
-        ))
+        )
+        SafetyGuard.record_context(step)  # v4.1: in ce fereastra se tasteaza
+        self._add(step)
 
     def _on_key_release(self, key) -> None:
         """Callback eliberare tasta — curata modificatorii."""
@@ -921,6 +942,11 @@ class PlayerEngine:
         self.on_iter_update:   Optional[Callable] = None  # (cur, total)
         self.on_error:         Optional[Callable] = None  # (step, msg)
         self.on_question:      Optional[Callable] = None  # (step) -> str
+        # 8.5 — v4.1: siguranta la rulare
+        self.guard: Optional[SafetyGuard] = None
+        self.suppress_notifications: bool = True
+        # (step, GuardAlert, poate_reincerca) -> CONTINUE / IGNORE_STEP / RETRY / SKIP_STEP / STOP
+        self.on_guard_question: Optional[Callable] = None
 
     # ── Proprietati ──────────────────────────────────────────────
     @property
@@ -978,7 +1004,40 @@ class PlayerEngine:
 
     # ── Bucla principala ─────────────────────────────────────────
     def _loop(self, steps: List[StepModel], repeat: int) -> None:
-        """Bucla de redare in thread separat."""
+        """Bucla de redare in thread separat (+ "Nu deranja" pe durata ei)."""
+        dnd = None
+        if self.suppress_notifications:
+            # poate dura cateva secunde (reporneste serviciul de notificari): in paralel cu countdown-ul
+            dnd = threading.Thread(target=DoNotDisturb.enable, daemon=True, name="DND")
+            dnd.start()
+        try:
+            self._loop_inner(steps, repeat, dnd)
+        finally:
+            if dnd is not None:
+                threading.Thread(target=DoNotDisturb.restore, daemon=True, name="DNDRestore").start()
+
+    def _ask_guard(self, step: StepModel, alert: GuardAlert, can_retry: bool) -> str:
+        """v4.1: pauza + intrebare. Rutina asteapta raspunsul utilizatorului."""
+        if not self.on_guard_question:
+            return CONTINUE
+        self._paused = True
+        self._pause_event.clear()
+        if self.on_paused:
+            self.on_paused()
+        try:
+            decision = self.on_guard_question(step, alert, can_retry)
+        finally:
+            self._paused = False
+            self._pause_event.set()
+            if self.on_resumed:
+                self.on_resumed()
+        self._log.add(step.step_id, f"[PREVENTIE] {alert.title} -> {decision}",
+                      "ATENTIE", has_error=True, error_msg=alert.details[:300])
+        if self.guard:
+            self.guard.acknowledge()
+        return decision
+
+    def _loop_inner(self, steps: List[StepModel], repeat: int, dnd) -> None:
         # 1. Countdown
         cd = int(self._settings.get("countdown_before_play", DEFAULT_COUNTDOWN))
         for i in range(cd, 0, -1):
@@ -991,9 +1050,14 @@ class PlayerEngine:
                 self.on_countdown(i)
             time.sleep(1.0)
 
+        if dnd is not None:
+            dnd.join(timeout=15)
+
         # 2. Notifica start
         if self.on_started:
             self.on_started()
+        if self.guard:
+            self.guard.begin_run()
 
         # 3. Calculeaza delay efectiv
         base_delay  = float(self._settings.get("step_delay", DEFAULT_STEP_DELAY))
@@ -1027,10 +1091,40 @@ class PlayerEngine:
                 # Delay inainte
                 if step.delay_before > 0:
                     time.sleep(step.delay_before)
-                # Executa
-                t0 = time.time()
-                ok, err = self._exec(step)
-                dur = (time.time() - t0) * 1000
+                # v4.1: sistemul de preventie — ecranul arata ca la inregistrare?
+                if self.guard is not None and self.guard.enabled:
+                    upcoming = [s for s in steps[idx:] if not s.skip]
+                    alert = self.guard.check_before_step(step, upcoming)
+                    if alert:
+                        d = self._ask_guard(step, alert, can_retry=False)
+                        if d == STOP:
+                            self._stop_req = True
+                            break
+                        if d == SKIP_STEP:
+                            continue
+                        if d == IGNORE_STEP:
+                            step.guard_ignore = True
+                if self._stop_req:
+                    break
+                # Executa (la eroare: pauza + intrebare, nu mai mergem mai departe in tacere)
+                while True:
+                    t0 = time.time()
+                    ok, err = self._exec(step)
+                    dur = (time.time() - t0) * 1000
+                    if ok or not self.on_guard_question or self._stop_req:
+                        break
+                    if self.on_error:
+                        self.on_error(step, err)
+                    d = self._ask_guard(step, GuardAlert(
+                        f"Pasul {step.step_id} ({step.get_display_type()}) a esuat", err,
+                        f"error:{step.step_id}", can_ignore_step=False), can_retry=True)
+                    if d == RETRY:
+                        continue
+                    if d == STOP:
+                        self._stop_req = True
+                    break
+                if self.guard:
+                    self.guard.after_step()
                 # Logheaza
                 self._log.add(
                     step.step_id,
@@ -1042,7 +1136,7 @@ class PlayerEngine:
                 # Notifica UI
                 if self.on_step_done:
                     self.on_step_done(idx, step, ok)
-                if not ok and self.on_error:
+                if not ok and self.on_error and not self.on_guard_question:
                     self.on_error(step, err)
                 # Delay global
                 time.sleep(eff_delay)
@@ -2264,6 +2358,11 @@ class MainWindow:
         self.stopwatch_ovl = StopwatchOverlay(self.root)
         self.run_indicator  = RunIndicatorOverlay(self.root)
         self.mode_indicator = ModeIndicatorOverlay(self.root)
+        # v4.1: chenar RUN/REC + sistemul de preventie
+        self.run_frame = RunFrame(self.root)
+        self.run_frame.enabled = bool(self.settings.get("show_run_frame", True))
+        self.guard = SafetyGuard()
+        self.player.guard = self.guard
         if self._debug_mode:
             self.debug_overlay.enable()
 
@@ -3295,6 +3394,32 @@ class MainWindow:
             relief="flat", buttonbackground=C["bg_card"],
             insertbackground=C["text"]).pack(side="left"))
 
+        # ── v4.1: Siguranta la rulare ──
+        f_safe = section("🛡  Siguranta la rulare")
+        self._var_dnd = tk.BooleanVar(value=bool(self.settings.get("dnd_during_run", True)))
+        self._var_frame = tk.BooleanVar(value=bool(self.settings.get("show_run_frame", True)))
+        self._var_guard = tk.BooleanVar(value=bool(self.settings.get("guard_enabled", True)))
+        self._var_guard_sens = tk.StringVar(value=str(self.settings.get("guard_sensitivity", "normal")))
+        for text, var in [
+            ("🌙 Nu deranja (fara notificari Windows) cat timp ruleaza / inregistreaza", self._var_dnd),
+            ("🟥 Chenar pe ecran: rosu + RUN la rulare, verde + REC la inregistrare", self._var_frame),
+            ("🛡 Sistem de preventie: pauza + intrebare cand ecranul difera", self._var_guard),
+        ]:
+            tk.Checkbutton(f_safe, text=text, variable=var, bg=C["bg_card"], fg=C["text"],
+                           selectcolor=C["bg_input"], activebackground=C["bg_card"],
+                           activeforeground=C["text"], font=("Segoe UI", 11),
+                           anchor="w").pack(fill="x", padx=12, pady=2)
+        row(f_safe, "Sensibilitate preventie:", lambda p: ttk.Combobox(
+            p, textvariable=self._var_guard_sens, values=["relaxed", "normal", "strict"],
+            state="readonly", width=12).pack(side="left"))
+        tk.Label(f_safe, text=("Verifica inainte de fiecare pas: mouse miscat de tine, ferestre de eroare, "
+                               "aplicatie care nu raspunde, click in alta aplicatie, zona click-ului diferita "
+                               "(relaxed 35% · normal 22% · strict 12%), taste trimise in alta fereastra. "
+                               "Un pas esuat nu mai e sarit in tacere: rutina se opreste si te intreaba. "
+                               "Verificarea ecranului functioneaza pentru pasii inregistrati cu versiunea 4.1+."),
+                 bg=C["bg_card"], fg=C["text_dim"], font=("Segoe UI", 9), wraplength=720,
+                 justify="left").pack(anchor="w", padx=12, pady=(2, 8))
+
         # ── Shortcut-uri ──
         f_sc = section("⌨  Shortcut-uri")
         sc = self.settings.get("shortcuts", DEFAULT_SHORTCUTS)
@@ -3530,6 +3655,7 @@ CONTACT: {APP_AUTHOR}
         self.player.on_iter_update  = self._on_iter_update
         self.player.on_error        = self._on_player_error
         self.player.on_question     = self._on_player_question
+        self.player.on_guard_question = self._on_guard_question
         # 15.3 — Log
         self.log_mgr.on_entry_added = self._on_log_entry
 
@@ -3772,11 +3898,17 @@ CONTACT: {APP_AUTHOR}
         """Actualizeaza UI-ul pe thread-ul principal."""
         self._set_btn_state_recording()
         self._show_recording_indicator()
+        if self.settings.get("dnd_during_run", True):
+            self._rec_dnd = True
+            threading.Thread(target=DoNotDisturb.enable, daemon=True).start()
 
     def _show_recording_indicator(self):
         """Afiseaza overlay REC pe TOATE monitoarele."""
         self._hide_recording_indicator()
         self._rec_indicators = []
+        if self.run_frame.enabled:
+            self.run_frame.show("rec")  # v4.1: chenar verde + REC
+            return
 
         try:
             sw = self.root.winfo_screenwidth()
@@ -3805,6 +3937,8 @@ CONTACT: {APP_AUTHOR}
 
     def _hide_recording_indicator(self):
         """Ascunde overlay-urile REC de pe toate monitoarele."""
+        if self.run_frame.mode == "rec":
+            self.run_frame.hide()
         if hasattr(self, "_rec_indicators"):
             for ind in self._rec_indicators:
                 try:
@@ -3816,6 +3950,9 @@ CONTACT: {APP_AUTHOR}
 
     def _on_rec_stopped(self):
         """Callback: inregistrarea s-a oprit."""
+        if getattr(self, "_rec_dnd", False):
+            self._rec_dnd = False
+            threading.Thread(target=DoNotDisturb.restore, daemon=True).start()
         self.root.after(0, lambda: [
             self._hide_recording_indicator(),
             self._set_btn_state_idle(),
@@ -3889,7 +4026,12 @@ CONTACT: {APP_AUTHOR}
         self.settings.set("playback_speed",       float(self._var_speed.get()))
         self.settings.set("countdown_before_play",int(self._var_cd.get()))
         self.settings.set("repeat_count",         repeat)
-        self.player.play(steps, repeat=repeat)
+        # v4.1: siguranta la rulare
+        self.player.suppress_notifications = bool(self.settings.get("dnd_during_run", True))
+        self.guard.enabled = bool(self.settings.get("guard_enabled", True))
+        self.guard.sensitivity = str(self.settings.get("guard_sensitivity", "normal"))
+        if self.player.play(steps, repeat=repeat):
+            self.run_frame.show("run")
 
     def _toggle_pause(self):
         """Comuta pauza/reluare."""
@@ -3908,6 +4050,7 @@ CONTACT: {APP_AUTHOR}
         if self._is_recording:
             self.recorder.stop()
             self._is_recording = False
+        self.root.after(0, self.run_frame.hide)
         self.root.after(0, lambda: [
             self._set_btn_state_idle(),
             self._status_var.set("🚨 STOP URGENTA ACTIVAT"),
@@ -3922,10 +4065,12 @@ CONTACT: {APP_AUTHOR}
             self.mode_indicator.hide()
         except Exception:
             pass
-        # v3.7: Countdown + RUN indicator
+        # v3.7: Countdown + RUN indicator (v4.1: inlocuit de chenarul RUN, daca e activ)
         try:
             cd = int(self.settings.get("countdown", 3))
-            if cd > 0:
+            if self.run_frame.enabled:
+                pass
+            elif cd > 0:
                 self.stopwatch_ovl.show_countdown(seconds=cd, on_done=lambda: self.run_indicator.show())
             else:
                 self.run_indicator.show()
@@ -3941,6 +4086,7 @@ CONTACT: {APP_AUTHOR}
 
     def _on_play_stopped(self):
         # [v3.9] Hide RUN + mode indicators
+        self.root.after(0, self.run_frame.hide)
         try:
             self.run_indicator.hide()
             self.mode_indicator.hide()
@@ -3960,6 +4106,7 @@ CONTACT: {APP_AUTHOR}
 
     def _on_play_paused(self):
         """Callback: redarea e pe pauza."""
+        self.root.after(0, lambda: self.run_frame.show("pause") if self.run_frame.mode != "off" else None)
         self.root.after(0, lambda: [
             self._btn_pause.configure(text="▶  Reia"),
             self._status_var.set("⏸ PAUZA"),
@@ -3967,6 +4114,7 @@ CONTACT: {APP_AUTHOR}
 
     def _on_play_resumed(self):
         """Callback: redarea a reluat."""
+        self.root.after(0, lambda: self.run_frame.show("run") if self.run_frame.mode != "off" else None)
         self.root.after(0, lambda: [
             self._btn_pause.configure(text="⏸  Pauza"),
             self._status_var.set("▶ REDARE ACTIVA"),
@@ -4045,9 +4193,76 @@ CONTACT: {APP_AUTHOR}
                           font=("Segoe UI", 11), padx=12, pady=6,
                           cursor="hand2").pack(side="left", padx=6)
             dlg.wait_window()
-        self.root.after(0, _ask)
-        time.sleep(0.2)
+        done = threading.Event()
+
+        def _ask_and_signal():
+            try:
+                _ask()
+            finally:
+                done.set()
+        self.root.after(0, _ask_and_signal)
+        done.wait()  # v4.1: asteapta raspunsul (inainte returna "Continua" dupa 0.2 s)
         return result["ans"]
+
+    # ── v4.1: Sistemul de preventie — pauza + intrebare ───────────
+    def _on_guard_question(self, step: StepModel, alert: GuardAlert, can_retry: bool) -> str:
+        """Apelat din firul playerului: afiseaza intrebarea si asteapta raspunsul."""
+        result = {"d": STOP}
+        done = threading.Event()
+
+        def _show():
+            try:
+                result["d"] = self._guard_dialog(step, alert, can_retry)
+            finally:
+                done.set()
+        self.root.after(0, _show)
+        done.wait()
+        return result["d"]
+
+    def _guard_dialog(self, step: StepModel, alert: GuardAlert, can_retry: bool) -> str:
+        options = []
+        if can_retry:
+            options.append(("Reincearca pasul", RETRY, C["success"]))
+        options.append(("Continua", CONTINUE, C["success"]))
+        if alert.can_ignore_step:
+            options.append(("Continua si nu mai verifica pasul", IGNORE_STEP, C["primary"]))
+        options.append(("Sari pasul", SKIP_STEP, C["bg_input"]))
+        options.append(("Opreste rutina", STOP, C["danger"]))
+
+        self._status_var.set(f"⚠ {alert.title} — rutina e pe pauza")
+        dlg = tk.Toplevel(self.root)
+        dlg.title("AutoPilot DC — ceva difera")
+        dlg.configure(bg=C["bg_main"])
+        dlg.attributes("-topmost", True)
+        dlg.resizable(False, False)
+        chosen = {"d": STOP}  # inchiderea ferestrei = oprire (cel mai sigur)
+
+        tk.Label(dlg, text=f"⚠  {alert.title}", bg=C["bg_main"], fg=C["warning"],
+                 font=("Segoe UI", 13, "bold"), wraplength=560, justify="left").pack(anchor="w", padx=18, pady=(16, 6))
+        where = step.description or step.get_display_type()
+        txt = tk.Text(dlg, height=8, width=70, wrap="word", bg=C["bg_card"], fg=C["text"],
+                      font=("Segoe UI", 10), relief="flat", padx=8, pady=6)
+        txt.insert("1.0", f"Pasul #{step.step_id}: {where}\n\n{alert.details}")
+        txt.configure(state="disabled")
+        txt.pack(fill="both", padx=18)
+
+        bf = tk.Frame(dlg, bg=C["bg_main"])
+        bf.pack(anchor="e", padx=18, pady=14)
+        for label, value, bg in options:
+            def _pick(v=value):
+                chosen["d"] = v
+                dlg.destroy()
+            tk.Button(bf, text=label, command=_pick, bg=bg, fg=_btn_fg(bg), relief="flat",
+                      font=("Segoe UI", 10, "bold"), padx=10, pady=5,
+                      cursor="hand2").pack(side="left", padx=4)
+
+        dlg.update_idletasks()
+        w, h = dlg.winfo_reqwidth(), dlg.winfo_reqheight()
+        dlg.geometry(f"+{(dlg.winfo_screenwidth() - w) // 2}+{(dlg.winfo_screenheight() - h) // 3}")
+        dlg.grab_set()
+        dlg.focus_force()
+        dlg.wait_window()
+        return chosen["d"]
 
     # ── Log callbacks ─────────────────────────────────────────────
     def _on_log_entry(self, entry: LogEntry):
@@ -4822,6 +5037,12 @@ CONTACT: {APP_AUTHOR}
             self.settings.set("countdown_before_play",int(self._var_cd.get()))
             self.settings.set("repeat_count",         int(self._repeat_var.get()))
             self.settings.set("record_mouse_move",    self._var_rec_move.get())
+            # v4.1: siguranta la rulare
+            self.settings.set("dnd_during_run",       bool(self._var_dnd.get()))
+            self.settings.set("show_run_frame",       bool(self._var_frame.get()))
+            self.settings.set("guard_enabled",        bool(self._var_guard.get()))
+            self.settings.set("guard_sensitivity",    self._var_guard_sens.get())
+            self.run_frame.enabled = bool(self._var_frame.get())
             # Salveaza shortcut-urile
             sc = {k: v.get() for k, v in self._sc_vars.items()}
             self.settings.set("shortcuts", sc)
@@ -5070,6 +5291,8 @@ CONTACT: {APP_AUTHOR}
         if self.player.is_running:
             self.player.emergency_stop()
         self._hide_recording_indicator()
+        self.run_frame.hide()
+        DoNotDisturb.restore_all()  # v4.1: notificarile revin chiar daca o rulare nu s-a terminat
         self.hotkey_mgr.stop()
         self._floating_sc.hide()
         self._save_notes()
@@ -5092,6 +5315,9 @@ def main():
     )
     logging.info(f"Pornire {APP_NAME} v{APP_VERSION}")
     logging.info(f"Director de lucru: {BASE_DIR}")
+
+    # 16.1b — v4.1: daca o rulare anterioara a ramas cu "Nu deranja" pornit, readucem notificarile
+    threading.Thread(target=DoNotDisturb.recover_if_needed, daemon=True).start()
 
     # 16.2 — Creeaza si porneste aplicatia
     app = MainWindow()

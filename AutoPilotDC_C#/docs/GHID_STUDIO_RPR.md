@@ -204,6 +204,22 @@ Alte protecții:
 - **Ferestre popup JavaScript** (alert/confirm) sunt acceptate automat; schimbi comportamentul cu „Răspuns la popup JS”.
 - **Tab-uri noi** deschise de aplicație devin automat pagina curentă.
 
+## 10b. Siguranța la rulare (v4.1)
+
+În **⚙ Rutina → Siguranța la rulare**:
+
+- **🌙 Nu deranja**: cât timp rulează rutina, Windows nu afișează notificări (nu apar peste butoane și nu poți da click pe ele din greșeală). La final revin automat.
+- **🛡 Sistem de prevenție**: înainte de fiecare acțiune rutina se pune pe **pauză și te întreabă** (Continuă / Continuă și nu mai întreba pentru asta / Sari rândul / Oprește) când:
+  - apare o **fereastră de eroare** (titlu sau mesaj cu „Eroare”, „Error”, „Warning”...);
+  - aplicația activă **nu răspunde**;
+  - după o acțiune SAP, **bara de stare arată o eroare** (`E:` sau `A:`);
+  - o valoare citită **diferă de „Valoarea așteptată”** a pasului.
+- În interiorul unui bloc **Încearcă / La eroare** rutina nu te întreabă: valoarea diferită merge direct pe ramura „La eroare”, iar bara SAP nu e verificată (tratezi tu situația în rutină).
+
+**Valoarea așteptată** (la pașii Citește...): textul pe care trebuie să-l găsească pasul. Acceptă variabile și `*` = orice text. Exemple: `S:*` (orice mesaj de succes SAP), `Salvat*`, `{Rand.Status}`.
+
+Pe ecran, cât timp rulează rutina, apare un **chenar roșu** cu „▶ RUN” în colțul din dreapta-sus; la pauză sau când te întreabă ceva chenarul devine **portocaliu** („❚❚ PAUZA”); la **⏺ Înregistrează Web** chenarul e **verde** („● REC”). Click-urile trec prin chenar și el nu apare în capturile de ecran.
+
 ## 11. Rularea
 
 - **▶ Rulează** (F5): Studio se minimizează (opțional, din Setări) și apare **bara plutitoare** dreapta-jos cu pasul curent și butoanele Pauză, Pas, STOP.
