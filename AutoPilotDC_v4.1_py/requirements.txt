@@ -1,0 +1,14 @@
+# AutoPilot DC v4.1 — pachetele Python necesare
+# Instalare: dublu click pe INSTALEAZA.bat (sau: py -m pip install --user -r requirements.txt)
+
+# Aplicatia (recorder / player / interfata)
+customtkinter>=5.2
+pynput>=1.7
+pyautogui>=0.9.54
+openpyxl>=3.1
+pillow>=10.0
+
+# Studio RPR — automatizare pe obiecte
+playwright>=1.44      # Web (foloseste Edge / Chrome instalat, nu descarca browsere)
+pywin32>=306          # SAP GUI Scripting (COM)
+uiautomation>=2.0.20  # aplicatii desktop Windows (UI Automation)

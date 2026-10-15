@@ -1,0 +1,3 @@
+# Fisierele .bat / .cmd trebuie sa aiba CRLF (altfel cmd poate executa gresit goto / etichete)
+*.bat text eol=crlf
+*.cmd text eol=crlf

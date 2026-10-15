@@ -33,9 +33,18 @@ Toate se pot opri din **Setări → 🛡 Siguranța la rulare** (în Studio RPR:
 
 ## AutoPilotDC_v4.1_py (Python)
 
+- **`INSTALEAZA.bat` — o singură dată pe fiecare calculator (dublu click).** Găsește Python,
+  instalează toate pachetele (fără drepturi de administrator, cu reîncercare pentru rețeaua
+  firmei), verifică fiecare pachet și poate crea scurtătura pe Desktop. Fereastra rămâne
+  deschisă până apeși o tastă, ca să vezi dacă a mers.
 - **`AutoPilot_DC.pyw` — fișierul de pornire (dublu click), fără fereastră de consolă.**
-  Dacă lipsesc pachete, afișează o fereastră cu comanda `pip` de rulat; erorile se scriu în
-  `loguri/autopilot_console.log`.
+  Dacă lipsesc pachete, oferă butonul **„Instalează acum”** (pornește `INSTALEAZA.bat` pentru
+  exact Python-ul care deschide aplicația); erorile se scriu în `loguri/autopilot_console.log`.
+- `rpr/` — **Studio RPR în Python (în lucru)**: motorul de rutine pe obiecte (pași ca arbore,
+  condiții, bucle, variabile, Excel, Încearcă/La eroare, sistemul de prevenție). Fișierele
+  `.rpr.json` și `obiecte.json` sunt **identice cu cele din C#** (verificat pe cele 5 exemple).
+  Rulare fără interfață: `py -m rpr run "rutina.rpr.json"`.
+- `tests/` — testele motorului: `py -m unittest discover -s tests`.
 - `AutoPilot_DCv4.1.py` — aplicația principală (recorder + player pași
   desktop/mouse/tastatură cu `pynput`, GUI `customtkinter`). Pornită direct, deschide și consola.
 - `autopilot_safety.py` — **v4.1**: Nu deranja, chenarul RUN/REC, sistemul de prevenție.
@@ -47,13 +56,20 @@ Toate se pot opri din **Setări → 🛡 Siguranța la rulare** (în Studio RPR:
 - `playwrighttest.py` — script de test izolat pentru pașii de browser.
 - `config.json` — configurație implicită a aplicației (shortcuts, delay-uri).
 
-Rulare:
-```powershell
-cd AutoPilotDC_v4.1_py
-pip install customtkinter pynput pyautogui openpyxl pillow
-```
-Apoi dublu click pe **`AutoPilot_DC.pyw`** (sau `pythonw AutoPilot_DC.pyw`). Pentru o
-scurtătură pe Desktop: click dreapta pe `AutoPilot_DC.pyw` → *Send to* → *Desktop (create shortcut)*.
+Pe un calculator nou:
+1. Python 3.9+ instalat (python.org sau Company Portal), cu „Add python.exe to PATH”.
+2. Dublu click pe **`INSTALEAZA.bat`** → la final „GATA” (și, opțional, scurtătura pe Desktop).
+3. Dublu click pe **`AutoPilot_DC.pyw`** (sau pe scurtătura „AutoPilot DC”).
+
+Starea migrării Studio RPR în Python:
+
+| Etapa | Ce conține | Stare |
+|---|---|---|
+| 1 | Motorul + Excel + rulare din linie de comandă + teste | ✅ gata |
+| 2 | Driver Web (Playwright): acțiuni, Spy, înregistrare, iframe-uri | urmează |
+| 3 | SAP GUI + aplicații desktop | urmează |
+| 4 | Editorul vizual (Studio) în aplicație | urmează |
+| 5 | Renunțarea la versiunea C# | după testare |
 
 ## AutoPilotDC_C# (C# WPF .NET 8)
 
