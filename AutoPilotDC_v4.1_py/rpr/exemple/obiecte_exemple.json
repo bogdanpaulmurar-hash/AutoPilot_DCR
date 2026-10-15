@@ -1,0 +1,213 @@
+{
+  "version": 1,
+  "objects": [
+    {
+      "name": "Exemplu_Obiect_Inexistent",
+      "technology": "Web",
+      "locators": [
+        {
+          "kind": "Css",
+          "value": "#acest-element-nu-exista",
+          "score": 50,
+          "enabled": true
+        }
+      ],
+      "context": "",
+      "frame_path": [],
+      "element_type": "button",
+      "captured_text": "",
+      "screenshot": "",
+      "attributes": {},
+      "description": "Obiect din rutinele exemplu",
+      "captured_at": "2026-10-15T15:22:30.0459627+03:00"
+    },
+    {
+      "name": "Demo_Camp_Username",
+      "technology": "Web",
+      "locators": [
+        {
+          "kind": "Id",
+          "value": "username",
+          "score": 90,
+          "enabled": true
+        },
+        {
+          "kind": "Label",
+          "value": "Username",
+          "score": 80,
+          "enabled": true
+        },
+        {
+          "kind": "Css",
+          "value": "#username",
+          "score": 45,
+          "enabled": true
+        }
+      ],
+      "context": "https://the-internet.herokuapp.com/login",
+      "frame_path": [],
+      "element_type": "input (textbox)",
+      "captured_text": "",
+      "screenshot": "",
+      "attributes": {},
+      "description": "Obiect din rutinele exemplu",
+      "captured_at": "2026-10-15T15:22:30.531517+03:00"
+    },
+    {
+      "name": "Demo_Camp_Password",
+      "technology": "Web",
+      "locators": [
+        {
+          "kind": "Id",
+          "value": "password",
+          "score": 90,
+          "enabled": true
+        },
+        {
+          "kind": "Css",
+          "value": "input[type=\"password\"]",
+          "score": 45,
+          "enabled": true
+        }
+      ],
+      "context": "https://the-internet.herokuapp.com/login",
+      "frame_path": [],
+      "element_type": "input",
+      "captured_text": "",
+      "screenshot": "",
+      "attributes": {},
+      "description": "Obiect din rutinele exemplu",
+      "captured_at": "2026-10-15T15:22:30.5316932+03:00"
+    },
+    {
+      "name": "Demo_Buton_Login",
+      "technology": "Web",
+      "locators": [
+        {
+          "kind": "Role",
+          "value": "button|Login",
+          "score": 85,
+          "enabled": true
+        },
+        {
+          "kind": "Css",
+          "value": "button[type=\"submit\"]",
+          "score": 45,
+          "enabled": true
+        }
+      ],
+      "context": "https://the-internet.herokuapp.com/login",
+      "frame_path": [],
+      "element_type": "button",
+      "captured_text": "",
+      "screenshot": "",
+      "attributes": {},
+      "description": "Obiect din rutinele exemplu",
+      "captured_at": "2026-10-15T15:22:30.531701+03:00"
+    },
+    {
+      "name": "Demo_Mesaj",
+      "technology": "Web",
+      "locators": [
+        {
+          "kind": "Id",
+          "value": "flash",
+          "score": 90,
+          "enabled": true
+        },
+        {
+          "kind": "Css",
+          "value": "#flash",
+          "score": 45,
+          "enabled": true
+        }
+      ],
+      "context": "https://the-internet.herokuapp.com/login",
+      "frame_path": [],
+      "element_type": "div",
+      "captured_text": "",
+      "screenshot": "",
+      "attributes": {},
+      "description": "Obiect din rutinele exemplu",
+      "captured_at": "2026-10-15T15:22:30.5317027+03:00"
+    },
+    {
+      "name": "Wiki_Titlu",
+      "technology": "Web",
+      "locators": [
+        {
+          "kind": "Id",
+          "value": "firstHeading",
+          "score": 90,
+          "enabled": true
+        },
+        {
+          "kind": "Css",
+          "value": "h1#firstHeading",
+          "score": 45,
+          "enabled": true
+        }
+      ],
+      "context": "https://en.wikipedia.org/wiki",
+      "frame_path": [],
+      "element_type": "h1 (heading)",
+      "captured_text": "",
+      "screenshot": "",
+      "attributes": {},
+      "description": "Obiect din rutinele exemplu",
+      "captured_at": "2026-10-15T15:22:33.3250568+03:00"
+    },
+    {
+      "name": "SAP_Camp_Comanda_VA03",
+      "technology": "Sap",
+      "locators": [
+        {
+          "kind": "SapId",
+          "value": "wnd[0]/usr/ctxtVBAK-VBELN",
+          "score": 90,
+          "enabled": true
+        },
+        {
+          "kind": "SapName",
+          "value": "VBAK-VBELN|GuiCTextField",
+          "score": 60,
+          "enabled": true
+        }
+      ],
+      "context": "wnd[0]",
+      "frame_path": [],
+      "element_type": "GuiCTextField",
+      "captured_text": "",
+      "screenshot": "",
+      "attributes": {},
+      "description": "Obiect din rutinele exemplu",
+      "captured_at": "2026-10-15T15:22:33.3573707+03:00"
+    },
+    {
+      "name": "Notepad_Editor",
+      "technology": "Desktop",
+      "locators": [
+        {
+          "kind": "ClassName",
+          "value": "Document|RichEditD2DPT",
+          "score": 70,
+          "enabled": true
+        },
+        {
+          "kind": "ClassName",
+          "value": "Edit|Edit",
+          "score": 60,
+          "enabled": true
+        }
+      ],
+      "context": "proces:notepad.exe",
+      "frame_path": [],
+      "element_type": "Document / Edit",
+      "captured_text": "",
+      "screenshot": "",
+      "attributes": {},
+      "description": "Obiect din rutinele exemplu",
+      "captured_at": "2026-10-15T15:22:33.3599552+03:00"
+    }
+  ]
+}

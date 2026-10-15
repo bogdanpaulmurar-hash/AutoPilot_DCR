@@ -1,0 +1,236 @@
+{
+  "format_version": 2,
+  "name": "01 Invatare - variabile, bucle, conditii",
+  "description": "Ruleaza cu ⏭ Pas cu pas ca sa vezi fiecare bloc. Nu deschide nicio aplicatie.",
+  "repository_path": "",
+  "variables": {
+    "Total": "0",
+    "Prag": "6"
+  },
+  "settings": {
+    "default_error_policy": "Ask",
+    "highlight_before_action": true,
+    "highlight_ms": 350,
+    "default_timeout_ms": 10000,
+    "step_delay_ms": 300,
+    "auto_retries": 1,
+    "screenshot_on_error": true,
+    "do_not_disturb": true,
+    "guard_enabled": true
+  },
+  "steps": [
+    {
+      "kind": "log",
+      "message": "Start: Total = {Total}, azi este {Azi}",
+      "level": "Info",
+      "kind_label": "Log",
+      "id": "708d7323b1",
+      "label": "",
+      "enabled": true,
+      "delay_before_ms": 0,
+      "delay_after_ms": 0,
+      "on_error": "Inherit",
+      "comment": ""
+    },
+    {
+      "kind": "loop",
+      "mode": "Times",
+      "count": "5",
+      "condition": {
+        "kind": "ElementExists",
+        "target": "",
+        "left": "",
+        "operator": "Equals",
+        "right": "",
+        "ignore_case": true,
+        "negate": false,
+        "timeout_ms": 0,
+        "children": []
+      },
+      "max_iterations": 1000,
+      "counter_variable": "Repetare",
+      "body": [
+        {
+          "kind": "set_variable",
+          "name": "Total",
+          "operation": "Increment",
+          "value": "{Repetare}",
+          "find": "",
+          "kind_label": "Variabila",
+          "id": "37039a660b",
+          "label": "",
+          "enabled": true,
+          "delay_before_ms": 0,
+          "delay_after_ms": 0,
+          "on_error": "Inherit",
+          "comment": ""
+        },
+        {
+          "kind": "log",
+          "message": "Repetarea {Repetare}: total = {Total}",
+          "level": "Info",
+          "kind_label": "Log",
+          "id": "4892d4a7a5",
+          "label": "",
+          "enabled": true,
+          "delay_before_ms": 0,
+          "delay_after_ms": 0,
+          "on_error": "Inherit",
+          "comment": ""
+        },
+        {
+          "kind": "if",
+          "condition": {
+            "kind": "Compare",
+            "target": "",
+            "left": "{Total}",
+            "operator": "GreaterOrEqual",
+            "right": "{Prag}",
+            "ignore_case": true,
+            "negate": false,
+            "timeout_ms": 0,
+            "children": []
+          },
+          "then": [
+            {
+              "kind": "question",
+              "text": "Totalul a ajuns la {Total} (prag {Prag}). Continui bucla?",
+              "buttons": "Continua,Iesi din bucla,Opreste",
+              "output_variable": "Raspuns",
+              "stop_button": "Opreste",
+              "skip_button": "",
+              "kind_label": "Intrebare",
+              "id": "bfcd41a4af",
+              "label": "",
+              "enabled": true,
+              "delay_before_ms": 0,
+              "delay_after_ms": 0,
+              "on_error": "Inherit",
+              "comment": ""
+            },
+            {
+              "kind": "if",
+              "condition": {
+                "kind": "Compare",
+                "target": "",
+                "left": "{Raspuns}",
+                "operator": "Equals",
+                "right": "Iesi din bucla",
+                "ignore_case": true,
+                "negate": false,
+                "timeout_ms": 0,
+                "children": []
+              },
+              "then": [
+                {
+                  "kind": "break",
+                  "next_iteration": false,
+                  "kind_label": "Iesi din bucla",
+                  "id": "ddc752e050",
+                  "label": "",
+                  "enabled": true,
+                  "delay_before_ms": 0,
+                  "delay_after_ms": 0,
+                  "on_error": "Inherit",
+                  "comment": ""
+                }
+              ],
+              "else": [],
+              "kind_label": "Daca",
+              "id": "a28650ab74",
+              "label": "",
+              "enabled": true,
+              "delay_before_ms": 0,
+              "delay_after_ms": 0,
+              "on_error": "Inherit",
+              "comment": ""
+            }
+          ],
+          "else": [],
+          "kind_label": "Daca",
+          "id": "fa64882771",
+          "label": "",
+          "enabled": true,
+          "delay_before_ms": 0,
+          "delay_after_ms": 0,
+          "on_error": "Inherit",
+          "comment": "Comparatie numerica: 6 >= 6"
+        }
+      ],
+      "kind_label": "Repeta",
+      "id": "fa49876bf9",
+      "label": "",
+      "enabled": true,
+      "delay_before_ms": 0,
+      "delay_after_ms": 0,
+      "on_error": "Inherit",
+      "comment": "Repeta de 5 ori; {Repetare} = 1..5"
+    },
+    {
+      "kind": "try",
+      "body": [
+        {
+          "kind": "action",
+          "action": "ReadText",
+          "target": "Exemplu_Obiect_Inexistent",
+          "value": "",
+          "output_variable": "Text",
+          "expected_value": "",
+          "technology": "Web",
+          "timeout_ms": 1000,
+          "direct_mode": false,
+          "kind_label": "Actiune",
+          "id": "ff4ac2b433",
+          "label": "",
+          "enabled": true,
+          "delay_before_ms": 0,
+          "delay_after_ms": 0,
+          "on_error": "Inherit",
+          "comment": ""
+        }
+      ],
+      "catch": [
+        {
+          "kind": "log",
+          "message": "Eroare prinsa (asa trebuie): {Eroare}",
+          "level": "Warning",
+          "kind_label": "Log",
+          "id": "11d316ddb1",
+          "label": "",
+          "enabled": true,
+          "delay_before_ms": 0,
+          "delay_after_ms": 0,
+          "on_error": "Inherit",
+          "comment": ""
+        }
+      ],
+      "error_variable": "Eroare",
+      "kind_label": "Incearca",
+      "id": "c1a83717e5",
+      "label": "",
+      "enabled": true,
+      "delay_before_ms": 0,
+      "delay_after_ms": 0,
+      "on_error": "Inherit",
+      "comment": "Pasul din Incearca esueaza intentionat; rutina continua pe ramura La eroare"
+    },
+    {
+      "kind": "question",
+      "text": "Gata! Totalul final este {Total}. Deschide tab-ul Variabile ca sa vezi toate valorile.",
+      "buttons": "OK",
+      "output_variable": "Raspuns",
+      "stop_button": "",
+      "skip_button": "",
+      "kind_label": "Intrebare",
+      "id": "b01f0a84d3",
+      "label": "",
+      "enabled": true,
+      "delay_before_ms": 0,
+      "delay_after_ms": 0,
+      "on_error": "Inherit",
+      "comment": ""
+    }
+  ],
+  "created_at": "2026-10-15T15:22:30.0551928+03:00",
+  "modified_at": "2026-10-15T15:22:30.0611577+03:00"
+}

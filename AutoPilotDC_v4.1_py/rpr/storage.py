@@ -186,6 +186,81 @@ def _selector_to_locator(selector: str) -> Locator:
     return Locator(LocatorKind.Css, selector[4:] if low.startswith("css=") else selector, 50)
 
 
+class Examples:
+    """Rutinele exemplu (aceleasi ca in C#), livrate in rpr/exemple si instalate in folderul de lucru."""
+
+    SOURCE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "exemple")
+
+    @classmethod
+    def install(cls, repo: ObjectRepository) -> List[Dict[str, str]]:
+        """Copiaza exemplele (si fisierele Excel) in %APPDATA%\\...\\exemple, adauga obiectele lor in
+        repository si returneaza lista [{name, description, path}]."""
+        import shutil
+        dest = RprPaths.examples()
+        for f in os.listdir(cls.SOURCE):
+            if f.lower().endswith(".xlsx") and not os.path.exists(os.path.join(dest, f)):
+                shutil.copyfile(os.path.join(cls.SOURCE, f), os.path.join(dest, f))
+
+        # obiectele folosite de exemple (doar cele care lipsesc din repository)
+        src_repo = os.path.join(cls.SOURCE, "obiecte_exemple.json")
+        if os.path.isfile(src_repo):
+            for obj in ObjectRepository.from_dict(_read_json(src_repo)).objects:
+                if repo.find(obj.name) is None:
+                    repo.objects.append(obj)
+
+        out = []
+        for f in sorted(os.listdir(cls.SOURCE)):
+            if not f.endswith(".rpr.json"):
+                continue
+            r = Routine.from_dict(_read_json(os.path.join(cls.SOURCE, f)))
+            # variabilele care indica un fisier Excel exemplu primesc calea din folderul de lucru
+            for k, v in list(r.variables.items()):
+                if v.lower().endswith(".xlsx") and os.path.basename(v) == v:
+                    r.variables[k] = os.path.join(dest, v)
+            path = os.path.join(dest, f)
+            RoutineStore.save(r, path)
+            out.append({"name": r.name, "description": r.description, "path": path})
+        return out
+
+
+class ExcelInfo:
+    """Ce contine un fisier Excel (pentru Studio: foi, coloane). Nu arunca exceptii."""
+
+    _cache: Dict[tuple, "ExcelInfo"] = {}
+
+    def __init__(self):
+        self.sheets: List[str] = []
+        self.headers: List[str] = []
+        self.data_rows = 0
+        self.error: Optional[str] = None
+
+    @classmethod
+    def read(cls, path: str, sheet: str, header_row: int) -> "ExcelInfo":
+        info = cls()
+        path = (path or "").strip().strip('"')
+        if not path or "{" in path:
+            return info
+        if not os.path.isfile(path):
+            info.error = f"Fisierul nu exista: {path}"
+            return info
+        key = (path, os.path.getmtime(path), (sheet or "").lower(), header_row)
+        if key in cls._cache:
+            return cls._cache[key]
+        try:
+            from .excel import ExcelTable
+            info.sheets = ExcelTable.sheet_names(path)
+            with ExcelTable.open(path, sheet, header_row) as t:
+                info.headers = t.header_titles
+                last = t.last_data_row("")
+                info.data_rows = max(0, last - t.first_data_row(0) + 1)
+        except Exception as ex:  # noqa: BLE001
+            info.error = str(ex)
+        if len(cls._cache) > 50:
+            cls._cache.clear()
+        cls._cache[key] = info
+        return info
+
+
 class RunLogExporter:
     """Logul rularii in Excel (randurile cu erori colorate)."""
 

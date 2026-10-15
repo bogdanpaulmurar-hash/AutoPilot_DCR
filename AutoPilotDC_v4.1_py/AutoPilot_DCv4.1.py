@@ -2317,6 +2317,41 @@ class RunIndicatorOverlay:
         self._after_id = self._root.after(800, self._pulse)
 
 
+class FlowFrame(tk.Frame):
+    """[v4.1] Bara de actiuni: grupurile de butoane trec pe randul urmator cand nu incap."""
+
+    def __init__(self, master, **kw):
+        super().__init__(master, **kw)
+        self._items = []
+        self._last = None
+        self.bind("<Configure>", lambda e: self._relayout())
+
+    def set_items(self, items):
+        for w in self._items:
+            w.place_forget()
+        self._items = list(items)
+        self._last = None
+        self.after_idle(self._relayout)
+
+    def _relayout(self):
+        width = self.winfo_width()
+        if width <= 1:
+            width = self.master.winfo_width()
+        x = y = row_h = 0
+        pad = 6
+        for w in self._items:
+            rw, rh = w.winfo_reqwidth(), w.winfo_reqheight()
+            if x > 0 and x + rw > width:
+                x, y, row_h = 0, y + row_h + 2, 0
+            w.place(x=x + pad, y=y + 3)
+            x += rw + pad
+            row_h = max(row_h, rh)
+        height = y + row_h + 6
+        if height != self._last:
+            self._last = height
+            self.configure(height=height)
+
+
 class MainWindow:
     """
     [GUI] Fereastra principala a aplicatiei AutoPilot DC.
@@ -2391,6 +2426,12 @@ class MainWindow:
 
         # ── 14.8 Conectare callbacks ──────────────────────────────
         self._connect_callbacks()
+
+        # v4.1: ultima zona de lucru folosita
+        if self.settings.get("ui_mode", "recorder") == "studio":
+            self.root.after(100, lambda: self._set_mode("studio"))
+        else:
+            self._set_mode("recorder")
 
         # ── 14.9 Hotkeys ──────────────────────────────────────────
         self._register_hotkeys()
@@ -2500,122 +2541,163 @@ class MainWindow:
     # ==========================================================================
 
     def _build_toolbar(self):
-        """Construieste bara de instrumente principala."""
-        tb = tk.Frame(self.root, bg=C["bg_card"], height=52)
-        tb.pack(fill="x", side="top")
-        tb.pack_propagate(False)
-        self._toolbar = tb
+        """[v4.1] Bara de sus pe doua randuri:
+        1. antet: comutator Recorder / Studio, stare, setari, STOP URGENTA (mereu vizibile)
+        2. actiuni mici, grupate, specifice zonei de lucru; trec pe randul urmator daca nu incap."""
+        hdr = tk.Frame(self.root, bg=C["bg_card"])
+        hdr.pack(fill="x", side="top")
+        self._toolbar = hdr
 
-        def tbtn(text, cmd, bg, hover=None, width=130):
-            _fg = _btn_fg(bg)
-            _hover = hover or bg
-            b = tk.Button(tb, text=text, command=cmd,
-                        bg=bg, fg=_fg, activebackground=_hover,
-                        activeforeground=_btn_fg(_hover),
-                        font=("Segoe UI", 11, "bold"),
-                        relief="flat", padx=8, pady=4,
-                        cursor="hand2", bd=0,
-                        highlightthickness=2,
-                        highlightbackground=bg,
-                        highlightcolor="white")
-            b.pack(side="left", padx=3, pady=8)
-            setattr(b, "_orig_bg", bg); setattr(b, "_orig_fg", _fg)
+        tk.Label(hdr, text="AutoPilot DC", bg=C["bg_card"], fg=C["primary"],
+                 font=("Segoe UI", 13, "bold")).pack(side="left", padx=(12, 14), pady=6)
+
+        # ── Comutator zone de lucru ──
+        self._mode = "recorder"
+        self._studio = None
+        self._mode_btns = {}
+        sw = tk.Frame(hdr, bg=C["bg_main"])
+        sw.pack(side="left", pady=6)
+        for key, text, tip in [("recorder", "🎬  Recorder", "Inregistrare si redare pe coordonate (mouse / tastatura)"),
+                               ("studio", "🧩  Studio RPR", "Rutine pe obiecte: Web / SAP / Desktop + Excel, fara cod")]:
+            b = tk.Button(sw, text=text, command=lambda k=key: self._set_mode(k), relief="flat", bd=0,
+                          font=("Segoe UI", 10, "bold"), padx=14, pady=4, cursor="hand2")
+            b.pack(side="left", padx=1, pady=1)
+            self._mode_btns[key] = b
+            ToolTip(b, tip, "")
+
+        def hbtn(text, cmd, bg=None, fg=None, tip=""):
+            b = tk.Button(hdr, text=text, command=cmd, bg=bg or C["bg_input"], fg=fg or C["text"],
+                          activebackground=C["primary"], activeforeground="white", relief="flat", bd=0,
+                          font=("Segoe UI", 9, "bold"), padx=9, pady=4, cursor="hand2")
+            b.pack(side="right", padx=2, pady=6)
+            if tip:
+                ToolTip(b, tip, "")
             return b
 
-        def sep():
-            tk.Frame(tb, bg=C["border"], width=1).pack(
-                side="left", fill="y", pady=8, padx=2)
-
-        # ── Inregistrare ──
-        self._btn_rec   = tbtn("⏺  Inregistreaza", self._toggle_recording,
-                               C["danger"], C["danger_hover"])
-        self._btn_stopr = tbtn("⏹  Stop Rec",      self._stop_recording,
-                               C["bg_input"])
-        sep()
-        # ── Redare ──
-        self._btn_play  = tbtn("▶  Ruleaza",        self._start_playback,
-                               C["success"], C["success_hover"])
-        self._btn_pause = tbtn("⏸  Pauza",          self._toggle_pause,
-                               C["warning"])
-        self._btn_stopp = tbtn("⏹  Stop",           self._stop_playback,
-                               C["danger"], C["danger_hover"], width=90)
-        sep()
-        # ── Rutina ──
-        self._btn_save  = tbtn("💾  Salveaza",       self._save_routine_dialog,
-                               C["primary"], C["primary_hover"])
-        self._btn_reset = tbtn("🗑  Reseteaza",      self._clear_all_steps,
-                               C["bg_input"])
-        sep()
-        # ── Repetari ──
-        tk.Label(tb, text="Repetari:", bg=C["bg_card"], fg=C["text"],
-                 font=("Segoe UI", 11)).pack(side="left", padx=(4, 2))
-        self._entry_repeat = tk.Entry(tb, textvariable=self._repeat_var,
-                                      width=5, bg=C["bg_input"], fg=C["text"],
-                                      font=("Segoe UI", 12, "bold"),
-                                      justify="center", relief="flat",
-                                      insertbackground=C["text"])
-        self._entry_repeat.pack(side="left", padx=(0, 4))
-
-        # ── Countdown + Iteratie (dreapta) ──
-        self._lbl_iter = tk.Label(tb, textvariable=self._iter_var,
-                                  bg=C["bg_card"], fg=C["accent"],
-                                  font=("Segoe UI", 11, "bold"))
-        self._lbl_iter.pack(side="right", padx=8)
-
-        self._lbl_cd = tk.Label(tb, textvariable=self._countdown_var,
-                                bg=C["bg_card"], fg=C["warning"],
-                                font=("Segoe UI", 22, "bold"), width=4)
+        # dreapta -> stanga
+        self._btn_emg = tk.Button(hdr, text="🚨 STOP URGENTA", command=self._emergency_stop,
+                                  bg=C["emergency"], fg="white", activebackground="#5A0000",
+                                  activeforeground="white", font=("Segoe UI", 10, "bold"),
+                                  relief="flat", padx=10, pady=4, cursor="hand2")
+        self._btn_emg.pack(side="right", padx=(4, 10), pady=6)
+        self._btn_exit = hbtn("✕", self._on_close, bg=C["bg_main"], fg=C["text_dim"], tip="Inchide aplicatia")
+        hbtn("❓", self._help_for_mode, tip="Ghid (Recorder sau Studio, dupa zona deschisa)")
+        hbtn("⚙", lambda: (self._set_mode("recorder"), self._open_settings_tab()), tip="Setari aplicatie")
+        self._btn_sc = hbtn("⌨", self._toggle_shortcuts_panel, tip="Afiseaza / ascunde panoul de shortcut-uri")
+        self._lbl_cd = tk.Label(hdr, textvariable=self._countdown_var, bg=C["bg_card"], fg=C["warning"],
+                                font=("Segoe UI", 18, "bold"), width=4)
         self._lbl_cd.pack(side="right", padx=4)
+        self._lbl_iter = tk.Label(hdr, textvariable=self._iter_var, bg=C["bg_card"], fg=C["accent"],
+                                  font=("Segoe UI", 10, "bold"))
+        self._lbl_iter.pack(side="right", padx=6)
 
-        # ── Emergency Stop ──
-        self._btn_emg = tk.Button(tb, text="🚨 STOP URGENTA",
-                                  command=self._emergency_stop,
-                                  bg=C["emergency"], fg="white",
-                                  activebackground="#5A0000", activeforeground="white",
-                                  font=("Segoe UI", 11, "bold"),
-                                  relief="flat", padx=10, pady=4,
-                                  cursor="hand2")
-        self._btn_emg.pack(side="right", padx=(4, 10))
+        # ── Randul 2: actiunile zonei de lucru ──
+        self._actions = FlowFrame(self.root, bg=C["bg_main"], height=40)
+        self._actions.pack(fill="x", side="top")
+        self._groups = {"recorder": [], "studio": []}
 
-        # v3.9: Buton Shortcut-uri
-        self._btn_sc = tk.Button(
-            tb, text="\u2328  Shortcut-uri",
-            command=self._toggle_shortcuts_panel,
-            bg=C["bg_input"], fg=C["text"],
-            activebackground=C["primary"], activeforeground="white",
-            font=("Segoe UI", 10), relief="flat",
-            padx=8, pady=4, cursor="hand2"
-        )
-        self._btn_sc.pack(side="right", padx=(2, 2))
+        def group(mode, title):
+            g = tk.Frame(self._actions, bg=C["bg_main"])
+            tk.Label(g, text=title, bg=C["bg_main"], fg=C["text_muted"],
+                     font=("Segoe UI", 7, "bold")).pack(anchor="w", padx=2)
+            row = tk.Frame(g, bg=C["bg_main"])
+            row.pack(anchor="w")
+            self._groups[mode].append(g)
+            return row
 
-        # v3.9: Buton Exit
-        self._btn_exit = tk.Button(
-            tb, text="\u2715  Exit",
-            command=self._on_close,
-            bg=C["bg_main"], fg=C["text_dim"],
-            activebackground="#3A3A4E", activeforeground=C["text"],
-            font=("Segoe UI", 10), relief="flat",
-            padx=8, pady=4, cursor="hand2"
-        )
-        self._btn_exit.pack(side="right", padx=(2, 4))
+        def abtn(row, text, cmd, bg=None, tip="", sc=""):
+            bg = bg or C["bg_input"]
+            b = tk.Button(row, text=text, command=cmd, bg=bg, fg=_btn_fg(bg), activebackground=C["primary"],
+                          activeforeground="white", relief="flat", bd=0, font=("Segoe UI", 9, "bold"),
+                          padx=8, pady=3, cursor="hand2", highlightthickness=1, highlightbackground=bg)
+            b.pack(side="left", padx=2)
+            setattr(b, "_orig_bg", bg)
+            setattr(b, "_orig_fg", _btn_fg(bg))
+            if tip:
+                ToolTip(b, tip, sc)
+            return b
 
+        _sc = self.settings.get("shortcuts", DEFAULT_SHORTCUTS)
+        # Recorder
+        r = group("recorder", "INREGISTRARE")
+        self._btn_rec = abtn(r, "⏺ Inregistreaza", self._toggle_recording, C["danger"],
+                             "Incepe inregistrarea actiunilor", _sc.get("start_rec", "F5"))
+        self._btn_stopr = abtn(r, "⏹ Stop Rec", self._stop_recording, None, "Opreste inregistrarea",
+                               _sc.get("stop_rec", "F6"))
+        r = group("recorder", "REDARE")
+        self._btn_play = abtn(r, "▶ Ruleaza", self._start_playback, C["success"], "Ruleaza rutina inregistrata",
+                              _sc.get("play", "F7"))
+        self._btn_pause = abtn(r, "⏸ Pauza", self._toggle_pause, C["warning"], "Pauza / Reia redarea",
+                               _sc.get("pause", "F8"))
+        self._btn_stopp = abtn(r, "⏹ Stop", self._stop_playback, C["danger"], "Opreste redarea",
+                               _sc.get("stop_play", "F9"))
+        tk.Label(r, text=" Repetari", bg=C["bg_main"], fg=C["text_dim"], font=("Segoe UI", 9)).pack(side="left")
+        self._entry_repeat = tk.Entry(r, textvariable=self._repeat_var, width=4, bg=C["bg_input"], fg=C["text"],
+                                      font=("Segoe UI", 10, "bold"), justify="center", relief="flat",
+                                      insertbackground=C["text"])
+        self._entry_repeat.pack(side="left", padx=(3, 2), ipady=2)
+        r = group("recorder", "RUTINA")
+        abtn(r, "📂 Deschide", self._open_routine_dialog, None, "Deschide o rutina salvata", _sc.get("open", "Ctrl+O"))
+        self._btn_save = abtn(r, "💾 Salveaza", self._save_routine_dialog, C["primary"], "Salveaza rutina curenta",
+                              _sc.get("save", "Ctrl+S"))
+        self._btn_reset = abtn(r, "🗑 Reseteaza", self._clear_all_steps, None, "Sterge toti pasii din rutina curenta")
 
-        # ── Stare initiala butoane ──
+        # Studio (comenzile ajung la panoul Studio, creat la prima deschidere)
+        st = lambda name, *a: (lambda: getattr(self._studio, name)(*a) if self._studio else None)  # noqa: E731
+        r = group("studio", "RUTINA")
+        abtn(r, "📄 Nou", st("new_routine"), None, "Rutina noua (Ctrl+N)")
+        abtn(r, "📂 Deschide", st("open_routine"), None, "Deschide o rutina .rpr.json (sau una veche, se converteste)")
+        abtn(r, "💾 Salveaza", st("save_routine"), C["primary"], "Salveaza rutina")
+        abtn(r, "Salveaza ca…", st("save_routine", True), None, "Salveaza intr-un fisier nou")
+        abtn(r, "📚 Exemple", st("show_examples"), None, "Rutinele exemplu (incepe cu 01 Invatare)")
+        r = group("studio", "RULARE")
+        abtn(r, "▶ Ruleaza", st("run"), C["success"], "Ruleaza rutina", "F7")
+        abtn(r, "⏭ Pas cu pas", st("run", True), None, "Fiecare apasare executa un singur pas")
+        abtn(r, "⏸ Pauza", st("toggle_pause"), C["warning"], "Pauza / reluare", "Ctrl+F11")
+        abtn(r, "⏹ Stop", st("stop"), C["danger"], "Opreste rutina", "Ctrl+F12")
+        r = group("studio", "OBIECTE (SPY)")
+        abtn(r, "🎯 Web", lambda: self._studio and self._studio.spy("Web"), None, "Marcheaza un element din browser")
+        abtn(r, "🎯 SAP", lambda: self._studio and self._studio.spy("SAP"), None, "Marcheaza un camp / buton SAP")
+        abtn(r, "🎯 Desktop", lambda: self._studio and self._studio.spy("Desktop"), None,
+             "Marcheaza un element dintr-o aplicatie Windows")
+        r = group("studio", "RUTINA CURENTA")
+        abtn(r, "⚙ Setari rutina", st("show_routine_settings"), None, "Setarile rutinei si variabilele")
+        abtn(r, "❓ Ghid", st("show_guide"), None, "Ghidul pas cu pas al Studio")
+
         self._set_btn_state_idle()
 
-        # v3.9: Tooltipuri
-        _sc = self.settings.get("shortcuts", DEFAULT_SHORTCUTS)
-        ToolTip(self._btn_rec,   "Incepe inregistrarea actiunilor",       _sc.get("start_rec",  "Ctrl+Alt+Shift+0"))
-        ToolTip(self._btn_stopr, "Opreste inregistrarea",                 _sc.get("stop_rec",   "F6"))
-        ToolTip(self._btn_play,  "Ruleaza rutina inregistrata",           _sc.get("play",       "F7"))
-        ToolTip(self._btn_pause, "Pauza / Reia redarea",                  _sc.get("pause",      "F8"))
-        ToolTip(self._btn_stopp, "Opreste redarea",                       _sc.get("stop_play",  "F9"))
-        ToolTip(self._btn_save,  "Salveaza rutina curenta",               _sc.get("save",       "Ctrl+S"))
-        ToolTip(self._btn_reset, "Sterge toti pasii din rutina curenta",  "")
-        ToolTip(self._btn_emg,   "STOP DE URGENTA - opreste tot imediat", _sc.get("emergency",  "F12"))
-        ToolTip(self._btn_sc,    "Afiseaza/Ascunde panoul de shortcut-uri", "")
-        ToolTip(self._btn_exit,  "Inchide aplicatia",                     "Alt+F4")
+    def _set_mode(self, mode: str):
+        """[v4.1] Comuta zona de lucru: Recorder (coordonate) sau Studio RPR (obiecte)."""
+        if mode == "studio" and self._studio is None:
+            try:
+                from studio_ui import StudioPanel
+                self._studio = StudioPanel(self._workspace, C, run_frame=self.run_frame,
+                                           on_status=self._status_var.set)
+            except Exception as ex:
+                import traceback
+                traceback.print_exc()
+                messagebox.showerror("Studio RPR", f"Studio nu a putut porni:\n{ex}")
+                return
+        self._mode = mode
+        for key, b in self._mode_btns.items():
+            on = key == mode
+            b.configure(bg=C["primary"] if on else C["bg_card"], fg="white" if on else C["text_dim"],
+                        activebackground=C["primary"], activeforeground="white")
+        if mode == "studio":
+            self._nb.pack_forget()
+            self._studio.pack(fill="both", expand=True)
+        else:
+            if self._studio is not None:
+                self._studio.pack_forget()
+            self._nb.pack(fill="both", expand=True, padx=6, pady=(4, 0))
+        self._actions.set_items(self._groups[mode])
+        self.settings.set("ui_mode", mode)
 
+    def _help_for_mode(self):
+        if self._mode == "studio" and self._studio is not None:
+            self._studio.show_guide()
+        else:
+            self._show_quick_guide()
 
     # ==========================================================================
     # SECTIUNEA 14.C: TABS
@@ -2638,7 +2720,10 @@ class MainWindow:
                   background=[("selected", C["primary"])],
                   foreground=[("selected", "white")])
 
-        self._nb = ttk.Notebook(self.root, style="Main.TNotebook")
+        # v4.1: zona de lucru comuna (Recorder = tab-urile de mai jos, Studio = panoul Studio)
+        self._workspace = tk.Frame(self.root, bg=C["bg_main"])
+        self._workspace.pack(fill="both", expand=True)
+        self._nb = ttk.Notebook(self._workspace, style="Main.TNotebook")
         self._nb.pack(fill="both", expand=True, padx=6, pady=(4, 0))
 
         # ── Creeaza frame-urile tab-urilor ──
@@ -3749,6 +3834,8 @@ CONTACT: {APP_AUTHOR}
     # ── Recorder actions ─────────────────────────────────────────
     def _toggle_recording(self):
         """Porneste sau opreste inregistrarea."""
+        if getattr(self, "_mode", "recorder") == "studio" and not self._is_recording:
+            return  # in Studio, F5 nu porneste recorderul pe coordonate
         if not self._is_recording:
             self._start_recording()
         else:
@@ -4022,6 +4109,9 @@ CONTACT: {APP_AUTHOR}
     # ── Player actions ────────────────────────────────────────────
     def _start_playback(self):
         """Porneste redarea rutinei."""
+        if getattr(self, "_mode", "recorder") == "studio" and self._studio is not None:
+            self._studio.run()
+            return
         steps = self.recorder.get_steps()
         if not steps:
             messagebox.showwarning("Fara pasi",
@@ -4046,6 +4136,9 @@ CONTACT: {APP_AUTHOR}
 
     def _toggle_pause(self):
         """Comuta pauza/reluare."""
+        if getattr(self, "_mode", "recorder") == "studio" and self._studio is not None and self._studio.busy:
+            self._studio.toggle_pause()
+            return
         if self.player.is_paused:
             self.player.resume()
         else:
@@ -4053,10 +4146,14 @@ CONTACT: {APP_AUTHOR}
 
     def _stop_playback(self):
         """Opreste redarea."""
+        if self._studio is not None and self._studio.busy:
+            self._studio.stop()
         self.player.stop()
 
     def _emergency_stop(self):
         """Oprire de urgenta."""
+        if self._studio is not None and self._studio.busy:
+            self._studio.stop()
         self.player.emergency_stop()
         if self._is_recording:
             self.recorder.stop()
@@ -5199,6 +5296,11 @@ CONTACT: {APP_AUTHOR}
 
     def _on_close(self):
         """Gestioneaza inchiderea aplicatiei cu dialog de salvare."""
+        if self._studio is not None:
+            if self._studio.busy:
+                self._studio.stop()
+            if not self._studio.confirm_discard():
+                return
 
         steps = self.recorder.get_steps()
 

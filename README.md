@@ -40,7 +40,8 @@ Toate se pot opri din **Setări → 🛡 Siguranța la rulare** (în Studio RPR:
 - **`AutoPilot_DC.pyw` — fișierul de pornire (dublu click), fără fereastră de consolă.**
   Dacă lipsesc pachete, oferă butonul **„Instalează acum”** (pornește `INSTALEAZA.bat` pentru
   exact Python-ul care deschide aplicația); erorile se scriu în `loguri/autopilot_console.log`.
-- `rpr/` — **Studio RPR în Python (în lucru)**: motorul de rutine pe obiecte (pași ca arbore,
+- `studio_ui.py` — **Studio RPR** (editorul vizual), deschis din comutatorul din bara de sus.
+- `rpr/` — motorul Studio RPR: rutine pe obiecte (pași ca arbore,
   condiții, bucle, variabile, Excel, Încearcă/La eroare, sistemul de prevenție). Fișierele
   `.rpr.json` și `obiecte.json` sunt **identice cu cele din C#** (verificat pe cele 5 exemple).
   Rulare fără interfață: `py -m rpr run "rutina.rpr.json"`.
@@ -66,10 +67,13 @@ Starea migrării Studio RPR în Python:
 | Etapa | Ce conține | Stare |
 |---|---|---|
 | 1 | Motorul + Excel + rulare din linie de comandă + teste | ✅ gata |
+| 4 | Editorul vizual (Studio) în aplicație — comutatorul **🧩 Studio RPR** din bara de sus | ✅ gata (adus înainte, ca să-l poți vedea) |
 | 2 | Driver Web (Playwright): acțiuni, Spy, înregistrare, iframe-uri | urmează |
 | 3 | SAP GUI + aplicații desktop | urmează |
-| 4 | Editorul vizual (Studio) în aplicație | urmează |
 | 5 | Renunțarea la versiunea C# | după testare |
+
+Interfața Python v4.1: bara de sus are două rânduri — **comutatorul Recorder / Studio RPR** + STOP URGENȚĂ, apoi
+butoane mici, grupate, specifice zonei deschise, care trec pe rândul următor când fereastra e îngustă.
 
 ## AutoPilotDC_C# (C# WPF .NET 8)
 
