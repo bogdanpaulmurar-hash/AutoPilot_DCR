@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 # ╔══════════════════════════════════════════════════════════════════════════════╗
-# ║          AUTOPILOT DC v3.9 — Tool de Automatizare RPA & Data Cleansing       ║
+# ║          AUTOPILOT DC v4.1 — Tool de Automatizare RPA & Data Cleansing       ║
 # ║          Autor: Bogdan Murar | Realizat cu ajutorul unui asistent AI         ║
 # ╚══════════════════════════════════════════════════════════════════════════════╝
 
@@ -105,7 +105,7 @@ except ImportError:
 
 # 2.1 — Informatii aplicatie
 APP_NAME    = "AutoPilot DC"
-APP_VERSION          = "3.9"
+APP_VERSION          = "4.1"
 APP_AUTHOR  = "Bogdan Murar (Z003FU5C)"
 
 # 2.2 — Directoare de lucru (in acelasi folder cu scriptul)
@@ -2412,6 +2412,17 @@ class MainWindow:
 
     def run(self):
         """Porneste bucla principala a aplicatiei."""
+        # v4.1: pornita fara consola (.pyw), fereastra poate ramane in spatele altora -> o aducem in fata
+        def _bring_to_front():
+            try:
+                self.root.deiconify()
+                self.root.lift()
+                self.root.attributes("-topmost", True)
+                self.root.after(400, lambda: self.root.attributes("-topmost", False))
+                self.root.focus_force()
+            except Exception:
+                pass
+        self.root.after(300, _bring_to_front)
         self.root.mainloop()
 
     # ==========================================================================

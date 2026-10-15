@@ -33,8 +33,11 @@ Toate se pot opri din **Setări → 🛡 Siguranța la rulare** (în Studio RPR:
 
 ## AutoPilotDC_v3.9_py (Python)
 
-- `AutoPilot_DCv3.9.py` — aplicația principală (recorder + player pași
-  desktop/mouse/tastatură cu `pynput`, GUI `customtkinter`).
+- **`AutoPilot_DC.pyw` — fișierul de pornire (dublu click), fără fereastră de consolă.**
+  Dacă lipsesc pachete, afișează o fereastră cu comanda `pip` de rulat; erorile se scriu în
+  `loguri/autopilot_console.log`.
+- `AutoPilot_DCv3.9.py` — aplicația principală, v4.1 (recorder + player pași
+  desktop/mouse/tastatură cu `pynput`, GUI `customtkinter`). Pornită direct, deschide și consola.
 - `autopilot_safety.py` — **v4.1**: Nu deranja, chenarul RUN/REC, sistemul de prevenție.
   Trebuie să fie în același folder cu aplicația.
 - `AutoPilot_DCv3.9_RedCursor.py` — variantă veche cu overlay de cursor vizual
@@ -48,8 +51,9 @@ Rulare:
 ```powershell
 cd AutoPilotDC_v3.9_py
 pip install customtkinter pynput pyautogui openpyxl pillow
-python AutoPilot_DCv3.9.py
 ```
+Apoi dublu click pe **`AutoPilot_DC.pyw`** (sau `pythonw AutoPilot_DC.pyw`). Pentru o
+scurtătură pe Desktop: click dreapta pe `AutoPilot_DC.pyw` → *Send to* → *Desktop (create shortcut)*.
 
 ## AutoPilotDC_C# (C# WPF .NET 8)
 
