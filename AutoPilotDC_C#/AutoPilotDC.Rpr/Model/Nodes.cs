@@ -97,6 +97,12 @@ public sealed class ActionNode : RprNode
     /// <summary>Variabila in care se salveaza rezultatul (pentru Citeste...).</summary>
     public string OutputVariable { get; set; } = "";
 
+    /// <summary>
+    /// v4.1: valoarea asteptata la citire (optional, accepta {variabile} si * = orice text).
+    /// Daca valoarea citita e diferita, rutina se opreste si te intreaba.
+    /// </summary>
+    public string ExpectedValue { get; set; } = "";
+
     /// <summary>Tehnologia pentru actiuni fara obiect (Deschide browser, SAP...).</summary>
     public UiTechnology Technology { get; set; } = UiTechnology.Web;
 

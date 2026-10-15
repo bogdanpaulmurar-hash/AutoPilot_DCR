@@ -7,6 +7,7 @@
 
 using System.IO;
 using AutoPilotDC.Infrastructure.Engines;
+using AutoPilotDC.Infrastructure.Services;
 using AutoPilotDC.Rpr.Engine;
 using AutoPilotDC.Rpr.Storage;
 
@@ -35,7 +36,25 @@ public static class HeadlessRunner
 
             await using var drivers = new StudioDriverProvider(StudioSettings.Load());
             var engine = new RprEngine(repo, drivers, host, RprPaths.Output);
-            var result = await engine.RunAsync(routine);
+
+            // v4.1: fara notificari + chenar RUN si la rularile programate
+            bool dnd = routine.Settings.DoNotDisturb;
+            if (dnd)
+            {
+                await Task.Run(DoNotDisturb.Enable);
+                writer.WriteLine(DoNotDisturb.LastMessage);
+            }
+            Overlays.RunFrame.Show(Overlays.FrameMode.Run);
+            RunResult result;
+            try
+            {
+                result = await engine.RunAsync(routine);
+            }
+            finally
+            {
+                Overlays.RunFrame.Hide();
+                if (dnd) await Task.Run(DoNotDisturb.Restore);
+            }
 
             var xlsx = Path.Combine(RprPaths.Output,
                 $"Log_programat_{Rpr.Model.ObjectRepository.Sanitize(routine.Name)}_{DateTime.Now:yyyyMMdd_HHmmss}.xlsx");

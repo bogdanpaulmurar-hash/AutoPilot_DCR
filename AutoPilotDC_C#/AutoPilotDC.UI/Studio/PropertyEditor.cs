@@ -217,6 +217,10 @@ public sealed class PropertyEditor
         {
             AddText(a, "Salveaza rezultatul in variabila", () => a.OutputVariable, v => a.OutputVariable = v, vars: false);
             _host.Children.Add(Ui.Hint("Ex: Status. Apoi folosesti {Status} in pasii urmatori, in conditii sau in Excel."));
+
+            AddText(a, "Valoarea asteptata (optional)", () => a.ExpectedValue, v => a.ExpectedValue = v);
+            _host.Children.Add(Ui.Hint("Daca valoarea citita e diferita, rutina se opreste si te intreaba. " +
+                                       "* = orice text. Ex: S:*  (orice mesaj de succes SAP),  {Rand.Status},  Salvat*"));
         }
 
         // 6. Optiuni
@@ -363,6 +367,12 @@ public sealed class PropertyEditor
         AddRoutineInt("Pauza intre pasi (ms) — util la verificare", () => s.StepDelayMs, v => s.StepDelayMs = v);
         AddRoutineInt("Reincercari automate la eroare", () => s.AutoRetries, v => s.AutoRetries = v);
         AddRoutineCheck("Captura de ecran automata la eroare", () => s.ScreenshotOnError, v => s.ScreenshotOnError = v);
+
+        _host.Children.Add(Ui.Caption("Siguranta la rulare"));
+        AddRoutineCheck("🌙 Nu deranja (fara notificari Windows) cat timp ruleaza", () => s.DoNotDisturb, v => s.DoNotDisturb = v);
+        AddRoutineCheck("🛡 Sistem de preventie (pauza + intrebare cand ceva difera)", () => s.GuardEnabled, v => s.GuardEnabled = v);
+        _host.Children.Add(Ui.Hint("Te intreaba inainte sa continue cand: apare o fereastra de eroare, aplicatia nu raspunde, " +
+                                   "SAP arata o eroare in bara de stare sau o valoare citita difera de \"Valoarea asteptata\" a pasului."));
 
         // ── Variabile ───────────────────────────────────────
         _host.Children.Add(Ui.Caption("Variabile (valori de start, folosite ca {Nume})"));

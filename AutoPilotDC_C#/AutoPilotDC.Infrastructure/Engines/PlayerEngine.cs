@@ -12,6 +12,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using AutoPilotDC.Core.Interfaces;
+using AutoPilotDC.Infrastructure.Safety;
 using AutoPilotDC.Infrastructure.Services;
 using AutoPilotDC.Models;
 using AutoPilotDC.Playwright;
@@ -43,6 +44,16 @@ public class PlayerEngine : IPlayer
     public EndOfCycleAction        EndOfCycleAction      { get; set; } = EndOfCycleAction.None;
     public bool                    SuppressNotifications { get; set; } = true;
     public bool                    PreventSleepOption    { get; set; } = true;
+
+    // -- v4.1: Sistemul de preventie ------------------------------------------
+    /// <summary>Verifica ecranul inainte de fiecare pas (null = dezactivat).</summary>
+    public SafetyGuard?            Guard                 { get; set; }
+
+    /// <summary>
+    /// Intreaba utilizatorul cand Guard gaseste o diferenta sau un pas esueaza.
+    /// (pas, alerta, poate reincerca) -> decizie. Null = continua fara intrebari.
+    /// </summary>
+    public Func<StepModel, GuardAlert, bool, Task<GuardDecision>>? OnGuardQuestion { get; set; }
 
     private volatile bool _isRunning;
     private volatile bool _isPaused;
@@ -141,7 +152,11 @@ public class PlayerEngine : IPlayer
 
         // ── Power + Notifications ─────────────────────────────────────────────
         if (PreventSleepOption)        PowerMgmt?.PreventSleep();
-        if (SuppressNotifications)     PowerMgmt?.SuppressNotifications();
+        // "Nu deranja" poate dura cateva secunde (reporneste serviciul de notificari): in fundal,
+        // in paralel cu numaratoarea inversa
+        Task dndTask = SuppressNotifications && PowerMgmt != null
+            ? Task.Run(() => PowerMgmt.SuppressNotifications())
+            : Task.CompletedTask;
 
         // ── Watchdog ──────────────────────────────────────────────────────────
         if (Watchdog != null)
@@ -190,6 +205,7 @@ public class PlayerEngine : IPlayer
                 await Task.Delay(1000, _cts.Token);
             }
             OnCountdown?.Invoke(0);
+            await dndTask;
             OnStarted?.Invoke();
             OnStatusChanged?.Invoke("Redare activa");
 
@@ -211,6 +227,8 @@ public class PlayerEngine : IPlayer
                 _cts.Token.ThrowIfCancellationRequested();
                 OnIterUpdate?.Invoke(iter + 1, repeatCount);
 
+                Guard?.BeginRun();
+
                 for (int si = 0; si < stepList.Count; si++)
                 {
                     var step = stepList[si];
@@ -225,30 +243,60 @@ public class PlayerEngine : IPlayer
                     OnProgressChanged?.Invoke(si + 1, totalSteps);
                     OnStatusChanged?.Invoke($"Pas {si + 1}/{totalSteps}: {step.StepType}");
 
+                    // Asteptarea dinainte de pas se face AICI, ca verificarea sa vada ecranul de dupa ea
+                    var adjustedStep = ApplySpeed(step, speed).Clone();
+                    if (adjustedStep.DelayBefore > 0 && !_isDryRun)
+                        await Task.Delay(TimeSpan.FromSeconds(adjustedStep.DelayBefore), _cts.Token);
+                    adjustedStep.DelayBefore = 0;
+
+                    // ── v4.1: Sistemul de preventie ────────────────────
+                    if (!_isDryRun && Guard != null)
+                    {
+                        var upcoming = stepList.Skip(si).Where(s => !s.Skip).ToList();
+                        var alert = await Task.Run(() => Guard.CheckBeforeStep(step, upcoming), _cts.Token);
+                        if (alert != null)
+                        {
+                            var decision = await AskGuardAsync(step, alert, canRetry: false);
+                            if (decision == GuardDecision.Stop) { success = false; _cts.Cancel(); _cts.Token.ThrowIfCancellationRequested(); }
+                            if (decision == GuardDecision.SkipStep) continue;
+                            if (decision == GuardDecision.IgnoreStep) step.GuardIgnore = true;
+                        }
+                    }
+
                     Watchdog?.NotifyStepStarted(step);
 
-                    var adjustedStep = ApplySpeed(step, speed);
-
                     bool ok; string err;
+                    while (true)
+                    {
+                        if (_isDryRun)
+                        {
+                            await SimulateStepAsync(adjustedStep);
+                            ok = true; err = string.Empty;
+                        }
+                        else
+                        {
+                            (ok, err) = await ExecuteStepCoreAsync(adjustedStep, _cts.Token);
+                        }
+                        if (ok || _isDryRun || OnGuardQuestion == null) break;
 
-                    // ── Dry Run mode (Faza 10) ────────────────────────
-                    if (_isDryRun)
-                    {
-                        await SimulateStepAsync(adjustedStep);
-                        ok = true; err = string.Empty;
-                    }
-                    else
-                    {
-                        (ok, err) = await ExecuteStepCoreAsync(adjustedStep, _cts.Token);
+                        // Pasul a esuat: pauza + intrebare (inainte rutina mergea mai departe in tacere)
+                        OnStepError?.Invoke(step, err);
+                        var d = await AskGuardAsync(step,
+                            new GuardAlert($"Pasul {step.StepId} ({step.GetDisplayType()}) a esuat", err, "error:" + step.StepId, CanIgnoreStep: false),
+                            canRetry: true);
+                        if (d == GuardDecision.Retry) continue;
+                        if (d == GuardDecision.Stop) { success = false; _cts.Cancel(); _cts.Token.ThrowIfCancellationRequested(); }
+                        break; // Continua / Sari pasul: mergem mai departe
                     }
 
                     Watchdog?.NotifyStepFinished();
+                    Guard?.AfterStep();
 
                     if (ok)
                         OnStepFinished?.Invoke(step);
                     else
                     {
-                        OnStepError?.Invoke(step, err);
+                        if (OnGuardQuestion == null) OnStepError?.Invoke(step, err);
                         success = false;
                     }
                 }
@@ -273,11 +321,41 @@ public class PlayerEngine : IPlayer
         {
             Watchdog?.Stop();
             PowerMgmt?.RestoreSleep();
-            PowerMgmt?.RestoreNotifications();
+            // repornirea notificarilor dureaza cateva secunde: in fundal, ca interfata sa nu se blocheze
+            var power = PowerMgmt;
+            if (power != null) _ = Task.Run(power.RestoreNotifications);
             _isRunning = false;
             _isPaused  = false;
             OnPlaybackFinished?.Invoke(success);
         }
+    }
+
+    // =========================================================
+    // v4.1: Intrebare la diferente / erori — rutina sta pe pauza pana la raspuns
+    // =========================================================
+    private async Task<GuardDecision> AskGuardAsync(StepModel step, GuardAlert alert, bool canRetry)
+    {
+        OnStatusChanged?.Invoke($"⚠ {alert.Title} — astept decizia ta");
+        if (OnGuardQuestion == null) return GuardDecision.Continue;
+
+        _isPaused = true;
+        OnPaused?.Invoke();
+        GuardDecision decision;
+        try
+        {
+            decision = await OnGuardQuestion(step, alert, canRetry);
+        }
+        finally
+        {
+            _isPaused = false;
+            OnResumed?.Invoke();
+        }
+
+        Guard?.Acknowledge();
+        OnStatusChanged?.Invoke(decision == GuardDecision.Stop
+            ? "Oprit la cererea ta."
+            : $"Preventie: \"{alert.Title}\" -> {decision}. Redare reluata.");
+        return decision;
     }
 
     // =========================================================
@@ -436,30 +514,10 @@ public class PlayerEngine : IPlayer
     {
         if (Math.Abs(speed - 1.0) < 0.001) return step;
 
-        return new StepModel
-        {
-            StepId          = step.StepId,
-            StepType        = step.StepType,
-            Description     = step.Description,
-            X               = step.X,
-            Y               = step.Y,
-            Button          = step.Button,
-            ClickType       = step.ClickType,
-            KeyCombo        = step.KeyCombo,
-            TextInput       = step.TextInput,
-            ScrollDx        = step.ScrollDx,
-            ScrollDy        = step.ScrollDy,
-            DelayBefore     = step.DelayBefore / speed,
-            DelayAfter      = step.DelayAfter  / speed,
-            Skip            = step.Skip,
-            MonitorId       = step.MonitorId,
-            LocatorImage    = step.LocatorImage,
-            ExpectedValue   = step.ExpectedValue,
-            ExtractedValue  = step.ExtractedValue,
-            QuestionText    = step.QuestionText,
-            QuestionButtons = step.QuestionButtons,
-            Comment         = step.Comment,
-        };
+        var copy = step.Clone();
+        copy.DelayBefore = step.DelayBefore / speed;
+        copy.DelayAfter  = step.DelayAfter  / speed;
+        return copy;
     }
 
     // =========================================================

@@ -79,6 +79,12 @@ public sealed class RprEngine
     /// <summary>Pas cu pas: motorul se opreste inainte de fiecare pas pana la <see cref="StepOnce"/>.</summary>
     public bool StepMode { get; set; }
 
+    /// <summary>v4.1: verificari Windows inainte de fiecare actiune (null = fara).</summary>
+    public IRunGuard? Guard { get; set; }
+
+    /// <summary>Alertele pentru care utilizatorul a ales "nu mai intreba" (in rularea curenta).</summary>
+    private readonly HashSet<string> _ignoredAlerts = new(StringComparer.OrdinalIgnoreCase);
+
     /// <summary>Variabilele dupa ultima rulare (afisate in Studio pentru verificare).</summary>
     public IReadOnlyDictionary<string, string> LastVariables { get; private set; } = new Dictionary<string, string>();
 
@@ -151,6 +157,8 @@ public sealed class RprEngine
         _result = new RunResult();
         _rows.Clear();
         _tryDepth = 0;
+        _ignoredAlerts.Clear();
+        if (routine.Settings.GuardEnabled) Guard?.BeginRun();
         _vars = new VariableStore();
         _conditions = new ConditionEvaluator(_repo, _drivers, _vars);
         _cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
@@ -441,6 +449,10 @@ public sealed class RprEngine
 
         int timeout = a.TimeoutMs > 0 ? a.TimeoutMs : _routine.Settings.DefaultTimeoutMs;
 
+        // v4.1: ferestre de eroare / aplicatie blocata -> pauza + intrebare
+        if (_routine.Settings.GuardEnabled && Guard != null)
+            await HandleAlertAsync(a, Guard.CheckBeforeAction(a), ct);
+
         // 3. Marcare pe ecran inainte de actiune (stil SilkTest)
         if (obj != null && (_routine.Settings.HighlightBeforeAction || a.Action == RprAction.Highlight))
         {
@@ -464,6 +476,81 @@ public sealed class RprEngine
             _vars.Set(a.OutputVariable, output ?? "");
 
         Log(RprLogLevel.Info, a, output != null ? $"OK → \"{Shorten(output)}\"" : "OK");
+
+        // v4.1: valoarea citita difera de cea asteptata?
+        if (info.ProducesOutput && !string.IsNullOrWhiteSpace(a.ExpectedValue))
+        {
+            var expected = _vars.Resolve(a.ExpectedValue);
+            if (!MatchesExpected(output ?? "", expected))
+            {
+                var msg = $"Valoare diferita: asteptat \"{Shorten(expected)}\", citit \"{Shorten(output ?? "")}\".";
+                // In "Incearca" rutina trateaza singura (ramura "La eroare")
+                if (_tryDepth > 0) throw new RprStepException(msg);
+                await HandleAlertAsync(a, new RunAlert("Valoarea citita difera de cea asteptata",
+                    msg + "\n\nVerifica ecranul. Continua = merg mai departe cu valoarea citita.", "value:" + a.Id), ct);
+            }
+        }
+
+        // v4.1: SAP a raportat o eroare in bara de stare dupa actiune?
+        if (_routine.Settings.GuardEnabled && _tryDepth == 0 && driver.Technology == UiTechnology.Sap &&
+            a.Action is not (RprAction.SapReadStatusBar or RprAction.SapConnect or RprAction.Highlight or
+                             RprAction.ReadText or RprAction.ReadValue or RprAction.ReadAttribute or
+                             RprAction.SapGridReadCell or RprAction.SapGridRowCount))
+        {
+            string status = "";
+            try
+            {
+                status = await driver.ExecuteAsync(new ActionRequest(RprAction.SapReadStatusBar, null, "", 3000, false, screenshotsFolder), ct) ?? "";
+            }
+            catch (RprStepException) { /* bara de stare indisponibila: nu blocam rutina */ }
+
+            if (status.StartsWith("E:", StringComparison.Ordinal) || status.StartsWith("A:", StringComparison.Ordinal))
+                await HandleAlertAsync(a, new RunAlert("SAP a raportat o eroare",
+                    $"Bara de stare SAP: {status}\n\nRezolva in SAP (sau verifica datele), apoi apasa Continua.",
+                    "sap:" + status), ct);
+        }
+    }
+
+    // ── v4.1: Alerte (sistemul de preventie) ───────────────────
+    private async Task HandleAlertAsync(RprNode node, RunAlert? alert, CancellationToken ct)
+    {
+        if (alert == null || _ignoredAlerts.Contains(alert.Key)) return;
+
+        Log(RprLogLevel.Warning, node, $"⚠ {alert.Title}: {alert.Details.Split('\n')[0]}");
+        var decision = await _host.AskAlertAsync(node, alert, _rows.Count > 0, ct);
+        Guard?.Acknowledge();
+        Log(RprLogLevel.Info, node, decision switch
+        {
+            AlertDecision.Continue => "Continui la cererea utilizatorului.",
+            AlertDecision.IgnoreSimilar => "Continui; nu mai intreb pentru aceasta situatie in rularea curenta.",
+            AlertDecision.SkipRow => "Sar randul Excel la cererea utilizatorului.",
+            _ => "Oprit la cererea utilizatorului.",
+        });
+
+        switch (decision)
+        {
+            case AlertDecision.Continue:
+                return;
+            case AlertDecision.IgnoreSimilar:
+                _ignoredAlerts.Add(alert.Key);
+                return;
+            case AlertDecision.SkipRow when _rows.Count > 0:
+                throw new SkipRowSignal(alert.Title, true);
+            default:
+                throw new StopSignal(alert.Title, true);
+        }
+    }
+
+    /// <summary>Comparare fara diferente de litere mari/mici si spatii la capete; * = orice text.</summary>
+    internal static bool MatchesExpected(string actual, string expected)
+    {
+        actual = actual.Trim();
+        expected = expected.Trim();
+        if (!expected.Contains('*'))
+            return string.Equals(actual, expected, StringComparison.OrdinalIgnoreCase);
+        var pattern = "^" + System.Text.RegularExpressions.Regex.Escape(expected).Replace("\\*", ".*") + "$";
+        return System.Text.RegularExpressions.Regex.IsMatch(actual, pattern,
+            System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.Singleline);
     }
 
     // ── Asteptare ──────────────────────────────────────────────

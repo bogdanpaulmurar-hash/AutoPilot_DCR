@@ -42,6 +42,23 @@ namespace AutoPilotDC.Application
             set { if (_player is AutoPilotDC.Infrastructure.Engines.PlayerEngine pe) pe.OnWatchdogQuestion = value; }
         }
 
+        /// <summary>v4.1: intrebarea sistemului de preventie (diferente fata de inregistrare / pas esuat).</summary>
+        public Func<StepModel, AutoPilotDC.Infrastructure.Safety.GuardAlert, bool, Task<AutoPilotDC.Infrastructure.Safety.GuardDecision>>? OnGuardQuestion
+        {
+            get => (_player as AutoPilotDC.Infrastructure.Engines.PlayerEngine)?.OnGuardQuestion;
+            set { if (_player is AutoPilotDC.Infrastructure.Engines.PlayerEngine pe) pe.OnGuardQuestion = value; }
+        }
+
+        /// <summary>v4.1: aplica setarile de siguranta inainte de fiecare rulare.</summary>
+        public void ConfigureSafety(bool dnd, bool guardEnabled, string sensitivity)
+        {
+            if (_player is not AutoPilotDC.Infrastructure.Engines.PlayerEngine pe) return;
+            pe.SuppressNotifications = dnd;
+            pe.Guard ??= new AutoPilotDC.Infrastructure.Safety.SafetyGuard();
+            pe.Guard.Enabled = guardEnabled;
+            pe.Guard.Sensitivity = AutoPilotDC.Infrastructure.Safety.SafetyGuard.ParseSensitivity(sensitivity);
+        }
+
         /// <summary>Actiune la finalul ciclului — proxied to PlayerEngine.</summary>
         public AutoPilotDC.Infrastructure.Services.EndOfCycleAction EndOfCycleAction
         {

@@ -8,7 +8,6 @@
 
 using System;
 using System.Runtime.InteropServices;
-using Microsoft.Win32;
 
 namespace AutoPilotDC.Infrastructure.Services;
 
@@ -36,14 +35,6 @@ public sealed class PowerManagementService : IDisposable
 
     private bool   _preventingSleep;
     private bool   _notificationsSuppressed;
-    private int    _originalToastValue    = -1;
-    private int    _originalSleepOnAC     = -1;
-    private byte[] _originalFocusAssistData = [];
-
-    // Valoare binara Focus Assist "Priority Only" — constanta Windows 11
-    private static readonly byte[] _focusAssistOnData =
-        [0x02,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
-         0x00,0x00,0x00,0x00,0x01,0x00,0x00,0x00];
 
     // -- Sleep prevention -----------------------------------------------------
 
@@ -72,80 +63,25 @@ public sealed class PowerManagementService : IDisposable
         _preventingSleep = false;
     }
 
-    // -- Notification suppression (Focus Assist + Presentation Mode) ----------
+    // -- Notification suppression ("Nu deranja") -----------------------------
 
     /// <summary>
-    /// Activeaza Windows Focus Assist (Priority Only) + dezactiveaza toast-urile.
-    /// Pe Windows 11 apare luna in taskbar.
+    /// Activeaza "Nu deranja" (vezi <see cref="DoNotDisturb"/>). Poate dura cateva secunde:
+    /// apeleaz-o de pe un fir de fundal.
     /// </summary>
     public void SuppressNotifications()
     {
         if (_notificationsSuppressed) return;
-
-        // Metoda 1: presentationsettings.exe /start — activeaza Presentation Mode
-        // => afiseaza luna in taskbar si blocheaza notificarile sistem
-        try
-        {
-            var psi = new System.Diagnostics.ProcessStartInfo
-            {
-                FileName  = "presentationsettings.exe",
-                Arguments = "/start",
-                CreateNoWindow = true,
-                UseShellExecute = false
-            };
-            System.Diagnostics.Process.Start(psi)?.WaitForExit(3000);
-        }
-        catch { }
-
-        // Metoda 2: Focus Assist — Priority Only via registry (Windows 10/11)
-        try
-        {
-            using var key = Registry.CurrentUser.OpenSubKey(
-                @"SOFTWARE\Microsoft\Windows\CurrentVersion\PushNotifications", writable: true);
-            if (key != null)
-            {
-                var val = key.GetValue("ToastEnabled");
-                _originalToastValue = val is int i ? i : 1;
-                key.SetValue("ToastEnabled", 0, RegistryValueKind.DWord);
-            }
-        }
-        catch { }
-
         _notificationsSuppressed = true;
+        DoNotDisturb.Enable();
     }
 
-    /// <summary>
-    /// Restaureaza setarile de notificari la starea originala.
-    /// </summary>
+    /// <summary>Reda notificarile, doar daca au fost oprite de noi.</summary>
     public void RestoreNotifications()
     {
         if (!_notificationsSuppressed) return;
-
-        // Opreste Presentation Mode (luna dispare din taskbar)
-        try
-        {
-            var psi = new System.Diagnostics.ProcessStartInfo
-            {
-                FileName  = "presentationsettings.exe",
-                Arguments = "/stop",
-                CreateNoWindow = true,
-                UseShellExecute = false
-            };
-            System.Diagnostics.Process.Start(psi)?.WaitForExit(3000);
-        }
-        catch { }
-
-        // Restaureaza toast
-        try
-        {
-            using var key = Registry.CurrentUser.OpenSubKey(
-                @"SOFTWARE\Microsoft\Windows\CurrentVersion\PushNotifications", writable: true);
-            if (key != null && _originalToastValue >= 0)
-                key.SetValue("ToastEnabled", _originalToastValue, RegistryValueKind.DWord);
-        }
-        catch { }
-
         _notificationsSuppressed = false;
+        DoNotDisturb.Restore();
     }
 
     // -- End-of-cycle actions --------------------------------------------------

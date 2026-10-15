@@ -17,6 +17,8 @@ using System.Windows.Input;
 using AutoPilotDC.Application;
 using AutoPilotDC.Core.Interfaces;
 using AutoPilotDC.Infrastructure.Engines;
+using AutoPilotDC.Infrastructure.Safety;
+using AutoPilotDC.Infrastructure.Services;
 using AutoPilotDC.Models;
 using AutoPilotDC.UI.Commands;
 using AutoPilotDC.UI.Overlays;
@@ -223,6 +225,33 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
     }
     public string DndIndicatorText => DndActive ? "🌙 DND activ" : "";
 
+    // ── v4.1: Siguranta la rulare ─────────────────────────────────────
+    public bool DndDuringRun
+    {
+        get => _settings.Get("dnd_during_run", true);
+        set { _settings.Set("dnd_during_run", value); OnPropertyChanged(); }
+    }
+
+    public bool ShowRunFrame
+    {
+        get => _settings.Get("show_run_frame", true);
+        set { _settings.Set("show_run_frame", value); RunFrame.Enabled = value; OnPropertyChanged(); }
+    }
+
+    public bool GuardEnabled
+    {
+        get => _settings.Get("guard_enabled", true);
+        set { _settings.Set("guard_enabled", value); OnPropertyChanged(); }
+    }
+
+    public string[] GuardSensitivityOptions { get; } = ["relaxed", "normal", "strict"];
+
+    public string GuardSensitivity
+    {
+        get => _settings.Get("guard_sensitivity", "normal");
+        set { _settings.Set("guard_sensitivity", value); OnPropertyChanged(); }
+    }
+
     // Tab visibility
     private bool _showTabRecorder    = true;
     private bool _showTabStepBuilder = true;
@@ -377,6 +406,8 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
         _playerSvc.Resumed += OnPlayResumed;
         _playerSvc.IterUpdate += OnIterUpdate;
         _playerSvc.OnQuestion = ShowQuestionDialog;
+        _playerSvc.OnGuardQuestion = AskGuardAsync;
+        RunFrame.Enabled = ShowRunFrame;
 
         // Initializeaza EndOfCycleAction din settings
         if (System.Enum.TryParse<AutoPilotDC.Infrastructure.Services.EndOfCycleAction>(_settings.Get("end_of_cycle_action", "None"), out var eoca))
@@ -445,6 +476,9 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
     private async Task StartPlay()
     {
         if (Steps.Count == 0) return;
+        _playerSvc.ConfigureSafety(DndDuringRun, GuardEnabled, GuardSensitivity);
+        RunFrame.Show(FrameMode.Run);
+        DndActive = DndDuringRun;
         await _playerSvc.PlayAsync([.. Steps], RepeatCount, CurrentLoginConfig);
     }
 
@@ -462,6 +496,8 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
         _simulatorCts?.Cancel();
         IsSimulating = false;
         _simulatorOverlay?.HideOverlay();
+        RunFrame.Hide();
+        if (IsRecording) _recorderSvc.Stop();
         UIInvoke(() =>
         {
             IsPlaying = false;
@@ -660,7 +696,9 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
         UIInvoke(() =>
         {
             IsRecording = true;
-            DndActive = true;
+            DndActive = DndDuringRun;
+            RunFrame.Show(FrameMode.Rec);
+            if (DndDuringRun) _ = Task.Run(DoNotDisturb.Enable);
             StatusText = "🔴 INREGISTRARE ACTIVA";
             RecIndicatorText = "⬤ REC";
         });
@@ -672,6 +710,8 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
         {
             IsRecording = false;
             DndActive = false;
+            RunFrame.Hide();
+            if (DndDuringRun) _ = Task.Run(DoNotDisturb.Restore);
             StatusText = $"Inregistrare oprita — {Steps.Count} pasi";
             RecIndicatorText = "⬤ STANDBY";
         });
@@ -693,6 +733,8 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
     {
         UIInvoke(() =>
         {
+            RunFrame.Hide();
+            DndActive = false;
             IsPlaying = false;
             IsPaused = false;
             StatusText = success ? "✅ Redare finalizata." : "⏹ Redare oprita.";
@@ -719,10 +761,10 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
     }
 
     private void OnPlayPaused()
-        => UIInvoke(() => { IsPaused = true; StatusText = "⏸ PAUZA"; });
+        => UIInvoke(() => { IsPaused = true; StatusText = "⏸ PAUZA"; RunFrame.Show(FrameMode.Pause); });
 
     private void OnPlayResumed()
-        => UIInvoke(() => { IsPaused = false; StatusText = "▶ REDARE ACTIVA"; });
+        => UIInvoke(() => { IsPaused = false; StatusText = "▶ REDARE ACTIVA"; if (IsPlaying) RunFrame.Show(FrameMode.Run); });
 
     private void OnIterUpdate(int cur, int total)
         => UIInvoke(() => IterText = total > 1 ? $"Iteratie {cur}/{total}" : "");
@@ -737,6 +779,44 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
             var dlg = new Views.Dialogs.QuestionDialog(step.QuestionText, step.QuestionButtons);
             dlg.ShowDialog();
             tcs.SetResult(dlg.SelectedAnswer ?? "Continua");
+        });
+        return tcs.Task;
+    }
+
+    // ── v4.1: Sistemul de preventie — pauza + intrebare ────────────────
+
+    private const string BtnRetry = "Reincearca pasul";
+    private const string BtnContinue = "Continua";
+    private const string BtnIgnore = "Continua si nu mai verifica pasul";
+    private const string BtnSkip = "Sari pasul";
+    private const string BtnStop = "Opreste rutina";
+
+    private Task<GuardDecision> AskGuardAsync(StepModel step, GuardAlert alert, bool canRetry)
+    {
+        var tcs = new TaskCompletionSource<GuardDecision>();
+        UIInvoke(() =>
+        {
+            StatusText = $"⚠ {alert.Title} — rutina e pe pauza";
+            var buttons = new System.Collections.Generic.List<string>();
+            if (canRetry) buttons.Add(BtnRetry);
+            buttons.Add(BtnContinue);
+            if (alert.CanIgnoreStep) buttons.Add(BtnIgnore);
+            buttons.Add(BtnSkip);
+            buttons.Add(BtnStop);
+
+            var where = string.IsNullOrWhiteSpace(step.Description) ? step.GetDisplayType() : step.Description;
+            var answer = Studio.ChoiceDialog.Ask(System.Windows.Application.Current.MainWindow,
+                "AutoPilot DC — ceva difera", $"⚠ {alert.Title}",
+                buttons, $"Pasul #{step.StepId}: {where}\n\n{alert.Details}");
+
+            tcs.SetResult(answer switch
+            {
+                BtnRetry => GuardDecision.Retry,
+                BtnContinue => GuardDecision.Continue,
+                BtnIgnore => GuardDecision.IgnoreStep,
+                BtnSkip => GuardDecision.SkipStep,
+                _ => GuardDecision.Stop,
+            });
         });
         return tcs.Task;
     }

@@ -28,6 +28,9 @@ public partial class App : System.Windows.Application
     {
         base.OnStartup(e);
 
+        // Daca o rulare anterioara a fost intrerupta fortat cu "Nu deranja" pornit, readucem notificarile
+        _ = System.Threading.Tasks.Task.Run(DoNotDisturb.RecoverIfNeeded);
+
         // Erorile neprinse NU mai sunt ascunse: utilizatorul vede mesajul (inainte aplicatia "nu facea nimic")
         DispatcherUnhandledException += (s, ex) =>
         {
@@ -83,7 +86,9 @@ public partial class App : System.Windows.Application
                 sp.GetRequiredService<DesktopEngine>()
             );
             engine.PowerMgmt = sp.GetRequiredService<PowerManagementService>();
-            engine.Watchdog   = sp.GetRequiredService<WatchdogService>();
+            // v4.1: SafetyGuard inlocuieste Watchdog-ul (care dadea alarme false la orice fereastra noua
+            // si nu intreba niciodata utilizatorul)
+            engine.Guard = new AutoPilotDC.Infrastructure.Safety.SafetyGuard();
             return engine;
         });
 
@@ -109,6 +114,7 @@ public partial class App : System.Windows.Application
 
     protected override void OnExit(ExitEventArgs e)
     {
+        DoNotDisturb.RestoreAll();
         _serviceProvider?.Dispose();
         base.OnExit(e);
         System.Environment.Exit(0);

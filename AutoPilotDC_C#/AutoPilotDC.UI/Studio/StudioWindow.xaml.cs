@@ -1,4 +1,4 @@
-// ============================================================
+﻿// ============================================================
 // AutoPilot DC v4 — Studio RPR
 // StudioWindow.xaml.cs — Editorul vizual de rutine
 //
@@ -21,6 +21,8 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using AutoPilotDC.Infrastructure.Engines;
+using AutoPilotDC.Infrastructure.Services;
+using AutoPilotDC.UI.Overlays;
 using AutoPilotDC.Rpr.Engine;
 using AutoPilotDC.Rpr.Model;
 using AutoPilotDC.Rpr.Storage;
@@ -756,6 +758,12 @@ public partial class StudioWindow : Window, IStudioContext
 
     private void SetRecording(bool on)
     {
+        if (on != _recording)
+        {
+            RunFrame.Show(on ? FrameMode.Rec : FrameMode.Off);
+            if (_routine.Settings.DoNotDisturb)
+                _ = on ? Task.Run(DoNotDisturb.Enable) : Task.Run(DoNotDisturb.Restore);
+        }
         _recording = on;
         BtnRecord.Content = on ? "⏹ Opreste inregistrarea" : "⏺ Inregistreaza Web";
     }
@@ -811,6 +819,7 @@ public partial class StudioWindow : Window, IStudioContext
         if (_engine.IsPaused) { _engine.StepMode = false; _engine.Resume(); }
         else _engine.Pause();
         bool paused = _engine.IsPaused;
+        RunFrame.Show(paused ? FrameMode.Pause : FrameMode.Run);
         BtnPause.Content = paused ? "▶ Reluare" : "⏸ Pauza";
         _runControl?.SetPaused(paused);
         SetStatus(paused ? "PAUZA — Reluare sau Pas cu pas." : "Rulare reluata.");
@@ -831,7 +840,11 @@ public partial class StudioWindow : Window, IStudioContext
         _log.Clear();
         _logEntries.Clear();
 
-        _engine = new RprEngine(_repo, _drivers, new StudioRunHost(this), RprPaths.Output) { StepMode = stepMode };
+        _engine = new RprEngine(_repo, _drivers, new StudioRunHost(this), RprPaths.Output)
+        {
+            StepMode = stepMode,
+            Guard = new StudioGuard(),
+        };
         BtnRun.IsEnabled = false;
         BtnPause.IsEnabled = true;
         BtnStop.IsEnabled = true;
@@ -845,11 +858,19 @@ public partial class StudioWindow : Window, IStudioContext
         if (_settings.MinimizeOnRun && !stepMode) WindowState = WindowState.Minimized;
 
         SetStatus(stepMode ? "PAS CU PAS: apasa \"Pasul urmator\" pentru fiecare pas." : "Rulez...");
+        RunFrame.Show(stepMode ? FrameMode.Pause : FrameMode.Run);
+        bool dnd = _routine.Settings.DoNotDisturb;
         RunResult result;
         try
         {
             var engine = _engine;
             var routine = _routine;
+            if (dnd)
+            {
+                SetStatus("🌙 Activez \"Nu deranja\" (cateva secunde)...");
+                await Task.Run(DoNotDisturb.Enable);
+                SetStatus(DoNotDisturb.LastMessage);
+            }
             result = await Task.Run(() => engine.RunAsync(routine));
         }
         catch (Exception ex)
@@ -858,6 +879,8 @@ public partial class StudioWindow : Window, IStudioContext
         }
         finally
         {
+            RunFrame.Hide();
+            if (dnd) _ = Task.Run(DoNotDisturb.Restore);
             _runControl?.Close();
             _runControl = null;
             BtnRun.IsEnabled = true;
@@ -923,13 +946,44 @@ public partial class StudioWindow : Window, IStudioContext
             if (insideExcelLoop) buttons.Add("Sari randul");
             buttons.Add("Opreste");
             var answer = await _w.Dispatcher.InvokeAsync(() =>
-                ChoiceDialog.Ask(_w, "Pasul a esuat", $"Pasul \"{node.Title}\" a esuat.", buttons, error)).Task;
+            {
+                RunFrame.Show(FrameMode.Pause);
+                var a = ChoiceDialog.Ask(_w, "Pasul a esuat", $"Pasul \"{node.Title}\" a esuat.", buttons, error);
+                RunFrame.Show(FrameMode.Run);
+                return a;
+            }).Task;
             return answer switch
             {
                 "Reincearca" => ErrorDecision.Retry,
                 "Sari pasul" => ErrorDecision.Skip,
                 "Sari randul" => ErrorDecision.SkipRow,
                 _ => ErrorDecision.Stop,
+            };
+        }
+
+        public async Task<AlertDecision> AskAlertAsync(RprNode node, RunAlert alert, bool insideExcelLoop, CancellationToken ct)
+        {
+            const string cont = "Continua", ignore = "Continua si nu mai intreba pentru asta", skipRow = "Sari randul", stop = "Opreste";
+            var buttons = new List<string> { cont, ignore };
+            if (insideExcelLoop) buttons.Add(skipRow);
+            buttons.Add(stop);
+
+            var answer = await _w.Dispatcher.InvokeAsync(() =>
+            {
+                AutoPilotDC.UI.Overlays.RunFrame.Show(AutoPilotDC.UI.Overlays.FrameMode.Pause);
+                _w._runControl?.SetStatus("⚠ " + alert.Title);
+                var a = ChoiceDialog.Ask(_w, "AutoPilot DC — ceva difera", $"⚠ {alert.Title}", buttons,
+                    $"Pasul: {node.Title}\n\n{alert.Details}");
+                AutoPilotDC.UI.Overlays.RunFrame.Show(AutoPilotDC.UI.Overlays.FrameMode.Run);
+                return a;
+            }).Task;
+
+            return answer switch
+            {
+                cont => AlertDecision.Continue,
+                ignore => AlertDecision.IgnoreSimilar,
+                skipRow => AlertDecision.SkipRow,
+                _ => AlertDecision.Stop,
             };
         }
 

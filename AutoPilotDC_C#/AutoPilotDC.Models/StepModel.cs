@@ -106,6 +106,25 @@ public class StepModel
     [JsonPropertyName("timestamp")]
     public string Timestamp { get; set; } = "";
 
+    // -- 3.11 Context la inregistrare (sistemul de preventie) ----
+    // Identic in Python v3.9+: aceleasi chei JSON, acelasi format de semnatura.
+
+    /// <summary>Titlul ferestrei in care s-a dat click / s-a tastat la inregistrare.</summary>
+    [JsonPropertyName("window_title")]
+    public string WindowTitle { get; set; } = "";
+
+    /// <summary>Procesul ferestrei (ex: excel.exe) la inregistrare.</summary>
+    [JsonPropertyName("window_process")]
+    public string WindowProcess { get; set; } = "";
+
+    /// <summary>Amprenta zonei de 40x40 px din jurul click-ului (20x20 tonuri de gri, base64).</summary>
+    [JsonPropertyName("screen_signature")]
+    public string ScreenSignature { get; set; } = "";
+
+    /// <summary>true = sistemul de preventie nu mai verifica acest pas.</summary>
+    [JsonPropertyName("guard_ignore")]
+    public bool GuardIgnore { get; set; } = false;
+
     // -- Metode helper -------------------------------------------
 
     /// <summary>
@@ -168,6 +187,10 @@ public class StepModel
         ErrorMessage    = ErrorMessage,
         Comment         = Comment,
         Timestamp       = Timestamp,
+        WindowTitle     = WindowTitle,
+        WindowProcess   = WindowProcess,
+        ScreenSignature = ScreenSignature,
+        GuardIgnore     = GuardIgnore,
     };
 
     public override string ToString() =>

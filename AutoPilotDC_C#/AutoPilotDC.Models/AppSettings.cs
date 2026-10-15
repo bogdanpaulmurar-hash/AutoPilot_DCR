@@ -89,4 +89,21 @@ public class AppSettings
 
     [JsonPropertyName("active_monitor")]
     public int ActiveMonitor { get; set; } = 0;
+
+    // -- Siguranta la rulare (v4.1) ---------------------------
+    /// <summary>Activeaza "Nu deranja" (fara notificari Windows) cat timp ruleaza sau inregistreaza.</summary>
+    [JsonPropertyName("dnd_during_run")]
+    public bool DndDuringRun { get; set; } = true;
+
+    /// <summary>Chenar colorat pe ecran: rosu + RUN la rulare, verde + REC la inregistrare.</summary>
+    [JsonPropertyName("show_run_frame")]
+    public bool ShowRunFrame { get; set; } = true;
+
+    /// <summary>Sistemul de preventie: pauza + intrebare cand ecranul difera de inregistrare.</summary>
+    [JsonPropertyName("guard_enabled")]
+    public bool GuardEnabled { get; set; } = true;
+
+    /// <summary>relaxed / normal / strict — cat de mult poate diferi ecranul fata de inregistrare.</summary>
+    [JsonPropertyName("guard_sensitivity")]
+    public string GuardSensitivity { get; set; } = "normal";
 }

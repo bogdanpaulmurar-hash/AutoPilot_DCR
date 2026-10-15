@@ -769,6 +769,30 @@
 								</StackPanel>
 							</GroupBox>
 
+                            <!-- v4.1: Siguranta la rulare -->
+                            <GroupBox Header="🛡 Siguranta la rulare" Style="{DynamicResource DarkGroupBoxStyle}" Margin="0,0,0,12">
+                                <StackPanel Margin="0,8,0,0">
+                                    <CheckBox Content="🌙 Nu deranja (fara notificari Windows) cat timp ruleaza sau inregistreaza"
+                                              Style="{DynamicResource DarkCheckBoxStyle}"
+                                              IsChecked="{Binding DndDuringRun, Mode=TwoWay}" Margin="0,4"/>
+                                    <CheckBox Content="🟥 Chenar pe ecran: rosu + RUN la rulare, verde + REC la inregistrare"
+                                              Style="{DynamicResource DarkCheckBoxStyle}"
+                                              IsChecked="{Binding ShowRunFrame, Mode=TwoWay}" Margin="0,4"/>
+                                    <CheckBox Content="🛡 Sistem de preventie: pauza + intrebare cand ecranul difera de inregistrare"
+                                              Style="{DynamicResource DarkCheckBoxStyle}"
+                                              IsChecked="{Binding GuardEnabled, Mode=TwoWay}" Margin="0,4"/>
+                                    <StackPanel Orientation="Horizontal" Margin="24,4,0,0">
+                                        <Label Content="Sensibilitate:" Style="{DynamicResource DarkLabelStyle}" VerticalAlignment="Center"/>
+                                        <ComboBox ItemsSource="{Binding GuardSensitivityOptions}"
+                                                  SelectedItem="{Binding GuardSensitivity, Mode=TwoWay}"
+                                                  Style="{DynamicResource DarkComboBoxStyle}"
+                                                  Width="120" Margin="8,0"/>
+                                    </StackPanel>
+                                    <TextBlock Margin="24,6,0,0" Foreground="{DynamicResource TextDimBrush}" TextWrapping="Wrap" FontSize="11"
+                                               Text="Verifica inainte de fiecare pas: mouse miscat de tine, ferestre de eroare, aplicatie care nu raspunde, click in alta aplicatie, zona click-ului diferita (relaxed 35% · normal 22% · strict 12%), taste trimise in alta fereastra. Un pas esuat nu mai e sarit in tacere: rutina se opreste si te intreaba. Verificarea ecranului functioneaza pentru pasii inregistrati cu versiunea 4.1+."/>
+                                </StackPanel>
+                            </GroupBox>
+
                             <GroupBox Header="🎙 Inregistrare" Style="{DynamicResource DarkGroupBoxStyle}" Margin="0,0,0,12">
                                 <StackPanel Margin="0,8,0,0">
                                     <CheckBox Content="Inregistreaza miscari mouse (MOVE)"

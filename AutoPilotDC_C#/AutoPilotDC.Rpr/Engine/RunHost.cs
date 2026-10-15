@@ -28,6 +28,29 @@ public sealed class RunLogEntry
 /// <summary>Decizia utilizatorului cand un pas esueaza (politica Ask).</summary>
 public enum ErrorDecision { Retry, Skip, SkipRow, Stop }
 
+// ── v4.1: Sistemul de preventie ─────────────────────────────────
+
+/// <summary>Ceva difera fata de ce asteapta rutina (fereastra de eroare, valoare diferita, eroare SAP...).</summary>
+public sealed record RunAlert(string Title, string Details, string Key);
+
+/// <summary>Raspunsul utilizatorului la o alerta (rutina sta pe pauza pana atunci).</summary>
+public enum AlertDecision { Continue, IgnoreSimilar, SkipRow, Stop }
+
+/// <summary>
+/// Verificari dependente de sistemul de operare (ferestre de eroare, aplicatii blocate),
+/// facute inainte de fiecare actiune. Implementarea Windows e in Studio.
+/// </summary>
+public interface IRunGuard
+{
+    void BeginRun();
+
+    /// <summary>Null = totul e in regula.</summary>
+    RunAlert? CheckBeforeAction(ActionNode node);
+
+    /// <summary>Utilizatorul a raspuns: starea de acum a ecranului devine "normala".</summary>
+    void Acknowledge();
+}
+
 public interface IRunHost
 {
     void Log(RunLogEntry entry);
@@ -41,6 +64,13 @@ public interface IRunHost
 
     /// <summary>Un pas a esuat si politica e "Intreaba".</summary>
     Task<ErrorDecision> AskOnErrorAsync(RprNode node, string error, bool insideExcelLoop, CancellationToken ct);
+
+    /// <summary>
+    /// v4.1: sistemul de preventie a gasit o diferenta. Implicit (fara utilizator):
+    /// in bucla Excel se sare randul, altfel rutina se opreste.
+    /// </summary>
+    Task<AlertDecision> AskAlertAsync(RprNode node, RunAlert alert, bool insideExcelLoop, CancellationToken ct)
+        => Task.FromResult(insideExcelLoop ? AlertDecision.SkipRow : AlertDecision.Stop);
 
     /// <summary>Executa un pas vechi v3.9 (coordonate). Null = nu e disponibil.</summary>
     Func<StepModel, CancellationToken, Task<(bool Success, string Error)>>? LegacyExecutor { get; }

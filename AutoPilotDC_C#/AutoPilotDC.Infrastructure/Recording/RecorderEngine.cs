@@ -176,6 +176,9 @@ public sealed class RecorderEngine : IRecorder, IDisposable
     // -- Handler intern ---------------------------------------------------
     private void OnStepFromRecorder(StepModel step)
     {
+        // v4.1: fereastra + amprenta zonei, pentru sistemul de preventie la rulare
+        AutoPilotDC.Infrastructure.Safety.SafetyGuard.RecordContext(step);
+
         lock (_lock)
         {
             step.StepId = ++_counter;

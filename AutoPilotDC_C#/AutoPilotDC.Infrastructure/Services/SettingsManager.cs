@@ -105,6 +105,10 @@ namespace AutoPilotDC.Infrastructure.Services
                     _data.ShowFloatingControls = saved.ShowFloatingControls;
                     _data.ShowEmergencyBtn = saved.ShowEmergencyBtn;
                     _data.ActiveMonitor = saved.ActiveMonitor;
+                    _data.DndDuringRun = saved.DndDuringRun;
+                    _data.ShowRunFrame = saved.ShowRunFrame;
+                    _data.GuardEnabled = saved.GuardEnabled;
+                    if (!string.IsNullOrEmpty(saved.GuardSensitivity)) _data.GuardSensitivity = saved.GuardSensitivity;
 
                     if (saved.Shortcuts != null)
                         foreach (var kv in saved.Shortcuts)

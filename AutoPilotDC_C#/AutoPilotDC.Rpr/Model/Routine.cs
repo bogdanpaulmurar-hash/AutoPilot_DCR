@@ -27,6 +27,15 @@ public sealed class RoutineSettings
 
     /// <summary>Captura de ecran automata la eroare.</summary>
     public bool ScreenshotOnError { get; set; } = true;
+
+    /// <summary>v4.1: "Nu deranja" (fara notificari Windows) cat timp ruleaza rutina.</summary>
+    public bool DoNotDisturb { get; set; } = true;
+
+    /// <summary>
+    /// v4.1: sistemul de preventie — pauza + intrebare la ferestre de eroare, aplicatii blocate,
+    /// erori in bara de stare SAP si valori diferite de "Valoarea asteptata".
+    /// </summary>
+    public bool GuardEnabled { get; set; } = true;
 }
 
 public sealed class Routine
