@@ -319,7 +319,7 @@ public partial class StudioWindow : Window, IStudioContext
                 Margin = new Thickness(0, 2, 0, 2),
                 Padding = new Thickness(10, 6, 10, 6),
             };
-            if (Application.Current.TryFindResource("NeutralButtonStyle") is Style s) b.Style = s;
+            if (System.Windows.Application.Current.TryFindResource("NeutralButtonStyle") is Style s) b.Style = s;
             b.HorizontalContentAlignment = HorizontalAlignment.Left;
             b.Click += (_, _) => InsertNode(factory());
             Toolbox.Children.Add(b);

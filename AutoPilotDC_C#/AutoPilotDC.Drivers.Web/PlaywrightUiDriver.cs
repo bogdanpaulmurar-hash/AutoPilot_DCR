@@ -15,6 +15,7 @@ using Microsoft.Playwright;
 using AutoPilotDC.Rpr.Engine;
 using AutoPilotDC.Rpr.Model;
 using Locator = AutoPilotDC.Rpr.Model.Locator;
+using ElementState = AutoPilotDC.Rpr.Engine.ElementState;
 
 namespace AutoPilotDC.Drivers.Web;
 

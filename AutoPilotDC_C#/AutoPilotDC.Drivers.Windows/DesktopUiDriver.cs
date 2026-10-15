@@ -22,6 +22,7 @@ using FlaUI.Core.WindowsAPI;
 using FlaUI.UIA3;
 using AutoPilotDC.Rpr.Engine;
 using AutoPilotDC.Rpr.Model;
+using Capture = FlaUI.Core.Capturing.Capture;
 
 namespace AutoPilotDC.Drivers.Windows;
 

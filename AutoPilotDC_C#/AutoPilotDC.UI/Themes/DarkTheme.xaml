@@ -137,10 +137,6 @@
         <Setter Property="SelectionBrush"   Value="{StaticResource PrimaryBrush}"/>
     </Style>
 
-            </Setter.Value>
-        </Setter>
-    </Style>
-
     <!-- == Label Style == -->
     <Style x:Key="DarkLabelStyle" TargetType="Label">
         <Setter Property="Foreground"  Value="{StaticResource TextDimBrush}"/>

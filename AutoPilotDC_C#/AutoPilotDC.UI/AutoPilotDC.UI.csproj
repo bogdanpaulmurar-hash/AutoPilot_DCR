@@ -12,6 +12,8 @@
 		<Authors>Bogdan Murar (Z003FU5C)</Authors>
 		<Company>Siemens AG</Company>
 		<StartupObject>AutoPilotDC.UI.App</StartupObject>
+		<!-- ruleaza si pe .NET 9/10 daca .NET 8 nu e instalat -->
+		<RollForward>Major</RollForward>
 	</PropertyGroup>
 	<ItemGroup>
 		<ProjectReference Include="..\AutoPilotDC.Models\AutoPilotDC.Models.csproj" />

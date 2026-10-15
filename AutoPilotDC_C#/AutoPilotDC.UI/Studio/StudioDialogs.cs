@@ -43,7 +43,7 @@ public static class Ui
     public static Button Btn(string text, string style = "PrimaryButtonStyle", RoutedEventHandler? click = null, string? tip = null)
     {
         var b = new Button { Content = text, Margin = new Thickness(3), Padding = new Thickness(10, 5, 10, 5), ToolTip = tip };
-        if (Application.Current.TryFindResource(style) is Style s) b.Style = s;
+        if (System.Windows.Application.Current.TryFindResource(style) is Style s) b.Style = s;
         if (click != null) b.Click += click;
         return b;
     }
@@ -86,7 +86,7 @@ public static class Ui
         return b;
     }
 
-    public static Brush Res(string key) => Application.Current.TryFindResource(key) as Brush ?? Brushes.Gray;
+    public static Brush Res(string key) => System.Windows.Application.Current.TryFindResource(key) as Brush ?? Brushes.Gray;
 }
 
 // ─────────────────────────────────────────────────────────────
