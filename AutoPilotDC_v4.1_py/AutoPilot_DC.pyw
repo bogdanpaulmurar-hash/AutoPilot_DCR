@@ -15,7 +15,7 @@ import sys
 import traceback
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-MAIN = os.path.join(HERE, "AutoPilot_DCv3.9.py")
+MAIN = os.path.join(HERE, "AutoPilot_DCv4.1.py")
 LOG_DIR = os.path.join(HERE, "loguri")
 
 

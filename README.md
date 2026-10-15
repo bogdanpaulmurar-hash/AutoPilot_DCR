@@ -5,7 +5,7 @@ browser), dezvoltat în două variante:
 
 | Variantă | Folder | Stare |
 |---|---|---|
-| **Python** (CustomTkinter + pynput + pyautogui) | [`AutoPilotDC_v3.9_py/`](AutoPilotDC_v3.9_py) | Recorder/player pe coordonate + siguranța la rulare v4.1 |
+| **Python** (CustomTkinter + pynput + pyautogui) | [`AutoPilotDC_v4.1_py/`](AutoPilotDC_v4.1_py) | Recorder/player pe coordonate + siguranța la rulare v4.1 |
 | **C# WPF (.NET 8)** | [`AutoPilotDC_C#/`](AutoPilotDC_C%23) | Recorder/player + **Studio RPR** (rutine pe obiecte: Web/SAP/Desktop + Excel) + siguranța la rulare v4.1 |
 
 ## Ce e nou în v4.1 — siguranța la rulare (ambele variante)
@@ -31,12 +31,12 @@ Pentru 4–6 rutina trebuie **înregistrată cu v4.1** (la înregistrare se salv
 
 Toate se pot opri din **Setări → 🛡 Siguranța la rulare** (în Studio RPR: **⚙ Rutina → Siguranța la rulare**).
 
-## AutoPilotDC_v3.9_py (Python)
+## AutoPilotDC_v4.1_py (Python)
 
 - **`AutoPilot_DC.pyw` — fișierul de pornire (dublu click), fără fereastră de consolă.**
   Dacă lipsesc pachete, afișează o fereastră cu comanda `pip` de rulat; erorile se scriu în
   `loguri/autopilot_console.log`.
-- `AutoPilot_DCv3.9.py` — aplicația principală, v4.1 (recorder + player pași
+- `AutoPilot_DCv4.1.py` — aplicația principală (recorder + player pași
   desktop/mouse/tastatură cu `pynput`, GUI `customtkinter`). Pornită direct, deschide și consola.
 - `autopilot_safety.py` — **v4.1**: Nu deranja, chenarul RUN/REC, sistemul de prevenție.
   Trebuie să fie în același folder cu aplicația.
@@ -49,7 +49,7 @@ Toate se pot opri din **Setări → 🛡 Siguranța la rulare** (în Studio RPR:
 
 Rulare:
 ```powershell
-cd AutoPilotDC_v3.9_py
+cd AutoPilotDC_v4.1_py
 pip install customtkinter pynput pyautogui openpyxl pillow
 ```
 Apoi dublu click pe **`AutoPilot_DC.pyw`** (sau `pythonw AutoPilot_DC.pyw`). Pentru o
