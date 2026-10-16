@@ -45,6 +45,12 @@ from rpr.model import (ACTIONS, ActionNode, BreakNode, CellColor, CompareOperato
 from rpr.storage import Examples, ExcelInfo, RepositoryStore, RoutineStore, RprPaths, RunLogExporter
 
 try:
+    from i18n import tr   # limba interfetei (listele de mai jos se traduc doar la afisare)
+except ImportError:       # pragma: no cover
+    def tr(text):
+        return text
+
+try:
     import autopilot_safety as safety
 except Exception:  # noqa: BLE001
     safety = None
@@ -646,7 +652,7 @@ class StudioPanel(tk.Frame):
                  bg=C["bg_main"], fg=C["text_dim"], font=("Segoe UI", 8), wraplength=220, justify="left").pack(
             anchor="w", padx=6, pady=(6, 2))
         for group, items in TOOLBOX:
-            tk.Label(host, text=group.upper(), bg=C["bg_main"], fg=C["primary"], font=("Segoe UI", 8, "bold")).pack(
+            tk.Label(host, text=tr(group).upper(), bg=C["bg_main"], fg=C["primary"], font=("Segoe UI", 8, "bold")).pack(
                 anchor="w", padx=6, pady=(10, 2))
             for text, tip, factory in items:
                 b = tk.Button(host, text=text, anchor="w", command=lambda f=factory: self.insert_node(f()),
@@ -1999,7 +2005,7 @@ class PropertyEditor:
         host = host or self._host
         if label:
             self._caption(label, host)
-        labels = [l for _, l in options]
+        labels = [tr(l) for _, l in options]
         current = get()
         idx = next((i for i, (v, _) in enumerate(options) if v == current), 0)
         cb = ttk.Combobox(host, values=labels, state="readonly", style="Studio.TCombobox", font=("Segoe UI", 9))
@@ -2564,8 +2570,9 @@ class LibraryFields:
         f.columnconfigure(1, weight=1, uniform="lib")
         lbl("Tip", 0, 0)
         lbl("Container (cauta doar in interiorul lui)", 0, 1)
-        self.type = ttk.Combobox(f, values=OBJECT_TYPES, state="readonly")
-        self.type.set(obj.object_type or "Altul")
+        self.type = ttk.Combobox(f, values=[tr(t) for t in OBJECT_TYPES], state="readonly")
+        self.type.current(OBJECT_TYPES.index(obj.object_type) if obj.object_type in OBJECT_TYPES
+                          else OBJECT_TYPES.index("Altul"))
         self.type.grid(row=1, column=0, sticky="ew", padx=(0, 8))
         self.parent = ttk.Combobox(f, values=containers)
         self.parent.set(obj.parent)
@@ -2590,7 +2597,8 @@ class LibraryFields:
 
     def apply(self):
         o = self.obj
-        o.object_type = self.type.get()
+        if self.type.current() >= 0:   # dupa index: tipul salvat e acelasi in orice limba
+            o.object_type = OBJECT_TYPES[self.type.current()]
         o.parent = self.parent.get().strip()
         o.site = self.site.get().strip()
         o.page = self.page.get().strip()
@@ -2839,7 +2847,7 @@ class ScheduleDialog(tk.Toplevel):
         lbl("Ora (HH:mm)", 1)
         lbl("Data (zz.ll.aaaa)", 2)
         lbl("La fiecare (minute)", 3)
-        self.kind = ttk.Combobox(f, values=sch.KINDS, state="readonly", width=30)
+        self.kind = ttk.Combobox(f, values=[tr(k) for k in sch.KINDS], state="readonly", width=30)
         self.kind.current(1)
         self.kind.grid(row=1, column=0, sticky="w", padx=(0, 10))
         self.kind.bind("<<ComboboxSelected>>", lambda e: self._sync())

@@ -78,8 +78,8 @@ Starea migrării Studio RPR în Python:
 | 2b | **Biblioteca de obiecte** (ca SilkTest): site → pagină → container, test înainte de folosire, sisteme similare (v4.5) | ✅ gata |
 | 3 | SAP GUI + aplicații desktop: drivere, Spy (F2), Test din Bibliotecă (v4.6) | ✅ gata |
 | 3b | Programare automată (Windows Task Scheduler) din Studio, cu istoric (v4.6) | ✅ gata |
-| 6 | **Limbi: română / engleză / germană** pentru toată interfața; limba se alege din Setări | după ce sunt gata toate funcțiile |
-| 7 | **Tab nou „Instrucțiuni”** în toate cele 3 limbi: fiecare procedură explicată pe scurt, pas cu pas, cu exemple | la final |
+| 6 | **Limbi: română / engleză / germană** pentru toată interfața; limba se alege din Setări (v4.7) | ✅ gata |
+| 7 | **Tab nou „Instrucțiuni”** în toate cele 3 limbi: fiecare procedură explicată pe scurt, pas cu pas, cu exemple (v4.7) | ✅ gata |
 | 5 | Renunțarea la versiunea C# | după testare |
 
 Interfața Python v4.1: bara de sus are două rânduri — **comutatorul Recorder / Studio RPR** + STOP URGENȚĂ, apoi

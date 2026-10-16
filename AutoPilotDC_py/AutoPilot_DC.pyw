@@ -41,6 +41,12 @@ def _message(title: str, text: str, action: tuple = None) -> None:
     """Fereastra proprie (messagebox-ul standard se inchide singur cu Tk 9 cand radacina e ascunsa).
     action = (text buton, functie) -> buton suplimentar, ex: "Instaleaza acum"."""
     import tkinter as tk
+    try:   # mesajele in limba aleasa in Setari
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        import i18n
+        i18n.install()
+    except Exception:
+        pass
     root = tk.Tk()
     root.title(title)
     root.configure(bg="#1E1E2E")

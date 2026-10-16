@@ -65,6 +65,12 @@ def notify(title: str, text: str, success: bool, log_path: str = "", seconds: in
         import tkinter as tk
     except ImportError:
         return
+    try:   # mesajul in limba aleasa in Setari
+        sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        import i18n
+        i18n.install()
+    except Exception:
+        pass
     root = tk.Tk()
     root.overrideredirect(True)
     root.attributes("-topmost", True)

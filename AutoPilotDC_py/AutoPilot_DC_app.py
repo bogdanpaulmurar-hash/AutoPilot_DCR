@@ -89,6 +89,8 @@ except ImportError:
 # 1.8b — Siguranta la rulare v4.1 (Nu deranja, chenar RUN/REC, sistem de preventie)
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import app_shell  # v4.1: iconita, pornire cu Windows, tray
+import i18n       # v4.7: romana / engleza / germana (limba din Setari)
+i18n.install()
 from autopilot_safety import (DoNotDisturb, RunFrame, SafetyGuard, GuardAlert,
                               CONTINUE, IGNORE_STEP, RETRY, SKIP_STEP, STOP)
 
@@ -2421,10 +2423,10 @@ class MainWindow:
         self._current_steps: List[StepModel] = []
 
         # ── 14.5 Variabile UI ─────────────────────────────────────
-        self._status_var    = tk.StringVar(value="Gata")
-        self._step_count_var= tk.StringVar(value="Pasi: 0")
-        self._countdown_var = tk.StringVar(value="")
-        self._iter_var      = tk.StringVar(value="")
+        self._status_var    = i18n.TrVar(value="Gata")      # texte afisate: se traduc la set()
+        self._step_count_var= i18n.TrVar(value="Pasi: 0")
+        self._countdown_var = i18n.TrVar(value="")
+        self._iter_var      = i18n.TrVar(value="")
         self._repeat_var    = tk.IntVar(value=self.settings.get("repeat_count", 1))
 
         # ── 14.6 Floating windows ─────────────────────────────────
@@ -2575,11 +2577,13 @@ class MainWindow:
         # ── Comutator zone de lucru ──
         self._mode = "recorder"
         self._studio = None
+        self._help_panel = None
         self._mode_btns = {}
         sw = tk.Frame(hdr, bg=C["bg_main"])
         sw.pack(side="left", pady=6)
         for key, text, tip in [("recorder", "🎬  Recorder", "Inregistrare si redare pe coordonate (mouse / tastatura)"),
-                               ("studio", "🧩  Studio RPR", "Rutine pe obiecte: Web / SAP / Desktop + Excel, fara cod")]:
+                               ("studio", "🧩  Studio RPR", "Rutine pe obiecte: Web / SAP / Desktop + Excel, fara cod"),
+                               ("help", "📖  Instructiuni", "Toate procedurile explicate pe scurt, cu exemple (RO / EN / DE)")]:
             b = tk.Button(sw, text=text, command=lambda k=key: self._set_mode(k), relief="flat", bd=0,
                           font=("Segoe UI", 10, "bold"), padx=14, pady=4, cursor="hand2")
             b.pack(side="left", padx=1, pady=1)
@@ -2602,7 +2606,7 @@ class MainWindow:
                                   relief="flat", padx=10, pady=4, cursor="hand2")
         self._btn_emg.pack(side="right", padx=(4, 10), pady=6)
         self._btn_exit = hbtn("✕", self._on_close, bg=C["bg_main"], fg=C["text_dim"], tip="Inchide aplicatia")
-        hbtn("❓", self._help_for_mode, tip="Ghid (Recorder sau Studio, dupa zona deschisa)")
+        hbtn("❓", self._help_for_mode, tip="📖 Instructiuni: toate procedurile, pe scurt, cu exemple (RO / EN / DE)")
         hbtn("⚙", lambda: (self._set_mode("recorder"), self._open_settings_tab()), tip="Setari aplicatie")
         self._btn_sc = hbtn("⌨", self._toggle_shortcuts_panel, tip="Afiseaza / ascunde panoul de shortcut-uri")
         self._lbl_cd = tk.Label(hdr, textvariable=self._countdown_var, bg=C["bg_card"], fg=C["warning"],
@@ -2615,7 +2619,7 @@ class MainWindow:
         # ── Randul 2: actiunile zonei de lucru ──
         self._actions = FlowFrame(self.root, bg=C["bg_main"], height=40)
         self._actions.pack(fill="x", side="top")
-        self._groups = {"recorder": [], "studio": []}
+        self._groups = {"recorder": [], "studio": [], "help": []}
 
         def group(mode, title):
             g = tk.Frame(self._actions, bg=C["bg_main"])
@@ -2712,21 +2716,24 @@ class MainWindow:
             on = key == mode
             b.configure(bg=C["primary"] if on else C["bg_card"], fg="white" if on else C["text_dim"],
                         activebackground=C["primary"], activeforeground="white")
-        if mode == "studio":
-            self._nb.pack_forget()
-            self._studio.pack(fill="both", expand=True)
-        else:
-            if self._studio is not None:
-                self._studio.pack_forget()
+        if mode == "help" and self._help_panel is None:
+            from instructions_ui import InstructionsPanel
+            self._help_panel = InstructionsPanel(self._workspace, C)
+        for key, panel in (("studio", self._studio), ("help", self._help_panel)):
+            if panel is not None and key != mode:
+                panel.pack_forget()
+        if mode == "recorder":
             self._nb.pack(fill="both", expand=True, padx=6, pady=(4, 0))
+        else:
+            self._nb.pack_forget()
+            (self._studio if mode == "studio" else self._help_panel).pack(fill="both", expand=True)
         self._actions.set_items(self._groups[mode])
-        self.settings.set("ui_mode", mode)
+        if mode != "help":   # la pornire se redeschide Recorder sau Studio, nu instructiunile
+            self.settings.set("ui_mode", mode)
 
     def _help_for_mode(self):
-        if self._mode == "studio" and self._studio is not None:
-            self._studio.show_guide()
-        else:
-            self._show_quick_guide()
+        """❓: deschide tab-ul 📖 Instructiuni (in limba aleasa)."""
+        self._set_mode("help")
 
     # ==========================================================================
     # SECTIUNEA 14.C: TABS
@@ -3638,6 +3645,16 @@ class MainWindow:
                            activebackground=C["bg_card"],
                            font=("Segoe UI", 11)).pack(side="left", padx=4),
         ))
+
+        # ── Limba ──
+        f_lang = section("🌐  Limba / Language / Sprache")
+        self._var_lang = tk.StringVar(value=dict(i18n.LANGUAGES).get(i18n.saved_language(), "Română"))
+        row(f_lang, "Limba interfetei:", lambda p: (
+            ttk.Combobox(p, textvariable=self._var_lang, values=[n for _, n in i18n.LANGUAGES],
+                         state="readonly", width=14, font=("Segoe UI", 10)).pack(side="left", padx=4),
+        ))
+        tk.Label(f_lang, text="Se aplica dupa repornirea aplicatiei (se cere confirmarea la Salveaza Setarile).",
+                 bg=C["bg_card"], fg=C["text_dim"], font=("Segoe UI", 9)).pack(anchor="w", padx=12, pady=(0, 8))
 
         # ── Locatie fisiere ──
         f_loc = section("📁  Locatie Fisiere")
@@ -5240,8 +5257,12 @@ CONTACT: {APP_AUTHOR}
             # Salveaza shortcut-urile
             sc = {k: v.get() for k, v in self._sc_vars.items()}
             self.settings.set("shortcuts", sc)
-            # Salveaza tema
-            self._set_theme(self._var_theme.get())
+            # Salveaza limba + tema (repornire doar daca s-a schimbat ceva)
+            lang = next((c for c, n in i18n.LANGUAGES if n == self._var_lang.get()), "ro")
+            lang_changed = lang != i18n.saved_language()
+            if lang_changed:
+                i18n.save_language(lang)
+            self._set_theme(self._var_theme.get(), force_restart=lang_changed)
             # Reporneste hotkeys cu noile setari
             self.hotkey_mgr.stop()
             self._register_hotkeys()
@@ -5260,11 +5281,15 @@ CONTACT: {APP_AUTHOR}
         self._lbl_speed.configure(text=f"{float(val):.1f}x")
         self.settings.set("playback_speed", float(val))
 
-    def _set_theme(self, theme: str):
-        """Schimba tema si reporneste aplicatia automat."""
+    def _set_theme(self, theme: str, force_restart: bool = False):
+        """Schimba tema (si/sau limba) si reporneste aplicatia automat."""
+        changed = theme != self.settings.get("theme", "dark")
         self.settings.set("theme", theme)
-        if messagebox.askyesno("Tema",
-                f"Tema '{theme}' va fi aplicata.\nAplicatia se va reporni acum. Continui?"):
+        if not changed and not force_restart:
+            return
+        question = (f"Tema '{theme}' va fi aplicata.\nAplicatia se va reporni acum. Continui?" if changed else
+                    "Limba noua se aplica dupa repornire.\nAplicatia se va reporni acum. Continui?")
+        if messagebox.askyesno("Tema" if changed else "Limba", question):
             import sys, os
             self.root.destroy()
             os.execv(sys.executable, [sys.executable] + sys.argv)

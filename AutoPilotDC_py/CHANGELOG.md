@@ -2,6 +2,12 @@
 
 Pornirea aplicației: **`AutoPilot_DC.pyw`** (sau scurtătura „AutoPilot DC” de pe Desktop). Numele fișierelor nu se mai schimbă de la o versiune la alta, deci scurtăturile și pornirea cu Windows rămân valabile.
 
+## 4.7.0 — 2026-10-16
+- **Limbi: Română / English / Deutsch** pentru toată interfața — Recorder, Studio, Bibliotecă, Programare, Setări, mesaje, log-ul rulării, meniul din tray și mesajele rulărilor programate. Limba se alege în **⚙ Setări → 🌐 Limba** și se aplică după repornire (aplicația se repornește singură după confirmare).
+- Traducerile sunt în `i18n/en.json` și `i18n/de.json` (cheia = textul românesc). Logica nu se schimbă cu limba: numele obiectelor, variabilele (`{Rand.…}`, `{Azi}`) și fișierele rutinelor rămân aceleași, deci rutinele merg la toți colegii, indiferent de limbă.
+- **📖 Instrucțiuni**: zonă nouă lângă Recorder / Studio (și butonul ❓): 20 de capitole care explică pe scurt fiecare procedură, pas cu pas, cu exemple — pornire, Recorder, siguranță, Studio, Web / SAP / Desktop, Bibliotecă, pași, condiții, variabile, Excel, erori, rulare, programare, setări, probleme frecvente, fișiere. În română, engleză și germană (comuți limba textului direct din pagină), cu căutare.
+- Setări: tema / limba repornesc aplicația doar dacă s-au schimbat (înainte întreba la fiecare salvare).
+
 ## 4.6.1 — 2026-10-16
 - **Reparat Desktop: click-ul ajungea în altă fereastră.** Windows bloca aducerea aplicației în față, așa că click-ul (ex. schimbarea conversației) cădea pe fereastra de deasupra. Acum fereastra aplicației e adusă sigur în față (și restaurată dacă e minimizată), iar înainte de fiecare click se verifică dacă punctul chiar e în aplicație; dacă nu, click-ul se face prin UI Automation sau pasul se oprește cu un mesaj clar — niciodată în altă fereastră.
 - **Scroll automat Desktop**: elementul din afara zonei vizibile e adus în zonă înainte de acțiune.

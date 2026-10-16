@@ -158,12 +158,16 @@ class Tray:
                 print("[tray] " + self.last_error)
                 return False
             try:
+                try:
+                    from i18n import tr   # meniul pictogramei in limba aleasa
+                except ImportError:
+                    tr = str
                 img = Image.open(ICON_PNG) if os.path.isfile(ICON_PNG) else Image.new("RGB", (64, 64), (0, 153, 153))
-                entries = [pystray.MenuItem("Deschide AutoPilot DC", lambda: self._ui_call(self._on_open), default=True)]
+                entries = [pystray.MenuItem(tr("Deschide AutoPilot DC"), lambda: self._ui_call(self._on_open), default=True)]
                 for text, fn, separator_before in self._items:
                     if separator_before:
                         entries.append(pystray.Menu.SEPARATOR)
-                    entries.append(pystray.MenuItem(text, (lambda f=fn: (lambda: self._ui_call(f)))()))
+                    entries.append(pystray.MenuItem(tr(text), (lambda f=fn: (lambda: self._ui_call(f)))()))
                 self._icon = pystray.Icon("AutoPilotDC", img, tooltip, pystray.Menu(*entries))
                 self._icon.run_detached()
                 self.last_error = ""
@@ -177,6 +181,11 @@ class Tray:
     def notify(self, text: str, title: str = "AutoPilot DC") -> None:
         try:
             if self._icon is not None:
+                try:
+                    from i18n import tr
+                    text, title = tr(text), tr(title)
+                except ImportError:
+                    pass
                 self._icon.notify(text, title)
         except Exception:
             pass
