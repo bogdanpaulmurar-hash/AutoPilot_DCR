@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # ============================================================
-# AutoPilot DC v4.1 — integrarea cu Windows:
+# AutoPilot DC — integrarea cu Windows:
 #   - iconita aplicatiei (fereastra, bara de activitati, scurtaturi)
 #   - pornire automata cu Windows (HKCU\...\Run, fara drepturi de admin)
 #   - pictograma in zona de notificari (tray), langa ceas
@@ -107,7 +107,7 @@ def create_shortcut(folder: Optional[str] = None, name: str = "AutoPilot DC") ->
           "$s.Arguments=" + q('"' + LAUNCHER + '"') + ";"
           "$s.WorkingDirectory=" + q(HERE) + ";"
           "$s.IconLocation=" + q(ICON_ICO + ",0") + ";"
-          "$s.Description='AutoPilot DC v4.1';$s.Save()")
+          "$s.Description='AutoPilot DC';$s.Save()")
     try:
         r = subprocess.run(["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", ps],
                            capture_output=True, text=True, timeout=30,

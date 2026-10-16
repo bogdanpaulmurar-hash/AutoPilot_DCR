@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # ╔══════════════════════════════════════════════════════════════════════════════╗
-# ║  AUTOPILOT DC v4.1 — pornire FARA fereastra de consola (CMD)                 ║
+# ║  AUTOPILOT DC — pornire FARA fereastra de consola (CMD)                      ║
 # ║  Dublu click pe acest fisier (extensia .pyw ruleaza cu pythonw.exe).          ║
 # ╚══════════════════════════════════════════════════════════════════════════════╝
 #
@@ -15,7 +15,7 @@ import sys
 import traceback
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-MAIN = os.path.join(HERE, "AutoPilot_DCv4.1.py")
+MAIN = os.path.join(HERE, "AutoPilot_DC_app.py")
 LOG_DIR = os.path.join(HERE, "loguri")
 
 

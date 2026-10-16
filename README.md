@@ -5,7 +5,7 @@ browser), dezvoltat în două variante:
 
 | Variantă | Folder | Stare |
 |---|---|---|
-| **Python** (CustomTkinter + pynput + pyautogui) | [`AutoPilotDC_v4.1_py/`](AutoPilotDC_v4.1_py) | Recorder/player pe coordonate + siguranța la rulare v4.1 |
+| **Python** (CustomTkinter + pynput + pyautogui) | [`AutoPilotDC_py/`](AutoPilotDC_py) | Recorder/player pe coordonate + siguranța la rulare v4.1 |
 | **C# WPF (.NET 8)** | [`AutoPilotDC_C#/`](AutoPilotDC_C%23) | Recorder/player + **Studio RPR** (rutine pe obiecte: Web/SAP/Desktop + Excel) + siguranța la rulare v4.1 |
 
 ## Ce e nou în v4.1 — siguranța la rulare (ambele variante)
@@ -31,7 +31,7 @@ Pentru 4–6 rutina trebuie **înregistrată cu v4.1** (la înregistrare se salv
 
 Toate se pot opri din **Setări → 🛡 Siguranța la rulare** (în Studio RPR: **⚙ Rutina → Siguranța la rulare**).
 
-## AutoPilotDC_v4.1_py (Python)
+## AutoPilotDC_py (Python)
 
 - **`INSTALEAZA.bat` — o singură dată pe fiecare calculator (dublu click).** Găsește Python,
   instalează toate pachetele (fără drepturi de administrator, cu reîncercare pentru rețeaua
@@ -50,7 +50,7 @@ Toate se pot opri din **Setări → 🛡 Siguranța la rulare** (în Studio RPR:
   Din **Setări → 🪟 Pornire și tray**: pornește cu Windows (opțional direct ascuns în tray), butonul ✕ ascunde
   aplicația în tray, „Creează scurtătură pe Desktop” — scurtătura pornește direct `pythonw.exe`, deci **niciodată
   fereastră CMD**, indiferent cum e asociat `.pyw` în Windows.
-- `AutoPilot_DCv4.1.py` — aplicația principală (recorder + player pași
+- `AutoPilot_DC_app.py` — aplicația principală (recorder + player pași
   desktop/mouse/tastatură cu `pynput`, GUI `customtkinter`). Pornită direct, deschide și consola.
 - `autopilot_safety.py` — **v4.1**: Nu deranja, chenarul RUN/REC, sistemul de prevenție.
   Trebuie să fie în același folder cu aplicația.

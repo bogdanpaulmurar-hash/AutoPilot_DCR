@@ -1,6 +1,6 @@
 @echo off
 rem ============================================================
-rem  AutoPilot DC v4.1 - instalarea pachetelor Python necesare
+rem  AutoPilot DC - instalarea pachetelor Python necesare
 rem  Dublu click. Fereastra ramane deschisa pana apesi o tasta,
 rem  ca sa vezi daca a mers sau ce eroare a aparut.
 rem  Nu cere drepturi de administrator (pachetele se instaleaza
@@ -19,7 +19,7 @@ cd /d "%~dp0"
 
 echo.
 echo  ==========================================================
-echo     AutoPilot DC v4.1 - instalare pachete Python
+echo     AutoPilot DC - instalare pachete Python
 echo  ==========================================================
 echo.
 

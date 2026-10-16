@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 # ╔══════════════════════════════════════════════════════════════════════════════╗
-# ║          AUTOPILOT DC v4.1 — Tool de Automatizare RPA & Data Cleansing       ║
+# ║          AUTOPILOT DC — Tool de Automatizare RPA & Data Cleansing (version.py) ║
 # ║          Autor: Bogdan Murar | Realizat cu ajutorul unui asistent AI         ║
 # ╚══════════════════════════════════════════════════════════════════════════════╝
 
@@ -106,7 +106,7 @@ except ImportError:
 
 # 2.1 — Informatii aplicatie
 APP_NAME    = "AutoPilot DC"
-APP_VERSION          = "4.1"
+from version import __version__ as APP_VERSION  # singura sursa: version.py
 APP_AUTHOR  = "Bogdan Murar (Z003FU5C)"
 
 # 2.2 — Directoare de lucru (in acelasi folder cu scriptul)
@@ -2475,6 +2475,8 @@ class MainWindow:
                 self.root.focus_force()
             except Exception:
                 pass
+        if app_shell.is_autostart_enabled():
+            app_shell.set_autostart(True, bool(self.settings.get("start_minimized_tray", True)))
         if self._start_in_tray and app_shell.tray_available():
             # pornit cu Windows: fara fereastra, doar pictograma langa ceas
             self.root.withdraw()
