@@ -42,6 +42,14 @@ class SapHelperTests(unittest.TestCase):
         self.assertEqual("Camp_Comanda_vanzari", clean_name("Camp", "Comandă vânzări (F4)".replace("(F4)", "")))
         self.assertEqual("Buton", clean_name("Buton", "  "))
 
+    def test_dynamic_names(self):
+        from rpr.drivers.desktop import is_dynamic_name, name_pattern
+        conv = "Ion Popescu, Salut! Ne vedem maine? 10:32, 2 mesaje necitite"
+        self.assertTrue(is_dynamic_name(conv))
+        self.assertEqual("Ion Popescu*", name_pattern(conv))
+        self.assertFalse(is_dynamic_name("Salveaza"))
+        self.assertEqual("", name_pattern("Salveaza"))
+
     def test_keys(self):
         self.assertEqual(0x0D, to_vk("enter"))
         self.assertEqual(0x74, to_vk("F5"))
@@ -121,6 +129,22 @@ class DesktopNotepadTests(unittest.TestCase):
         only_path = UiObject(name="P", technology=UiTechnology.Desktop, context=obj.context,
                              locators=[l for l in obj.locators if l.kind == LocatorKind.UiaPath])
         self.assertTrue(d.get_state(only_path, 2000, threading.Event()).exists)
+
+    def test_2b_wildcard_and_foreground(self):
+        """Nume cu sablon (* = orice) si aducerea ferestrei in fata inainte de click."""
+        from rpr.drivers import winutil
+        d = self.driver
+        menu = UiObject(name="Meniu", technology=UiTechnology.Desktop, context="proces:notepad.exe",
+                        locators=[Locator(LocatorKind.UiaName, "MenuItem|F?l*", 70)])
+        st = d.get_state(menu, 3000, threading.Event())
+        if not st.exists:
+            self.skipTest("Notepad fara bara de meniu clasica")
+        self.assertTrue(st.used_locator.value.endswith("F?l*"))
+
+        def front():
+            win = d._windows("proces:notepad.exe")[0]
+            return winutil.force_foreground(win.CurrentNativeWindowHandle)
+        self.assertTrue(d._w.call(front))
 
     def test_3_engine_attach_and_type(self):
         r = Routine(name="Desktop")

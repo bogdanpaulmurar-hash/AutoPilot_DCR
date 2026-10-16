@@ -1455,7 +1455,7 @@ class StudioPanel(tk.Frame):
             if a == "Anuleaza":
                 return
             if a == "Foloseste existentul":
-                self.insert_node(ActionNode(action=RprAction.Click, target=same.name))
+                self.insert_node(ActionNode(action=RprAction.Click, target=same.name, technology=same.technology))
                 return
         result = ObjectReviewDialog(self, obj).result
         if not result:
@@ -1466,11 +1466,12 @@ class StudioPanel(tk.Frame):
         self.refresh_objects()
         self.set_status(f"Obiect salvat: [{obj.name}] — {sum(1 for l in obj.locators if l.enabled)} locatori activi.")
         if result == "click":
-            self.insert_node(ActionNode(action=RprAction.Click, target=obj.name))
+            self.insert_node(ActionNode(action=RprAction.Click, target=obj.name, technology=obj.technology))
         elif result == "type":
-            self.insert_node(ActionNode(action=RprAction.TypeText, target=obj.name))
+            self.insert_node(ActionNode(action=RprAction.TypeText, target=obj.name, technology=obj.technology))
         elif result == "read":
-            self.insert_node(ActionNode(action=RprAction.ReadText, target=obj.name, output_variable=obj.name.split("_")[-1]))
+            self.insert_node(ActionNode(action=RprAction.ReadText, target=obj.name, technology=obj.technology,
+                                        output_variable=obj.name.split("_")[-1]))
 
     def find_same_object(self, obj: UiObject) -> Optional[UiObject]:
         best = next((l for l in obj.locators if l.enabled), None)
@@ -1536,7 +1537,7 @@ class StudioPanel(tk.Frame):
             self.editor.show(node)
             self.mark_dirty()
             return
-        self.insert_node(ActionNode(action=rec.action, target=obj.name, value=rec.value))
+        self.insert_node(ActionNode(action=rec.action, target=obj.name, value=rec.value, technology=obj.technology))
 
     def show_object(self):
         obj = self._sel_object()

@@ -313,9 +313,25 @@ class SapDriver(UiDriver):
             row, _, col = r.value.partition("|")
             if not row.strip().isdigit() or not col.strip():
                 raise RprStepException("Valoarea trebuie sa fie \"rand|coloana\" (ex: 0|MATNR sau 0|2).")
+            row_i = int(row)
             if typ == "GuiTableControl":
-                return str(el.GetCell(int(row), int(col.strip())).Text)
-            return str(el.GetCellValue(int(row), col.strip()))   # GuiGridView (ALV)
+                # randurile sunt relative la zona vizibila: derulam tabelul pana la rand (scroll)
+                visible = int(_s(lambda: el.VisibleRowCount) or 0)
+                first = int(_s(lambda: el.VerticalScrollbar.Position) or 0)
+                if visible and not first <= row_i < first + visible:
+                    table_id = str(el.Id)
+                    el.VerticalScrollbar.Position = row_i
+                    self._wait_busy(r.timeout_ms)
+                    el = self.session.FindById(table_id)   # dupa scroll obiectul tabelului se reincarca
+                    first = int(_s(lambda: el.VerticalScrollbar.Position) or 0)
+                return str(el.GetCell(row_i - first, int(col.strip())).Text)
+            # GuiGridView (ALV): randurile nevazute se incarca doar dupa derulare
+            visible = int(_s(lambda: el.VisibleRowCount) or 0)
+            first = int(_s(lambda: el.FirstVisibleRow) or 0)
+            if visible and not first <= row_i < first + visible:
+                el.FirstVisibleRow = row_i
+                self._wait_busy(r.timeout_ms)
+            return str(el.GetCellValue(row_i, col.strip()))
         elif a == RprAction.SapGridRowCount:
             return str(int(el.RowCount))
         elif a == RprAction.Highlight:

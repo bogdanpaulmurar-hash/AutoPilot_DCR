@@ -293,7 +293,59 @@ def type_text(text: str, delay: float = 0.005):
 
 
 # ─────────────────────────────────────────────────────────────
-# 4. Procese / ecran
+# 4. Ferestre: aducere in fata (Windows blocheaza SetForegroundWindow simplu din fundal)
+# ─────────────────────────────────────────────────────────────
+user32.GetForegroundWindow.restype = wintypes.HWND
+user32.WindowFromPoint.argtypes = [wintypes.POINT]
+user32.WindowFromPoint.restype = wintypes.HWND
+user32.GetAncestor.argtypes = [wintypes.HWND, wintypes.UINT]
+user32.GetAncestor.restype = wintypes.HWND
+user32.GetWindowThreadProcessId.argtypes = [wintypes.HWND, ctypes.POINTER(wintypes.DWORD)]
+user32.SetForegroundWindow.argtypes = [wintypes.HWND]
+user32.BringWindowToTop.argtypes = [wintypes.HWND]
+user32.IsIconic.argtypes = [wintypes.HWND]
+
+
+def root_window(hwnd) -> int:
+    return int(user32.GetAncestor(hwnd, 2) or 0) if hwnd else 0   # GA_ROOT
+
+
+def force_foreground(hwnd: int) -> bool:
+    """Aduce fereastra in fata chiar daca procesul nostru nu e in prim-plan
+    (AttachThreadInput la firul ferestrei active; la nevoie, apasarea unei taste neutre)."""
+    if not hwnd:
+        return False
+    hwnd = wintypes.HWND(hwnd)
+    if user32.IsIconic(hwnd):
+        user32.ShowWindow(hwnd, 9)   # SW_RESTORE
+    if root_window(user32.GetForegroundWindow()) == root_window(hwnd):
+        return True
+    fg = user32.GetForegroundWindow()
+    fg_thread = user32.GetWindowThreadProcessId(fg, None) if fg else 0
+    me = kernel32.GetCurrentThreadId()
+    attached = bool(fg_thread and fg_thread != me and user32.AttachThreadInput(me, fg_thread, True))
+    try:
+        user32.BringWindowToTop(hwnd)
+        user32.SetForegroundWindow(hwnd)
+    finally:
+        if attached:
+            user32.AttachThreadInput(me, fg_thread, False)
+    time.sleep(0.1)
+    if root_window(user32.GetForegroundWindow()) != root_window(hwnd):
+        # ultima varianta: o tasta neutra (F24) deblocheaza schimbarea ferestrei active
+        _send([_key(0x87, False), _key(0x87, True)])
+        user32.SetForegroundWindow(hwnd)
+        time.sleep(0.1)
+    return root_window(user32.GetForegroundWindow()) == root_window(hwnd)
+
+
+def point_in_window(x: int, y: int, hwnd: int) -> bool:
+    """Click-ul in (x, y) ajunge in fereastra hwnd (nu e acoperita de alta fereastra)?"""
+    return root_window(user32.WindowFromPoint(wintypes.POINT(x, y))) == root_window(hwnd)
+
+
+# ─────────────────────────────────────────────────────────────
+# 5. Procese / ecran
 # ─────────────────────────────────────────────────────────────
 def process_name(pid: int) -> str:
     """"notepad.exe" pentru un PID (gol daca nu se poate citi)."""

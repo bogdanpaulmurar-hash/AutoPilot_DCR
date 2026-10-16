@@ -13,6 +13,7 @@
 from __future__ import annotations
 
 import datetime as _dt
+import fnmatch
 import os
 import re
 import shlex
@@ -38,6 +39,29 @@ def clean_name(prefix: str, basis: str, limit: int = 30) -> str:
     s = "".join(c for c in s if unicodedata.category(c) != "Mn")
     s = re.sub(r"[^A-Za-z0-9]+", "_", s).strip("_")[:limit].strip("_")
     return f"{prefix}_{s}" if s else prefix
+
+
+# Elemente pe care se actioneaza (Spy urca de la textul din interior la ele: randul din lista, butonul...)
+_ACTIONABLE = {"Button", "ListItem", "TreeItem", "TabItem", "MenuItem", "DataItem", "Hyperlink", "CheckBox",
+               "RadioButton", "ComboBox", "Edit", "SplitButton"}
+_INNER = {"Text", "Image", "Pane", "Group", "Custom"}
+# Pozitii in liste (se schimba cand lista se reordoneaza: conversatii, e-mailuri, randuri)
+_LIST_POSITION = re.compile(r"(ListItem|DataItem|TreeItem)\[\d+\]")
+
+
+def name_pattern(name: str) -> str:
+    """Sablon stabil pentru nume care contin text variabil (ultimul mesaj, ora, numar necitite).
+    "Ion Popescu, Salut! 10:32, 2 necitite" -> "Ion Popescu*"."""
+    first = re.split(r"[,\n\r|•·\u2022]| - | – ", name.strip(), 1)[0].strip()
+    first = first[:40].rstrip()
+    if not first or first == name.strip():
+        return ""
+    return first.replace("*", "?").replace("[", "?").replace("]", "?") + "*"
+
+
+def is_dynamic_name(name: str) -> bool:
+    n = name.strip()
+    return len(n) > 40 or "\n" in n or bool(re.search(r"\b\d{1,2}:\d{2}\b", n)) or bool(re.search(r",\s*\S", n))
 
 
 _PREFIX = {"Button": "Buton", "Edit": "Camp", "ComboBox": "Lista", "CheckBox": "Bifa", "RadioButton": "Optiune",
@@ -141,8 +165,20 @@ class DesktopDriver(UiDriver):
             return self._arr(root.FindAll(_SCOPE_DESCENDANTS, iu.CreatePropertyCondition(30011, loc.value)))
         if k in (LocatorKind.UiaName, LocatorKind.ClassName):
             typ, _, text = loc.value.partition("|") if "|" in loc.value else ("", "", loc.value)
-            cond = iu.CreatePropertyCondition(30005 if k == LocatorKind.UiaName else 30012, text)
             tid = self._types.get(typ.strip().lower())
+            if "*" in text or "?" in text:   # sablon: cautam dupa tip, apoi filtram dupa nume
+                cond = iu.CreatePropertyCondition(30003, tid) if tid is not None else iu.CreateTrueCondition()
+                pat = text.lower()
+                get = (lambda e: e.CurrentName) if k == LocatorKind.UiaName else (lambda e: e.CurrentClassName)
+                out = []
+                for e in self._arr(root.FindAll(_SCOPE_DESCENDANTS, cond)):
+                    try:
+                        if fnmatch.fnmatchcase((get(e) or "").lower(), pat):
+                            out.append(e)
+                    except Exception:
+                        pass
+                return out
+            cond = iu.CreatePropertyCondition(30005 if k == LocatorKind.UiaName else 30012, text)
             if tid is not None:
                 cond = iu.CreateAndCondition(cond, iu.CreatePropertyCondition(30003, tid))
             return self._arr(root.FindAll(_SCOPE_DESCENDANTS, cond))
@@ -242,17 +278,27 @@ class DesktopDriver(UiDriver):
         el = self._require(obj, r.timeout_ms, stop)
         c = self._control(el)
         P = self._auto.PatternId
+        if a not in (RprAction.ReadText, RprAction.ReadValue, RprAction.ReadAttribute):
+            self._prepare(el, bring_to_front=not r.direct_mode or a in (RprAction.TypeText, RprAction.AppendText,
+                                                                         RprAction.PressKey, RprAction.Clear))
 
-        if a == RprAction.Click:
-            if r.direct_mode and self._direct_click(c):
+        if a in (RprAction.Click, RprAction.DoubleClick, RprAction.RightClick, RprAction.Hover):
+            if a == RprAction.Click and r.direct_mode and self._direct_click(c):
                 return None
-            c.Click(simulateMove=not r.direct_mode, waitTime=0.1)
-        elif a == RprAction.DoubleClick:
-            c.DoubleClick(waitTime=0.1)
-        elif a == RprAction.RightClick:
-            c.RightClick(waitTime=0.1)
-        elif a == RprAction.Hover:
-            c.MoveCursorToMyCenter()
+            if not self._click_lands_on(el):
+                # punctul de click e acoperit de alta fereastra: fara mouse (UI Automation) sau oprire clara
+                if a == RprAction.Click and self._direct_click(c):
+                    return None
+                raise RprStepException(f"[{obj.name}] e acoperit de alta fereastra (fereastra aplicatiei nu a putut fi "
+                                       "adusa in fata). Click-ul NU a fost trimis, ca sa nu ajunga in alta parte.")
+            if a == RprAction.Click:
+                c.Click(simulateMove=not r.direct_mode, waitTime=0.1)
+            elif a == RprAction.DoubleClick:
+                c.DoubleClick(waitTime=0.1)
+            elif a == RprAction.RightClick:
+                c.RightClick(waitTime=0.1)
+            else:
+                c.MoveCursorToMyCenter()
         elif a == RprAction.TypeText:
             vp = c.GetPattern(P.ValuePattern)
             if vp is not None and not vp.IsReadOnly:
@@ -319,6 +365,47 @@ class DesktopDriver(UiDriver):
         else:
             raise RprStepException(f"Actiunea {a} nu e disponibila pentru aplicatii desktop.")
         return None
+
+    def _prepare(self, el, bring_to_front: bool = True):
+        """Inainte de actiune: fereastra aplicatiei in fata (altfel click-ul ajunge in alta fereastra),
+        restaurata daca e minimizata, iar elementul adus in zona vizibila (scroll)."""
+        auto = self._auto
+        P = auto.PatternId
+        if bring_to_front:
+            win = self._top_window(el)
+            if win is not None:
+                try:
+                    wp = self._control(win).GetPattern(P.WindowPattern)
+                    if wp is not None and wp.WindowVisualState == 2:   # minimizata
+                        wp.SetWindowVisualState(0, waitTime=0.2)
+                except Exception:
+                    pass
+                try:
+                    h = win.CurrentNativeWindowHandle
+                    if h and not winutil.force_foreground(h):
+                        auto.SwitchToThisWindow(h)
+                        time.sleep(0.15)
+                except Exception:
+                    pass
+        try:
+            if el.CurrentIsOffscreen:
+                sp = self._control(el).GetPattern(P.ScrollItemPattern)
+                if sp is not None:
+                    sp.ScrollIntoView(waitTime=0.2)
+        except Exception:
+            pass
+
+    def _click_lands_on(self, el) -> bool:
+        """Mijlocul elementului e chiar in fereastra aplicatiei (nu acoperit de alta fereastra)?"""
+        try:
+            win = self._top_window(el)
+            h = win.CurrentNativeWindowHandle if win is not None else 0
+            if not h:
+                return True   # fara fereastra Win32 (ex. elemente UWP): nu putem verifica
+            left, top, right, bottom = self._rect(el)
+            return winutil.point_in_window((left + right) // 2, (top + bottom) // 2, h)
+        except Exception:
+            return True
 
     def _direct_click(self, c) -> bool:
         P = self._auto.PatternId
@@ -391,6 +478,10 @@ class DesktopDriver(UiDriver):
         except OSError as ex:
             raise RprStepException(f"Aplicatia \"{exe}\" nu porneste: {_first_line(ex)}") from ex
         self._pid = proc.pid
+        try:   # asteptam ca aplicatia sa termine de pornit (max 10 s)
+            winutil.user32.WaitForInputIdle(int(proc._handle), min(10000, max(1000, timeout_ms)))
+        except Exception:
+            pass
         deadline = time.monotonic() + max(5000, timeout_ms) / 1000.0
         exe_name = os.path.basename(exe)
         while time.monotonic() < deadline and not (stop is not None and stop.is_set()):
@@ -501,6 +592,8 @@ class DesktopDriver(UiDriver):
                     el = c.Element if c is not None else None
                 except Exception:
                     pass
+                if el is not None:
+                    el = self._actionable(el)
                 if el is not None and winutil.is_down(winutil.VK_F2):
                     winutil.wait_release(winutil.VK_F2)
                     hl.hide()
@@ -525,6 +618,27 @@ class DesktopDriver(UiDriver):
             return None
         finally:
             hl.hide()
+
+    def _actionable(self, el):
+        """Textul / imaginea din interiorul unui rand de lista sau buton -> randul / butonul insusi."""
+        try:
+            if self._type_name(el) not in _INNER:
+                return el
+            walker = self._iu.ControlViewWalker
+            cur = el
+            for _ in range(3):
+                parent = walker.GetParentElement(cur)
+                if not parent:
+                    break
+                t = self._type_name(parent)
+                if t in _ACTIONABLE:
+                    return parent
+                if t not in _INNER:
+                    break
+                cur = parent
+        except Exception:
+            pass
+        return el
 
     def _top_window(self, el):
         walker = self._iu.ControlViewWalker
@@ -566,13 +680,19 @@ class DesktopDriver(UiDriver):
         if auto_id and not auto_id.isdigit():
             add_if_found(LocatorKind.AutomationId, auto_id, 90)
         if name:
-            add_if_found(LocatorKind.UiaName, f"{ctype}|{name}", 80)
+            dynamic = is_dynamic_name(name)
+            pat = name_pattern(name) if dynamic else ""
+            if pat:   # ex: conversatie "Ion Popescu, ultimul mesaj, 10:32" -> "Ion Popescu*"
+                add_if_found(LocatorKind.UiaName, f"{ctype}|{pat}", 75)
+            add_if_found(LocatorKind.UiaName, f"{ctype}|{name}", 45 if dynamic else 80)
         if cls:
             add_if_found(LocatorKind.ClassName, f"{ctype}|{cls}", 40)
         if window is not None:
             path = self._path_from(window, el)
             if path:
-                obj.locators.append(Locator(LocatorKind.UiaPath, path, 30))
+                # pozitia intr-o lista se schimba cand lista se reordoneaza -> ultima rezerva, dezactivata implicit
+                positional = bool(_LIST_POSITION.search(path))
+                obj.locators.append(Locator(LocatorKind.UiaPath, path, 15 if positional else 30, not positional))
         obj.locators.sort(key=lambda l: -l.score)
         return obj
 
