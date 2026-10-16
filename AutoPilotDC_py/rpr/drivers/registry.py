@@ -55,7 +55,8 @@ def register_all(provider: DriverProvider, settings: Optional[StudioSettings] = 
     def web():
         from .web import PlaywrightDriver, WebSettings
         ws = WebSettings(browser=settings.browser, headless=settings.headless,
-                         profile_folder=RprPaths.browser_profile())
+                         # fiecare browser are profilul lui (Edge si Chrome nu pot folosi acelasi folder)
+                         profile_folder=os.path.join(RprPaths.browser_profile(), settings.browser.lower()))
         return PlaywrightDriver(ws)
 
     provider.register(UiTechnology.Web, web)

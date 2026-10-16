@@ -143,24 +143,36 @@ class Tray:
     def visible(self) -> bool:
         return self._icon is not None
 
+    last_error = ""
+
     def show(self, tooltip: str = "AutoPilot DC") -> bool:
+        """Afiseaza pictograma. False (si motivul in last_error / log) daca nu se poate."""
         with self._lock:
             if self._icon is not None:
                 return True
             try:
                 import pystray
                 from PIL import Image
-            except ImportError:
+            except ImportError as ex:
+                self.last_error = f"lipseste pachetul pystray / pillow ({ex}) — ruleaza INSTALEAZA.bat"
+                print("[tray] " + self.last_error)
                 return False
-            img = Image.open(ICON_PNG) if os.path.isfile(ICON_PNG) else Image.new("RGB", (64, 64), (0, 153, 153))
-            entries = [pystray.MenuItem("Deschide AutoPilot DC", lambda: self._ui_call(self._on_open), default=True)]
-            for text, fn, separator_before in self._items:
-                if separator_before:
-                    entries.append(pystray.Menu.SEPARATOR)
-                entries.append(pystray.MenuItem(text, (lambda f=fn: (lambda: self._ui_call(f)))()))
-            self._icon = pystray.Icon("AutoPilotDC", img, tooltip, pystray.Menu(*entries))
-            self._icon.run_detached()
-            return True
+            try:
+                img = Image.open(ICON_PNG) if os.path.isfile(ICON_PNG) else Image.new("RGB", (64, 64), (0, 153, 153))
+                entries = [pystray.MenuItem("Deschide AutoPilot DC", lambda: self._ui_call(self._on_open), default=True)]
+                for text, fn, separator_before in self._items:
+                    if separator_before:
+                        entries.append(pystray.Menu.SEPARATOR)
+                    entries.append(pystray.MenuItem(text, (lambda f=fn: (lambda: self._ui_call(f)))()))
+                self._icon = pystray.Icon("AutoPilotDC", img, tooltip, pystray.Menu(*entries))
+                self._icon.run_detached()
+                self.last_error = ""
+                return True
+            except Exception as ex:  # noqa: BLE001
+                self._icon = None
+                self.last_error = f"pictograma nu a putut fi creata: {ex}"
+                print("[tray] " + self.last_error)
+                return False
 
     def notify(self, text: str, title: str = "AutoPilot DC") -> None:
         try:

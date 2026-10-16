@@ -275,24 +275,45 @@ class PlaywrightDriver(UiDriver):
             self._navigate(url)
 
     def _launch(self):
+        """Porneste browserul. Ordinea incercarilor:
+        1. profilul pastrat (login-ul ramane intre rulari) — fiecare browser are profilul lui;
+        2. inca o data, dupa o pauza (profilul poate fi ocupat cateva secunde de o fereastra care se inchide);
+        3. profil temporar: merge sigur, dar login-ul nu se pastreaza (anuntam utilizatorul)."""
         b = (self.settings.browser or "Edge").lower()
         channel = {"edge": "msedge", "chrome": "chrome"}.get(b)
         btype = self._pw.firefox if b == "firefox" else self._pw.chromium
-        args = [] if b == "firefox" else ["--start-maximized"]
+        opts: Dict[str, Any] = dict(channel=channel, headless=self.settings.headless)
+        if b != "firefox":
+            opts["args"] = ["--start-maximized"]
+            # sandbox-ul normal al browserului: fara steagul --no-sandbox (si fara bara galbena de avertizare)
+            opts["chromium_sandbox"] = True
+        errors: List[str] = []
+
+        if self.settings.profile_folder:
+            os.makedirs(self.settings.profile_folder, exist_ok=True)
+            for attempt in range(2):
+                try:
+                    return btype.launch_persistent_context(self.settings.profile_folder, no_viewport=True,
+                                                           accept_downloads=True, **opts)
+                except Exception as ex:  # noqa: BLE001
+                    errors.append(_first_line(ex))
+                    time.sleep(1.5)
+
         try:
-            if self.settings.profile_folder:
-                os.makedirs(self.settings.profile_folder, exist_ok=True)
-                return btype.launch_persistent_context(
-                    self.settings.profile_folder, channel=channel, headless=self.settings.headless,
-                    args=args, no_viewport=True, accept_downloads=True)
-            self._browser = btype.launch(channel=channel, headless=self.settings.headless, args=args)
-            return self._browser.new_context(no_viewport=True, accept_downloads=True)
+            self._browser = btype.launch(**opts)
+            ctx = self._browser.new_context(no_viewport=True, accept_downloads=True)
+            if errors:
+                self._info("Profilul browserului nu a putut fi folosit (o fereastra AutoPilot ramasa deschisa il "
+                           "blocheaza?). Am pornit cu un profil temporar: login-ul nu se pastreaza. Inchide ferestrele "
+                           "de browser ramase de la AutoPilot si reporneste. Detalii: " + errors[-1])
+            return ctx
         except Exception as ex:  # noqa: BLE001
-            hint = {"edge": "Verifica daca Microsoft Edge e instalat. Daca profilul browserului e folosit de alta "
-                            "fereastra AutoPilot (inclusiv versiunea C#), inchide-o.",
-                    "chrome": "Verifica daca Google Chrome e instalat."}.get(
-                b, "Ruleaza o data in PowerShell:  py -m playwright install " + b)
-            raise RprStepException(f"Nu pot porni browserul ({self.settings.browser}). {hint} Detalii: {_first_line(ex)}")
+            errors.append(_first_line(ex))
+        hint = {"edge": "Verifica daca Microsoft Edge e instalat; inchide ferestrele Edge ramase deschise de AutoPilot. "
+                        "Sau alege Google Chrome in 🌐 Setari Studio.",
+                "chrome": "Verifica daca Google Chrome e instalat."}.get(
+            b, "Ruleaza o data in PowerShell:  py -m playwright install " + b)
+        raise RprStepException(f"Nu pot porni browserul ({self.settings.browser}). {hint} Detalii: {errors[-1]}")
 
     def _reset_state(self):
         self._context = self._page = self._browser = None

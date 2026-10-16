@@ -2477,11 +2477,13 @@ class MainWindow:
                 pass
         if app_shell.is_autostart_enabled():
             app_shell.set_autostart(True, bool(self.settings.get("start_minimized_tray", True)))
-        if self._start_in_tray and app_shell.tray_available():
-            # pornit cu Windows: fara fereastra, doar pictograma langa ceas
-            self.root.withdraw()
-            self.root.after(500, self.tray.show)
+        # pictograma langa ceas: mereu, cat timp aplicatia ruleaza
+        tray_ok = self.tray.show()
+        if self._start_in_tray and tray_ok:
+            self.root.withdraw()   # pornit cu Windows: fara fereastra, doar pictograma
         else:
+            if self._start_in_tray:
+                print("[tray] pornire in tray imposibila, deschid fereastra: " + self.tray.last_error)
             self.root.after(300, _bring_to_front)
         self.root.mainloop()
 
@@ -3602,9 +3604,12 @@ class MainWindow:
                            selectcolor=C["bg_input"], activebackground=C["bg_card"], activeforeground=C["text"],
                            font=("Segoe UI", 11), anchor="w",
                            state="normal" if (tray_ok or not needs_tray) else "disabled").pack(fill="x", padx=12, pady=2)
-        tk.Label(f_start, text=("Setarile se aplica imediat. Pornirea cu Windows foloseste contul tau (fara drepturi de "
-                                "administrator). Din tray: click = deschide; click dreapta = Recorder, Studio, "
-                                "STOP URGENTA, Iesire." if tray_ok else
+        tray_state = ("Pictograma din tray: ✔ activa (pe Windows 10/11 poate fi ascunsa sub sageata ^ de langa ceas — "
+                      "o poti trage pe bara)." if self.tray.visible else
+                      "Pictograma din tray: ✖ " + (self.tray.last_error or "nu e afisata."))
+        tk.Label(f_start, text=(tray_state + "\nSetarile se aplica imediat. Pornirea cu Windows foloseste contul tau "
+                                "(fara drepturi de administrator). Din tray: click = deschide; click dreapta = Recorder, "
+                                "Studio, STOP URGENTA, Iesire." if tray_ok else
                                 "Pentru tray lipseste pachetul pystray: ruleaza INSTALEAZA.bat."),
                  bg=C["bg_card"], fg=C["text_dim"] if tray_ok else C["warning"], font=("Segoe UI", 9),
                  wraplength=720, justify="left").pack(anchor="w", padx=12, pady=(2, 8))
@@ -5389,8 +5394,6 @@ CONTACT: {APP_AUTHOR}
         self.root.attributes("-topmost", True)
         self.root.after(300, lambda: self.root.attributes("-topmost", False))
         self.root.focus_force()
-        if not self.settings.get("close_to_tray", False):
-            self.tray.hide()
 
     def _quit_app(self):
         """Inchidere reala (din meniul tray / Fisier → Iesire)."""
