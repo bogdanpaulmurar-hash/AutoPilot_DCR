@@ -33,6 +33,8 @@ Toate se pot opri din **Setări → 🛡 Siguranța la rulare** (în Studio RPR:
 
 ## AutoPilotDC_py (Python)
 
+**Pornirea aplicației (mereu aceeași):** `AutoPilotDC_py\AutoPilot_DC.pyw` sau scurtătura „AutoPilot DC” de pe Desktop. Ce e nou în fiecare versiune: [`AutoPilotDC_py/CHANGELOG.md`](AutoPilotDC_py/CHANGELOG.md).
+
 - **`INSTALEAZA.bat` — o singură dată pe fiecare calculator (dublu click).** Găsește Python,
   instalează toate pachetele (fără drepturi de administrator, cu reîncercare pentru rețeaua
   firmei), verifică fiecare pachet și poate crea scurtătura pe Desktop. Fereastra rămâne
@@ -72,7 +74,7 @@ Starea migrării Studio RPR în Python:
 |---|---|---|
 | 1 | Motorul + Excel + rulare din linie de comandă + teste | ✅ gata |
 | 4 | Editorul vizual (Studio) în aplicație — comutatorul **🧩 Studio RPR** din bara de sus | ✅ gata (adus înainte, ca să-l poți vedea) |
-| 2 | Driver Web (Playwright): acțiuni, Spy, înregistrare, iframe-uri | în lucru |
+| 2 | Driver Web (Playwright): acțiuni, Spy, înregistrare, iframe-uri (v4.4) | ✅ gata |
 | 3 | SAP GUI + aplicații desktop | urmează |
 | 3b | Programare automată (Windows Task Scheduler) din Studio | urmează |
 | 6 | **Limbi: română / engleză / germană** pentru toată interfața; limba se alege din Setări | după ce sunt gata toate funcțiile |

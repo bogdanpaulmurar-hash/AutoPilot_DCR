@@ -281,6 +281,41 @@ def choice_dialog(parent, title: str, text: str, buttons: List[str], detail: str
     return answer["v"]
 
 
+def input_dialog(parent, title: str, prompt: str, initial: str = "", C=None) -> Optional[str]:
+    C = C or {}
+    bg, fg = C.get("bg_main", "#1E1E2E"), C.get("text", "#FFFFFF")
+    dlg = tk.Toplevel(parent)
+    dlg.title(title)
+    dlg.configure(bg=bg)
+    dlg.attributes("-topmost", True)
+    dlg.resizable(False, False)
+    res = {"v": None}
+    tk.Label(dlg, text=prompt, bg=bg, fg=fg, font=("Segoe UI", 10), wraplength=480, justify="left").pack(
+        anchor="w", padx=16, pady=(14, 6))
+    var = tk.StringVar(value=initial)
+    e = tk.Entry(dlg, textvariable=var, width=60, bg=C.get("bg_input", "#32324A"), fg=fg, insertbackground=fg,
+                 relief="flat", font=("Segoe UI", 10))
+    e.pack(padx=16, ipady=4)
+    e.icursor("end")
+    e.focus_set()
+
+    def ok(_e=None):
+        res["v"] = var.get()
+        dlg.destroy()
+    e.bind("<Return>", ok)
+    row = tk.Frame(dlg, bg=bg)
+    row.pack(anchor="e", padx=16, pady=12)
+    tk.Button(row, text="OK", command=ok, bg=C.get("success", "#00AA44"), fg="white", relief="flat",
+              font=("Segoe UI", 10, "bold"), padx=14).pack(side="left", padx=3)
+    tk.Button(row, text="Anuleaza", command=dlg.destroy, bg=C.get("bg_input", "#3A3A5A"), fg=fg, relief="flat",
+              font=("Segoe UI", 10), padx=10).pack(side="left", padx=3)
+    dlg.update_idletasks()
+    dlg.geometry(f"+{(dlg.winfo_screenwidth() - dlg.winfo_reqwidth()) // 2}+{dlg.winfo_screenheight() // 3}")
+    dlg.grab_set()
+    dlg.wait_window()
+    return res["v"]
+
+
 def _new_ids(node: RprNode) -> None:
     node.id = uuid.uuid4().hex[:10]
     for _, lst in node.branches():
@@ -429,7 +464,11 @@ class StudioPanel(tk.Frame):
         self.dirty = False
 
         self.engine: Optional[RprEngine] = None
+        from rpr.drivers.registry import StudioSettings
+        self.studio_settings = StudioSettings.load()
         self.drivers = self._build_drivers()
+        self._recording = False
+        self._spy_hint: Optional[tk.Toplevel] = None
         self.busy = False
         self._run_control: Optional[RunControlWindow] = None
         self._queue: "queue.Queue[tuple]" = queue.Queue()
@@ -444,15 +483,30 @@ class StudioPanel(tk.Frame):
         self.after(50, self._poll)
 
     # ── drivere (se completeaza in etapele 2-3) ─────────────────────────────
-    @staticmethod
-    def _build_drivers() -> DriverProvider:
+    def _build_drivers(self) -> DriverProvider:
         provider = DriverProvider()
         try:
             from rpr.drivers.registry import register_all
-            register_all(provider)
+            register_all(provider, self.studio_settings)
         except ImportError:
             pass
         return provider
+
+    def web(self):
+        """Driverul Web (acelasi browser pentru Spy, inregistrare si rulare)."""
+        d = self.drivers.get(UiTechnology.Web)
+        if getattr(d, "on_info", "absent") is None:
+            d.on_info = lambda m: self.post("status", m)
+        return d
+
+    def shutdown(self):
+        """La inchiderea aplicatiei: oprim inregistrarea si inchidem browserul."""
+        try:
+            if self._recording:
+                self.web().stop_recording()
+        except Exception:
+            pass
+        self.drivers.close()
 
     # =========================================================================
     # Constructia interfetei
@@ -619,12 +673,14 @@ class StudioPanel(tk.Frame):
         self.objects.bind("<Double-1>", lambda e: self.edit_object())
         row = tk.Frame(host, bg=C["bg_main"])
         row.pack(fill="x", padx=4, pady=4)
-        for text, cmd, tip in [("＋ Nou", self.new_object, "Obiect nou, cu locatori scrisi de mana"),
+        for text, cmd, tip in [("👁", self.show_object, "Arata obiectul pe ecran (verifici ca e gasit)"),
+                               ("＋ Nou", self.new_object, "Obiect nou, cu locatori scrisi de mana"),
                                ("✎", self.edit_object, "Editeaza numele si locatorii (dublu click)"),
                                ("➕ Pas", self.object_to_step, "Adauga un pas Click pe acest obiect"),
                                ("🗑", self.delete_object, "Sterge obiectul din repository")]:
             self._btn(row, text, cmd, tip=tip).pack(side="left", padx=1)
-        tk.Label(host, text="Spy (marcarea obiectelor cu mouse-ul) vine cu driverele Web / SAP / Desktop.",
+        tk.Label(host, text="Obiecte noi: 🎯 Web din bara de sus (Spy) sau ⏺ Inregistreaza Web. "
+                            "Spy SAP / Desktop vine in etapa urmatoare.",
                  bg=C["bg_main"], fg=C["text_dim"], font=("Segoe UI", 8), wraplength=220, justify="left").pack(
             anchor="w", padx=6, pady=(0, 6))
 
@@ -1039,10 +1095,253 @@ class StudioPanel(tk.Frame):
             return
         self.insert_node(ActionNode(action=RprAction.Click, target=obj.name, technology=obj.technology))
 
-    def spy(self, technology: UiTechnology):
-        messagebox.showinfo("Spy", f"Spy pentru {technology} (marcarea obiectelor cu mouse-ul) vine cu driverul "
-                                   "acestei tehnologii, in etapele urmatoare.\n\nPana atunci poti adauga obiecte manual: "
-                                   "tab-ul 🎯 Obiecte → ＋ Nou.", parent=self)
+    def spy(self, technology):
+        tech = str(technology).lower()
+        if tech not in ("web", "webselenium"):
+            messagebox.showinfo("Spy", f"Spy pentru {technology} vine cu driverul SAP / Desktop, in etapa urmatoare.\n\n"
+                                       "Pana atunci poti adauga obiecte manual: tab-ul 🎯 Obiecte → ＋ Nou.", parent=self)
+            return
+        if self.busy:
+            self.set_status("Asteapta sa se termine operatia curenta.")
+            return
+        if self._recording:
+            self.record_web()   # oprim inregistrarea inainte de Spy
+        url = self._ask_url_if_closed()
+        if url is False:
+            return
+        self.busy = True
+        self._show_spy_hint("🎯 SPY WEB: du mouse-ul peste element in browser (contur verde) si da CLICK.  "
+                            "Esc in browser = anuleaza.")
+        web = self.web()
+
+        def work():
+            try:
+                if url:
+                    web.open(url)
+                obj = web.capture_object("Click = captureaza · Esc = anuleaza", RprPaths.object_images())
+                self.post("spy_done", (obj, None))
+            except Exception as ex:  # noqa: BLE001
+                self.post("spy_done", (None, str(ex)))
+        self.set_status("SPY WEB: du mouse-ul peste element in browser si da CLICK ca sa-l capturezi. Esc = anulare.")
+        threading.Thread(target=work, daemon=True, name="Spy").start()
+
+    def _ask_url_if_closed(self):
+        """None = browserul e deja deschis; False = anulat; altfel adresa de deschis."""
+        try:
+            if self.web().is_open:
+                return None
+        except Exception:
+            pass
+        url = input_dialog(self, "Deschide browserul", "Browserul nu e deschis. La ce adresa sa-l deschid?",
+                           "https://", C=self.C)
+        if not url or not url.strip() or url.strip() == "https://":
+            return False
+        return url.strip()
+
+    def _show_spy_hint(self, text: str):
+        self._hide_spy_hint()
+        C = self.C
+        w = tk.Toplevel(self)
+        w.overrideredirect(True)
+        w.attributes("-topmost", True)
+        w.configure(bg=C["primary"])
+        tk.Label(w, text=text, bg=C["primary"], fg="white", font=("Segoe UI", 10, "bold"), padx=12, pady=6).pack(side="left")
+        tk.Button(w, text="Anuleaza", command=lambda: self.web().cancel_spy(), bg="white", fg=C["primary"],
+                  relief="flat", font=("Segoe UI", 9, "bold"), cursor="hand2").pack(side="left", padx=8, pady=4)
+        w.update_idletasks()
+        w.geometry(f"+{(w.winfo_screenwidth() - w.winfo_reqwidth()) // 2}+8")
+        self._spy_hint = w
+
+    def _hide_spy_hint(self):
+        if self._spy_hint is not None:
+            try:
+                self._spy_hint.destroy()
+            except Exception:
+                pass
+            self._spy_hint = None
+
+    def _spy_finished(self, obj, error):
+        self.busy = False
+        self._hide_spy_hint()
+        top = self.winfo_toplevel()
+        top.deiconify()
+        top.lift()
+        if error:
+            messagebox.showerror("Spy", f"Spy nu a putut porni:\n{error}", parent=self)
+            self.set_status("Spy esuat.")
+            return
+        if obj is None:
+            self.set_status("Spy anulat.")
+            return
+        same = self.find_same_object(obj)
+        if same is not None:
+            a = choice_dialog(self, "Obiect existent", f"Elementul e deja in repository ca [{same.name}]. Il folosesti pe acela?",
+                              ["Foloseste existentul", "Salveaza ca obiect nou", "Anuleaza"], C=self.C)
+            if a == "Anuleaza":
+                return
+            if a == "Foloseste existentul":
+                self.insert_node(ActionNode(action=RprAction.Click, target=same.name))
+                return
+        result = ObjectReviewDialog(self, obj).result
+        if not result:
+            self.set_status("Obiect nesalvat.")
+            return
+        self.repo.add(obj)
+        self.save_repository()
+        self.refresh_objects()
+        self.set_status(f"Obiect salvat: [{obj.name}] — {sum(1 for l in obj.locators if l.enabled)} locatori activi.")
+        if result == "click":
+            self.insert_node(ActionNode(action=RprAction.Click, target=obj.name))
+        elif result == "type":
+            self.insert_node(ActionNode(action=RprAction.TypeText, target=obj.name))
+        elif result == "read":
+            self.insert_node(ActionNode(action=RprAction.ReadText, target=obj.name, output_variable=obj.name.split("_")[-1]))
+
+    def find_same_object(self, obj: UiObject) -> Optional[UiObject]:
+        best = next((l for l in obj.locators if l.enabled), None)
+        if best is None:
+            return None
+        for o in self.repo.objects:
+            if o.technology == obj.technology and list(o.frame_path) == list(obj.frame_path) and \
+                    any(l.kind == best.kind and l.value == best.value for l in o.locators):
+                return o
+        return None
+
+    # ── Inregistrare web ──
+    def record_web(self):
+        web = self.web()
+        if self._recording:
+            web.stop_recording()
+            self._set_recording(False)
+            self.set_status("Inregistrare oprita.")
+            return
+        if self.busy:
+            return
+        url = self._ask_url_if_closed()
+        if url is False:
+            return
+
+        def work():
+            try:
+                if url:
+                    web.open(url)
+                web.start_recording(lambda rec: self.post("recorded", rec), "INREGISTRARE · Esc = stop")
+                self.post("record_started", None)
+            except Exception as ex:  # noqa: BLE001
+                self.post("record_failed", str(ex))
+        self.set_status("Pornesc inregistrarea...")
+        threading.Thread(target=work, daemon=True, name="RecordWeb").start()
+
+    def _set_recording(self, on: bool):
+        if on == self._recording:
+            return
+        self._recording = on
+        if self._run_frame:
+            self._run_frame.show("rec") if on else self._run_frame.hide()
+        dnd = bool(self.routine.settings.do_not_disturb and safety and self._dnd_allowed())
+        if dnd:
+            safety.DoNotDisturb.enable(wait=False) if on else safety.DoNotDisturb.restore()
+        if on:
+            self.set_status("⏺ INREGISTRARE: lucreaza normal in browser — fiecare click, text completat sau optiune aleasa "
+                            "devine un pas. Esc in browser sau ⏺ din nou = stop.")
+
+    def _add_recorded(self, rec):
+        obj = self.find_same_object(rec.target)
+        if obj is None:
+            obj = self.repo.add(rec.target)
+        self.save_repository()
+        self.refresh_objects()
+        # scrierea repetata in acelasi camp = un singur pas cu valoarea finala
+        node, _ = self._sel_node()
+        if rec.action == RprAction.TypeText and isinstance(node, ActionNode) and \
+                node.action == RprAction.TypeText and node.target == obj.name:
+            node.value = rec.value
+            self.refresh_node(node)
+            self.editor.show(node)
+            self.mark_dirty()
+            return
+        self.insert_node(ActionNode(action=rec.action, target=obj.name, value=rec.value))
+
+    def show_object(self):
+        obj = self._sel_object()
+        if obj is None:
+            return
+        if obj.technology not in (UiTechnology.Web, UiTechnology.WebSelenium):
+            self.set_status("👁 Arata pentru SAP / Desktop vine in etapa urmatoare.")
+            return
+        web = self.web()
+
+        def work():
+            try:
+                ok, msg = web.show_object(obj)
+            except Exception as ex:  # noqa: BLE001
+                msg = str(ex)
+            self.post("status", "👁 " + msg)
+        threading.Thread(target=work, daemon=True).start()
+
+    # ── Setari Studio ──
+    def show_settings(self):
+        C, st = self.C, self.studio_settings
+        dlg = tk.Toplevel(self)
+        dlg.title("Setari Studio")
+        dlg.configure(bg=C["bg_main"])
+        dlg.transient(self.winfo_toplevel())
+        dlg.resizable(False, False)
+        tk.Label(dlg, text="⚙  Setari Studio", bg=C["bg_main"], fg=C["primary"], font=("Segoe UI", 13, "bold")).pack(
+            anchor="w", padx=16, pady=(14, 6))
+        from rpr.drivers.web import BROWSERS
+        tk.Label(dlg, text="Browser pentru pasii Web", bg=C["bg_main"], fg=C["text_dim"], font=("Segoe UI", 9, "bold")).pack(
+            anchor="w", padx=16)
+        browser = ttk.Combobox(dlg, values=[l for _, l in BROWSERS], state="readonly", width=40)
+        browser.current(next((i for i, (v, _) in enumerate(BROWSERS) if v.lower() == st.browser.lower()), 0))
+        browser.pack(anchor="w", padx=16, pady=(0, 8))
+        headless = tk.BooleanVar(value=st.headless)
+        minimize = tk.BooleanVar(value=st.minimize_on_run)
+        for text, var in [("Browser fara fereastra (headless) — doar pentru rulari programate", headless),
+                          ("Minimizeaza aplicatia la rulare (ramane bara plutitoare de control)", minimize)]:
+            tk.Checkbutton(dlg, text=text, variable=var, bg=C["bg_main"], fg=C["text"], selectcolor=C["bg_input"],
+                           activebackground=C["bg_main"], font=("Segoe UI", 10), anchor="w").pack(fill="x", padx=12)
+        tk.Label(dlg, text="Edge / Chrome folosesc browserul instalat (nu se descarca nimic). Profilul browserului "
+                           "(login, cookie-uri) se pastreaza intre rulari.", bg=C["bg_main"], fg=C["text_dim"],
+                 font=("Segoe UI", 8), wraplength=480, justify="left").pack(anchor="w", padx=16, pady=(4, 8))
+        row = tk.Frame(dlg, bg=C["bg_main"])
+        row.pack(anchor="w", padx=14, pady=4)
+
+        def close_browser():
+            try:
+                self.web().close_browser()
+                self.set_status("Browserul a fost inchis.")
+            except Exception as ex:  # noqa: BLE001
+                self.set_status(str(ex))
+
+        def clear_profile():
+            if not messagebox.askyesno("Profil browser", "Stergi profilul browserului (logout din toate site-urile)?",
+                                       parent=dlg):
+                return
+            import shutil
+            self.drivers.close()
+            self.drivers = self._build_drivers()
+            shutil.rmtree(RprPaths.browser_profile(), ignore_errors=True)
+            self.set_status("Profilul browserului a fost sters.")
+        self._btn(row, "Inchide browserul", close_browser).pack(side="left", padx=2)
+        self._btn(row, "Sterge profilul browserului", clear_profile).pack(side="left", padx=2)
+        self._btn(row, "📂 Folderul de lucru", lambda: os.startfile(RprPaths.root)).pack(side="left", padx=2)
+
+        def save():
+            new_browser = BROWSERS[browser.current()][0]
+            changed = new_browser != st.browser or headless.get() != st.headless
+            st.browser, st.headless, st.minimize_on_run = new_browser, headless.get(), minimize.get()
+            st.save()
+            if changed:   # browser nou -> driver nou (cel vechi se inchide)
+                self.drivers.close()
+                self.drivers = self._build_drivers()
+            dlg.destroy()
+            self.set_status("Setarile Studio au fost salvate.")
+        bottom = tk.Frame(dlg, bg=C["bg_main"])
+        bottom.pack(anchor="e", padx=14, pady=12)
+        self._btn(bottom, "💾 Salveaza", save, color=C["success"]).pack(side="left", padx=3)
+        self._btn(bottom, "Anuleaza", dlg.destroy).pack(side="left", padx=3)
+        dlg.grab_set()
 
     # =========================================================================
     # Rulare
@@ -1085,6 +1384,16 @@ class StudioPanel(tk.Frame):
                     self.tree.item(node.id, tags=tags + ["ok" if ok else "error"])
             elif kind == "status":
                 self.set_status(p)
+                if isinstance(p, str) and p.startswith("Inregistrare oprita"):
+                    self._set_recording(False)
+            elif kind == "spy_done":
+                self._spy_finished(*p)
+            elif kind == "recorded":
+                self._add_recorded(p)
+            elif kind == "record_started":
+                self._set_recording(True)
+            elif kind == "record_failed":
+                messagebox.showerror("Inregistrare", f"Inregistrarea nu a putut porni:\n{p}", parent=self)
             elif kind == "call":
                 fn, ev, box = p
                 try:
@@ -1152,9 +1461,13 @@ class StudioPanel(tk.Frame):
         self.engine = RprEngine(self.repo, self.drivers, StudioRunHost(self), RprPaths.output())
         self.engine.step_mode = step_mode
         self.engine.guard = StudioGuard() if safety else None
+        if self._recording:
+            self.record_web()   # oprim inregistrarea inainte de rulare
         self._run_control = RunControlWindow(self)
         if self._run_frame:
             self._run_frame.show("pause" if step_mode else "run")
+        if self.studio_settings.minimize_on_run and not step_mode:
+            self.winfo_toplevel().iconify()
         self.set_status("PAS CU PAS: apasa ⏭ Pas pentru fiecare pas." if step_mode else "Rulez...")
         engine, routine = self.engine, self.routine
         # "Nu deranja": setarea rutinei SI setarea generala a aplicatiei (Setari) trebuie sa fie pornite
@@ -1836,4 +2149,96 @@ class ObjectDialog(tk.Toplevel):
         self.obj.locators = [Locator(LocatorKind.parse(k.get()), v.get().strip(), 50, e.get())
                              for k, v, e in self.rows if v.get().strip()]
         self.result = True
+        self.destroy()
+
+
+# ==============================================================================
+# 7. DIALOG "OBIECT CAPTURAT" (dupa Spy): nume, locatori, captura, pas direct
+# ==============================================================================
+class ObjectReviewDialog(tk.Toplevel):
+    """result: None (anulat) / "save" / "click" / "type" / "read"."""
+
+    def __init__(self, panel: StudioPanel, obj: UiObject):
+        super().__init__(panel)
+        self.p, self.obj, self.result = panel, obj, None
+        C = panel.C
+        self.title("Obiect capturat")
+        self.configure(bg=C["bg_main"])
+        self.transient(panel.winfo_toplevel())
+        self.attributes("-topmost", True)
+        tk.Label(self, text="🎯  Obiect capturat", bg=C["bg_main"], fg=C["primary"], font=("Segoe UI", 13, "bold")).pack(
+            anchor="w", padx=14, pady=(12, 2))
+        info = f"Tip: {obj.element_type or '-'}"
+        if obj.captured_text:
+            info += f"   ·   Text: \"{obj.captured_text[:60]}\""
+        if obj.frame_path:
+            info += f"   ·   in iframe: {' > '.join(obj.frame_path)}"
+        tk.Label(self, text=info, bg=C["bg_main"], fg=C["text_dim"], font=("Segoe UI", 9), wraplength=620,
+                 justify="left").pack(anchor="w", padx=14)
+
+        # captura elementului
+        self._img = None
+        if obj.screenshot:
+            try:
+                img = tk.PhotoImage(file=os.path.join(RprPaths.object_images(), obj.screenshot))
+                f = max(1, -(-img.width() // 600), -(-img.height() // 120))
+                self._img = img.subsample(f, f) if f > 1 else img
+                tk.Label(self, image=self._img, bg=C["bg_card"], bd=1, relief="solid").pack(anchor="w", padx=14, pady=6)
+            except Exception:
+                pass
+
+        tk.Label(self, text="Nume (cum il alegi in pasi)", bg=C["bg_main"], fg=C["text_dim"],
+                 font=("Segoe UI", 9, "bold")).pack(anchor="w", padx=14, pady=(6, 1))
+        self.name = tk.StringVar(value=panel.repo.make_unique_name(obj.name))
+        tk.Entry(self, textvariable=self.name, bg=C["bg_input"], fg=C["text"], insertbackground=C["text"],
+                 relief="flat", font=("Segoe UI", 11)).pack(fill="x", padx=14, ipady=3)
+
+        tk.Label(self, text="Locatori — primul care gaseste exact UN element castiga; daca pagina se schimba, se trece "
+                            "automat la urmatorul. Debifeaza ce e instabil (ex: un text care se schimba).",
+                 bg=C["bg_main"], fg=C["text_dim"], font=("Segoe UI", 8), wraplength=620, justify="left").pack(
+            anchor="w", padx=14, pady=(10, 2))
+        box = tk.Frame(self, bg=C["bg_main"])
+        box.pack(fill="x", padx=14)
+        self.rows = []
+        for loc in obj.locators:
+            r = tk.Frame(box, bg=C["bg_main"])
+            r.pack(fill="x", pady=1)
+            en = tk.BooleanVar(value=loc.enabled)
+            tk.Checkbutton(r, variable=en, bg=C["bg_main"], selectcolor=C["bg_input"],
+                           activebackground=C["bg_main"]).pack(side="left")
+            color = "#3CCF6E" if loc.score >= 70 else "#FFC24B" if loc.score >= 40 else "#FF6B6B"
+            tk.Label(r, text=f"{loc.score:>3}", bg=C["bg_main"], fg=color, font=("Consolas", 10, "bold"), width=4).pack(side="left")
+            tk.Label(r, text=str(loc.kind), bg=C["bg_main"], fg=C["accent"], font=("Segoe UI", 9, "bold"), width=12,
+                     anchor="w").pack(side="left")
+            val = tk.StringVar(value=loc.value)
+            tk.Entry(r, textvariable=val, bg=C["bg_input"], fg=C["text"], insertbackground=C["text"], relief="flat",
+                     font=("Consolas", 9)).pack(side="left", fill="x", expand=True, padx=4, ipady=2)
+            self.rows.append((loc, en, val))
+        tk.Label(self, text="Scor: verde 70+ stabil · galben 40–69 acceptabil · rosu sub 40 fragil",
+                 bg=C["bg_main"], fg=C["text_dim"], font=("Segoe UI", 8)).pack(anchor="w", padx=14, pady=(2, 0))
+
+        row = tk.Frame(self, bg=C["bg_main"])
+        row.pack(anchor="e", padx=14, pady=12)
+        for text, res, color in [("💾 Salveaza", "save", C["primary"]), ("Salveaza + pas Click", "click", C["success"]),
+                                 ("+ pas Scrie text", "type", C["success"]), ("+ pas Citeste", "read", C["success"])]:
+            panel._btn(row, text, lambda r=res: self._ok(r), color=color).pack(side="left", padx=2)
+        panel._btn(row, "Anuleaza", self.destroy).pack(side="left", padx=2)
+        self.update_idletasks()
+        self.geometry(f"+{(self.winfo_screenwidth() - self.winfo_reqwidth()) // 2}+80")
+        self.grab_set()
+        self.wait_window()
+
+    def _ok(self, result: str):
+        name = sanitize_name(self.name.get())
+        if not name:
+            messagebox.showwarning("Obiect", "Numele nu poate fi gol.", parent=self)
+            return
+        if self.p.repo.find(name) is not None:
+            messagebox.showwarning("Obiect", f"Exista deja un obiect numit \"{name}\".", parent=self)
+            return
+        self.obj.name = name
+        for loc, en, val in self.rows:
+            loc.enabled, loc.value = en.get(), val.get().strip()
+        self.obj.locators = [l for l in self.obj.locators if l.value]
+        self.result = result
         self.destroy()

@@ -2679,8 +2679,12 @@ class MainWindow:
         abtn(r, "🎯 SAP", lambda: self._studio and self._studio.spy("SAP"), None, "Marcheaza un camp / buton SAP")
         abtn(r, "🎯 Desktop", lambda: self._studio and self._studio.spy("Desktop"), None,
              "Marcheaza un element dintr-o aplicatie Windows")
+        abtn(r, "⏺ Inregistreaza Web", st("record_web"), C["danger"],
+             "Lucrezi normal in browser; fiecare click / text / optiune devine un pas. Apasa din nou (sau Esc in "
+             "browser) ca sa opresti.")
         r = group("studio", "RUTINA CURENTA")
         abtn(r, "⚙ Setari rutina", st("show_routine_settings"), None, "Setarile rutinei si variabilele")
+        abtn(r, "🌐 Setari Studio", st("show_settings"), None, "Browserul folosit (Edge / Chrome), profilul browserului")
         abtn(r, "❓ Ghid", st("show_guide"), None, "Ghidul pas cu pas al Studio")
 
         self._set_btn_state_idle()
@@ -5404,6 +5408,7 @@ CONTACT: {APP_AUTHOR}
                 self._studio.stop()
             if not self._studio.confirm_discard():
                 return
+            self._studio.shutdown()   # opreste inregistrarea, inchide browserul
 
         steps = self.recorder.get_steps()
 
