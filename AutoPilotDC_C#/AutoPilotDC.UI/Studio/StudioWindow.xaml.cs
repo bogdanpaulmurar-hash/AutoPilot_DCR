@@ -756,13 +756,20 @@ public partial class StudioWindow : Window, IStudioContext
         }
     }
 
+    /// <summary>Setarea generala "Nu deranja" din aplicatia principala (Setari → Siguranta la rulare).</summary>
+    private static bool DndAllowedGlobally()
+    {
+        try { return new SettingsManager().Current.DndDuringRun; }
+        catch { return true; }
+    }
+
     private void SetRecording(bool on)
     {
         if (on != _recording)
         {
             RunFrame.Show(on ? FrameMode.Rec : FrameMode.Off);
-            if (_routine.Settings.DoNotDisturb)
-                _ = on ? Task.Run(DoNotDisturb.Enable) : Task.Run(DoNotDisturb.Restore);
+            if (_routine.Settings.DoNotDisturb && DndAllowedGlobally())
+                if (on) DoNotDisturb.Enable(wait: false); else DoNotDisturb.Restore();
         }
         _recording = on;
         BtnRecord.Content = on ? "⏹ Opreste inregistrarea" : "⏺ Inregistreaza Web";
@@ -859,7 +866,9 @@ public partial class StudioWindow : Window, IStudioContext
 
         SetStatus(stepMode ? "PAS CU PAS: apasa \"Pasul urmator\" pentru fiecare pas." : "Rulez...");
         RunFrame.Show(stepMode ? FrameMode.Pause : FrameMode.Run);
-        bool dnd = _routine.Settings.DoNotDisturb;
+        // "Nu deranja": setarea rutinei SI setarea generala a aplicatiei (Setari) trebuie sa fie pornite
+        bool dnd = _routine.Settings.DoNotDisturb && DndAllowedGlobally();
+        if (dnd) DoNotDisturb.Enable(wait: false);   // cererea se inregistreaza imediat
         RunResult result;
         try
         {
@@ -868,7 +877,7 @@ public partial class StudioWindow : Window, IStudioContext
             if (dnd)
             {
                 SetStatus("🌙 Activez \"Nu deranja\" (cateva secunde)...");
-                await Task.Run(DoNotDisturb.Enable);
+                await Task.Run(() => DoNotDisturb.WaitSettled(20000));
                 SetStatus(DoNotDisturb.LastMessage);
             }
             result = await Task.Run(() => engine.RunAsync(routine));
@@ -880,7 +889,7 @@ public partial class StudioWindow : Window, IStudioContext
         finally
         {
             RunFrame.Hide();
-            if (dnd) _ = Task.Run(DoNotDisturb.Restore);
+            if (dnd) DoNotDisturb.Restore();
             _runControl?.Close();
             _runControl = null;
             BtnRun.IsEnabled = true;

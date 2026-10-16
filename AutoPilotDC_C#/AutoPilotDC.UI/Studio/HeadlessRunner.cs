@@ -41,7 +41,7 @@ public static class HeadlessRunner
             bool dnd = routine.Settings.DoNotDisturb;
             if (dnd)
             {
-                await Task.Run(DoNotDisturb.Enable);
+                await Task.Run(() => DoNotDisturb.Enable(wait: true));
                 writer.WriteLine(DoNotDisturb.LastMessage);
             }
             Overlays.RunFrame.Show(Overlays.FrameMode.Run);
@@ -53,7 +53,8 @@ public static class HeadlessRunner
             finally
             {
                 Overlays.RunFrame.Hide();
-                if (dnd) await Task.Run(DoNotDisturb.Restore);
+                // procesul se inchide imediat dupa: asteptam ca notificarile sa revina efectiv
+                if (dnd) await Task.Run(() => DoNotDisturb.Restore(wait: true));
             }
 
             var xlsx = Path.Combine(RprPaths.Output,

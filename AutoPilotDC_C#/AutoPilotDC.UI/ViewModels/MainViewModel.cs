@@ -246,6 +246,16 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
 
     public string[] GuardSensitivityOptions { get; } = ["relaxed", "normal", "strict"];
 
+    /// <summary>Buton din Setari: reporneste notificarile Windows daca au ramas oprite.</summary>
+    public ICommand ForceNotificationsOnCmd => new AsyncRelayCommand(async () =>
+    {
+        StatusText = "Repornesc notificarile Windows...";
+        await Task.Run(DoNotDisturb.ForceOff);
+        DndActive = false;
+        StatusText = DoNotDisturb.LastMessage;
+        MessageBox.Show(DoNotDisturb.LastMessage, "Nu deranja", MessageBoxButton.OK, MessageBoxImage.Information);
+    });
+
     public string GuardSensitivity
     {
         get => _settings.Get("guard_sensitivity", "normal");
@@ -698,7 +708,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
             IsRecording = true;
             DndActive = DndDuringRun;
             RunFrame.Show(FrameMode.Rec);
-            if (DndDuringRun) _ = Task.Run(DoNotDisturb.Enable);
+            if (DndDuringRun) DoNotDisturb.Enable(wait: false);
             StatusText = "🔴 INREGISTRARE ACTIVA";
             RecIndicatorText = "⬤ REC";
         });
@@ -711,7 +721,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
             IsRecording = false;
             DndActive = false;
             RunFrame.Hide();
-            if (DndDuringRun) _ = Task.Run(DoNotDisturb.Restore);
+            if (DndDuringRun) DoNotDisturb.Restore();
             StatusText = $"Inregistrare oprita — {Steps.Count} pasi";
             RecIndicatorText = "⬤ STANDBY";
         });

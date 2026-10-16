@@ -73,7 +73,7 @@ public sealed class PowerManagementService : IDisposable
     {
         if (_notificationsSuppressed) return;
         _notificationsSuppressed = true;
-        DoNotDisturb.Enable();
+        DoNotDisturb.Enable(wait: false);   // revine imediat; aplicarea merge in fundal
     }
 
     /// <summary>Reda notificarile, doar daca au fost oprite de noi.</summary>

@@ -22,6 +22,11 @@
   "show_floating_controls": true,
   "show_emergency_btn": true,
   "active_monitor": 0,
+  "dnd_during_run": true,
+  "show_run_frame": true,
+  "guard_enabled": true,
+  "guard_sensitivity": "normal",
   "save_location": "C:\\Users\\z003fu5c\\OneDrive - Siemens AG\\GSP SpecialTopics_OneDrive\\python\\siemensgpt\\DC_tool_2026",
-  "button_corner_radius": 8
+  "button_corner_radius": 8,
+  "ui_mode": "studio"
 }

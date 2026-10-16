@@ -1,4 +1,4 @@
-// ============================================================
+﻿// ============================================================
 // AutoPilot DC v4.1
 // DoNotDisturb.cs — "Nu deranja" (Focus Assist) pe durata rularii
 //
@@ -36,9 +36,14 @@ public static class DoNotDisturb
     private const string ProfileOn = ProfilePrefix + "PriorityOnly";
     private const string ProfileOff = ProfilePrefix + "Unrestricted";
 
+    // Un singur "lucrator" aduce Windows in starea dorita, in ordine. Rularile doar spun
+    // "am nevoie de Nu deranja" (Enable) / "am terminat" (Restore) — contorul se schimba
+    // imediat, pe firul apelantului, deci "am terminat" nu mai poate ajunge inaintea lui "am nevoie".
     private static readonly object Lock = new();
-    private static int _users;              // rulare + inregistrare pot cere DND in acelasi timp
-    private static List<string>? _changed;  // cheile pe care le-am modificat noi
+    private static int _users;          // cate rulari / inregistrari cer acum "Nu deranja"
+    private static bool _applied;       // noi l-am pornit -> noi trebuie sa-l oprim
+    private static long _req, _done;    // cereri trimise / terminate de lucrator
+    private static Thread? _worker;
 
     /// <summary>Ultimul mesaj (pentru bara de stare / log).</summary>
     public static string LastMessage { get; private set; } = "";
@@ -51,104 +56,179 @@ public static class DoNotDisturb
     // =========================================================
 
     /// <summary>
-    /// Activeaza "Nu deranja". Poate dura cateva secunde (repornirea serviciului) —
-    /// apeleaz-o de pe un fir de fundal. Returneaza true daca notificarile sunt blocate.
+    /// Cere "Nu deranja". wait=false: revine imediat (aplicarea dureaza cateva secunde, in fundal).
+    /// Returneaza true daca noi l-am pornit.
     /// </summary>
-    public static bool Enable()
+    public static bool Enable(bool wait = true, int timeoutMs = 25000)
     {
         lock (Lock)
         {
             _users++;
-            if (_users > 1) return IsActive() != false;
-
-            try
-            {
-                var targets = Discover();
-                if (targets.Count == 0)
-                {
-                    LastMessage = "Nu deranja: setarea Windows nu a fost gasita (versiune Windows necunoscuta).";
-                    return false;
-                }
-
-                // Deja activ (pornit de utilizator) -> nu atingem nimic si nu il oprim la final
-                if (targets.All(t => !string.Equals(ReadProfile(t.Data), ProfileOff, StringComparison.Ordinal)))
-                {
-                    _changed = null;
-                    LastMessage = "Nu deranja era deja activ.";
-                    return true;
-                }
-
-                var changed = new List<string>();
-                SaveRecovery(targets.Select(t => t.Path).ToList());
-                foreach (var t in targets)
-                {
-                    var blob = WriteProfile(t.Data, ProfileOn);
-                    if (blob != null && WriteBlob(t.Path, blob)) changed.Add(t.Path);
-                }
-                if (changed.Count == 0)
-                {
-                    DeleteRecovery();
-                    LastMessage = "Nu deranja: setarea Windows nu a putut fi scrisa.";
-                    return false;
-                }
-
-                _changed = changed;
-                SaveRecovery(changed);
-                RestartNotificationService();
-                bool ok = WaitForState(on: true);
-                LastMessage = ok ? "🌙 Nu deranja activ — notificarile sunt oprite pe durata rularii."
-                                 : "Nu deranja a fost setat, dar Windows nu a confirmat inca.";
-                return ok;
-            }
-            catch (Exception ex)
-            {
-                LastMessage = "Nu deranja nu a putut fi activat: " + ex.Message;
-                return false;
-            }
+            long my = Kick();
+            if (wait) WaitDone(my, timeoutMs);
+            return _applied;
         }
     }
 
-    /// <summary>Reda notificarile (doar daca noi le-am oprit). Sigur de apelat de mai multe ori.</summary>
-    public static void Restore()
+    /// <summary>Rularea s-a terminat. Notificarile revin cand nicio rulare nu mai cere "Nu deranja".</summary>
+    public static void Restore(bool wait = false, int timeoutMs = 25000)
     {
         lock (Lock)
         {
-            if (_users == 0) return;
-            _users--;
-            if (_users > 0) return;
-
-            var changed = _changed;
-            _changed = null;
-            if (changed == null) return;
-            RestoreKeys(changed);
+            if (_users > 0) _users--;
+            long my = Kick();
+            if (wait) WaitDone(my, timeoutMs);
         }
+    }
+
+    /// <summary>Asteapta ca Windows sa ajunga in starea ceruta.</summary>
+    public static void WaitSettled(int timeoutMs = 25000)
+    {
+        lock (Lock) WaitDone(_req, timeoutMs);
     }
 
     /// <summary>La inchiderea aplicatiei: reda notificarile chiar daca o rulare nu s-a terminat.</summary>
-    public static void RestoreAll()
+    public static void RestoreAll(int timeoutMs = 25000)
     {
         lock (Lock)
         {
-            if (_users == 0) return;
-            _users = 1;
-            Restore();
+            if (_users == 0 && !_applied && _done >= _req) return;
+            _users = 0;
+            WaitDone(Kick(), timeoutMs);
         }
     }
 
     /// <summary>La pornirea aplicatiei: daca o rulare anterioara a ramas cu "Nu deranja" pornit, il oprim.</summary>
     public static void RecoverIfNeeded()
     {
-        try
+        if (!File.Exists(RecoveryFile)) return;
+        lock (Lock)
         {
-            if (!File.Exists(RecoveryFile)) return;
-            var keys = JsonSerializer.Deserialize<List<string>>(File.ReadAllText(RecoveryFile)) ?? new();
-            lock (Lock) RestoreKeys(keys);
+            _applied = true;   // lucratorul il va opri (nicio rulare nu-l cere)
+            Kick();
         }
-        catch
+    }
+
+    /// <summary>Buton din Setari: reporneste notificarile acum (daca au ramas oprite).</summary>
+    public static void ForceOff()
+    {
+        lock (Lock)
         {
-            // fisier corupt: il stergem ca sa nu incercam la nesfarsit
+            _users = 0;
+            _applied = true;
+            WaitDone(Kick(), 30000);
+        }
+    }
+
+    private static long Kick()
+    {
+        _req++;
+        if (_worker == null || !_worker.IsAlive)
+        {
+            _worker = new Thread(Work) { IsBackground = true, Name = "NuDeranja" };
+            _worker.Start();
+        }
+        Monitor.PulseAll(Lock);
+        return _req;
+    }
+
+    private static void WaitDone(long target, int timeoutMs)
+    {
+        var deadline = DateTime.UtcNow.AddMilliseconds(timeoutMs);
+        while (_done < target)
+        {
+            var left = deadline - DateTime.UtcNow;
+            if (left <= TimeSpan.Zero) return;
+            Monitor.Wait(Lock, left);
+        }
+    }
+
+    private static void Work()
+    {
+        while (true)
+        {
+            long target; bool wantOn, applied;
+            lock (Lock)
+            {
+                while (_done >= _req) Monitor.Wait(Lock);
+                target = _req; wantOn = _users > 0; applied = _applied;
+            }
+            try
+            {
+                if (wantOn && !applied) applied = TurnOn();
+                else if (!wantOn && applied) { TurnOff(); applied = false; }
+            }
+            catch (Exception ex)
+            {
+                LastMessage = "Nu deranja: " + ex.Message;
+            }
+            lock (Lock)
+            {
+                _applied = applied;
+                _done = target;
+                Monitor.PulseAll(Lock);
+            }
+        }
+    }
+
+    /// <summary>True daca NOI am pornit "Nu deranja" (si deci trebuie sa-l oprim la final).</summary>
+    private static bool TurnOn()
+    {
+        var targets = Discover();
+        if (targets.Count == 0)
+        {
+            LastMessage = "Nu deranja: setarea Windows nu a fost gasita (versiune Windows necunoscuta).";
+            return false;
+        }
+        // Deja pornit de utilizator -> nu atingem nimic si nu il oprim la final
+        if (targets.All(t => !string.Equals(ReadProfile(t.Data), ProfileOff, StringComparison.Ordinal)))
+        {
+            LastMessage = "Nu deranja era deja pornit (de tine) — ramane asa si dupa rulare.";
+            return false;
+        }
+
+        SaveRecovery(targets.Select(t => t.Path).ToList());
+        int changed = 0;
+        foreach (var t in targets)
+        {
+            var blob = WriteProfile(t.Data, ProfileOn);
+            if (blob != null && WriteBlob(t.Path, blob)) changed++;
+        }
+        if (changed == 0)
+        {
             DeleteRecovery();
+            LastMessage = "Nu deranja: setarea Windows nu a putut fi scrisa.";
+            return false;
         }
+        RestartNotificationService();
+        bool ok = WaitForState(on: true);
+        LastMessage = ok ? "🌙 Nu deranja activ — notificarile sunt oprite pe durata rularii."
+                         : "Nu deranja a fost setat, dar Windows nu a confirmat inca.";
+        return true;
+    }
+
+    /// <summary>
+    /// Opreste "Nu deranja" in TOATE setarile gasite ACUM (Windows le poate rescrie in timpul
+    /// rularii) si verifica; la nevoie reincearca o data.
+    /// </summary>
+    private static void TurnOff()
+    {
+        bool ok = false;
+        for (int attempt = 0; attempt < 2 && !ok; attempt++)
+        {
+            foreach (var t in Discover())
+            {
+                if (!string.Equals(ReadProfile(t.Data), ProfileOn, StringComparison.Ordinal)) continue;
+                var blob = WriteProfile(t.Data, ProfileOff);
+                if (blob != null) WriteBlob(t.Path, blob);
+            }
+            RestartNotificationService();
+            ok = WaitForState(on: false);
+        }
+        DeleteRecovery();
+        LastMessage = ok ? "Notificarile Windows au fost repornite."
+                         : "Atentie: Windows nu confirma repornirea notificarilor. Verifica Focus Assist / Nu deranja " +
+                           "sau apasa in Setari \"Reporneste notificarile acum\".";
     }
 
     /// <summary>Starea efectiva in Windows: true = notificari blocate, false = libere, null = necunoscut.</summary>
@@ -265,27 +345,6 @@ public static class DoNotDisturb
         {
             return false;
         }
-    }
-
-    private static void RestoreKeys(List<string> keys)
-    {
-        foreach (var path in keys)
-        {
-            try
-            {
-                using var key = Registry.CurrentUser.OpenSubKey(path);
-                if (key?.GetValue("Data") is not byte[] data) continue;
-                // Oprim doar daca e inca profilul pus de noi (utilizatorul poate sa-l fi schimbat)
-                if (!string.Equals(ReadProfile(data), ProfileOn, StringComparison.Ordinal)) continue;
-                var blob = WriteProfile(data, ProfileOff);
-                if (blob != null) WriteBlob(path, blob);
-            }
-            catch { /* best effort */ }
-        }
-        RestartNotificationService();
-        WaitForState(on: false);
-        DeleteRecovery();
-        LastMessage = "Notificarile Windows au fost repornite.";
     }
 
     private static bool WaitForState(bool on)

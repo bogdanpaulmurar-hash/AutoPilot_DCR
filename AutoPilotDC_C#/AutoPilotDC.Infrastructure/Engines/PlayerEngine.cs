@@ -152,11 +152,12 @@ public class PlayerEngine : IPlayer
 
         // ── Power + Notifications ─────────────────────────────────────────────
         if (PreventSleepOption)        PowerMgmt?.PreventSleep();
-        // "Nu deranja" poate dura cateva secunde (reporneste serviciul de notificari): in fundal,
-        // in paralel cu numaratoarea inversa
-        Task dndTask = SuppressNotifications && PowerMgmt != null
-            ? Task.Run(() => PowerMgmt.SuppressNotifications())
-            : Task.CompletedTask;
+        // "Nu deranja": cererea se inregistreaza IMEDIAT (aici, pe firul apelantului), iar aplicarea
+        // (cateva secunde) merge in fundal, in paralel cu numaratoarea inversa. Asa, chiar daca rularea
+        // e oprita imediat, "am terminat" nu mai poate ajunge inaintea lui "am nevoie".
+        bool dnd = SuppressNotifications && PowerMgmt != null;
+        if (dnd) PowerMgmt!.SuppressNotifications();
+        Task dndTask = dnd ? Task.Run(() => DoNotDisturb.WaitSettled(15000)) : Task.CompletedTask;
 
         // ── Watchdog ──────────────────────────────────────────────────────────
         if (Watchdog != null)
@@ -323,7 +324,7 @@ public class PlayerEngine : IPlayer
             PowerMgmt?.RestoreSleep();
             // repornirea notificarilor dureaza cateva secunde: in fundal, ca interfata sa nu se blocheze
             var power = PowerMgmt;
-            if (power != null) _ = Task.Run(power.RestoreNotifications);
+            power?.RestoreNotifications();   // nu blocheaza: lucratorul reporneste notificarile
             _isRunning = false;
             _isPaused  = false;
             OnPlaybackFinished?.Invoke(success);

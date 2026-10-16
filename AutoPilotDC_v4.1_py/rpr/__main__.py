@@ -102,7 +102,9 @@ def run_file(path: str, variables: dict, show_frame: bool = True) -> int:
         finally:
             drivers.close()
             if dnd:
-                safety.DoNotDisturb.restore()
+                # procesul se inchide imediat dupa: asteptam ca notificarile sa revina efectiv
+                safety.DoNotDisturb.restore(wait=True)
+                writer.write(safety.DoNotDisturb.last_message + "\n")
 
         result = result_box.get("r")
         xlsx = os.path.join(RprPaths.output(), f"Log_programat_{sanitize_name(routine.name)}_{stamp}.xlsx")

@@ -1005,16 +1005,15 @@ class PlayerEngine:
     # ── Bucla principala ─────────────────────────────────────────
     def _loop(self, steps: List[StepModel], repeat: int) -> None:
         """Bucla de redare in thread separat (+ "Nu deranja" pe durata ei)."""
-        dnd = None
-        if self.suppress_notifications:
-            # poate dura cateva secunde (reporneste serviciul de notificari): in paralel cu countdown-ul
-            dnd = threading.Thread(target=DoNotDisturb.enable, daemon=True, name="DND")
-            dnd.start()
+        dnd = bool(self.suppress_notifications)
+        if dnd:
+            # cererea se inregistreaza imediat; aplicarea (cateva secunde) merge in paralel cu countdown-ul
+            DoNotDisturb.enable(wait=False)
         try:
             self._loop_inner(steps, repeat, dnd)
         finally:
-            if dnd is not None:
-                threading.Thread(target=DoNotDisturb.restore, daemon=True, name="DNDRestore").start()
+            if dnd:
+                DoNotDisturb.restore()   # nu blocheaza; lucratorul reporneste notificarile
 
     def _ask_guard(self, step: StepModel, alert: GuardAlert, can_retry: bool) -> str:
         """v4.1: pauza + intrebare. Rutina asteapta raspunsul utilizatorului."""
@@ -1050,8 +1049,8 @@ class PlayerEngine:
                 self.on_countdown(i)
             time.sleep(1.0)
 
-        if dnd is not None:
-            dnd.join(timeout=15)
+        if dnd:
+            DoNotDisturb.wait_settled(timeout=15)
 
         # 2. Notifica start
         if self.on_started:
@@ -2672,7 +2671,8 @@ class MainWindow:
             try:
                 from studio_ui import StudioPanel
                 self._studio = StudioPanel(self._workspace, C, run_frame=self.run_frame,
-                                           on_status=self._status_var.set)
+                                           on_status=self._status_var.set,
+                                           dnd_allowed=lambda: bool(self.settings.get("dnd_during_run", True)))
             except Exception as ex:
                 import traceback
                 traceback.print_exc()
@@ -3505,6 +3505,16 @@ class MainWindow:
                            selectcolor=C["bg_input"], activebackground=C["bg_card"],
                            activeforeground=C["text"], font=("Segoe UI", 11),
                            anchor="w").pack(fill="x", padx=12, pady=2)
+        def _force_notifications_on():
+            self._status_var.set("Repornesc notificarile Windows...")
+            def work():
+                DoNotDisturb.force_off()
+                self.root.after(0, lambda: messagebox.showinfo("Nu deranja", DoNotDisturb.last_message))
+            threading.Thread(target=work, daemon=True).start()
+        row(f_safe, "Notificari ramase oprite?", lambda p: tk.Button(
+            p, text="🔔 Reporneste notificarile acum", command=_force_notifications_on,
+            bg=C["bg_input"], fg=C["text"], relief="flat", font=("Segoe UI", 10), padx=8,
+            cursor="hand2").pack(side="left"))
         row(f_safe, "Sensibilitate preventie:", lambda p: ttk.Combobox(
             p, textvariable=self._var_guard_sens, values=["relaxed", "normal", "strict"],
             state="readonly", width=12).pack(side="left"))
@@ -3998,7 +4008,7 @@ CONTACT: {APP_AUTHOR}
         self._show_recording_indicator()
         if self.settings.get("dnd_during_run", True):
             self._rec_dnd = True
-            threading.Thread(target=DoNotDisturb.enable, daemon=True).start()
+            DoNotDisturb.enable(wait=False)
 
     def _show_recording_indicator(self):
         """Afiseaza overlay REC pe TOATE monitoarele."""
@@ -4050,7 +4060,7 @@ CONTACT: {APP_AUTHOR}
         """Callback: inregistrarea s-a oprit."""
         if getattr(self, "_rec_dnd", False):
             self._rec_dnd = False
-            threading.Thread(target=DoNotDisturb.restore, daemon=True).start()
+            DoNotDisturb.restore()
         self.root.after(0, lambda: [
             self._hide_recording_indicator(),
             self._set_btn_state_idle(),
@@ -5430,7 +5440,7 @@ def main():
     logging.info(f"Director de lucru: {BASE_DIR}")
 
     # 16.1b — v4.1: daca o rulare anterioara a ramas cu "Nu deranja" pornit, readucem notificarile
-    threading.Thread(target=DoNotDisturb.recover_if_needed, daemon=True).start()
+    DoNotDisturb.recover_if_needed()   # nu blocheaza: lucratorul se ocupa in fundal
 
     # 16.2 — Creeaza si porneste aplicatia
     app = MainWindow()

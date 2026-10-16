@@ -781,6 +781,10 @@
                                     <CheckBox Content="🛡 Sistem de preventie: pauza + intrebare cand ecranul difera de inregistrare"
                                               Style="{DynamicResource DarkCheckBoxStyle}"
                                               IsChecked="{Binding GuardEnabled, Mode=TwoWay}" Margin="0,4"/>
+                                    <Button Content="🔔 Reporneste notificarile acum" Command="{Binding ForceNotificationsOnCmd}"
+                                            Style="{DynamicResource NeutralButtonStyle}" HorizontalAlignment="Left"
+                                            Margin="24,2,0,6" Padding="10,4"
+                                            ToolTip="Daca notificarile Windows au ramas oprite dupa o rulare intrerupta"/>
                                     <StackPanel Orientation="Horizontal" Margin="24,4,0,0">
                                         <Label Content="Sensibilitate:" Style="{DynamicResource DarkLabelStyle}" VerticalAlignment="Center"/>
                                         <ComboBox ItemsSource="{Binding GuardSensitivityOptions}"

@@ -414,9 +414,11 @@ class RunControlWindow(tk.Toplevel):
 # ==============================================================================
 class StudioPanel(tk.Frame):
     def __init__(self, master, colors: Dict[str, str], run_frame=None,
-                 on_status: Optional[Callable[[str], None]] = None):
+                 on_status: Optional[Callable[[str], None]] = None,
+                 dnd_allowed: Optional[Callable[[], bool]] = None):
         super().__init__(master, bg=colors["bg_main"])
         self.C = colors
+        self._dnd_allowed = dnd_allowed or (lambda: True)
         self._run_frame = run_frame
         self._on_status = on_status or (lambda s: None)
 
@@ -1155,14 +1157,17 @@ class StudioPanel(tk.Frame):
             self._run_frame.show("pause" if step_mode else "run")
         self.set_status("PAS CU PAS: apasa ⏭ Pas pentru fiecare pas." if step_mode else "Rulez...")
         engine, routine = self.engine, self.routine
-        dnd = bool(routine.settings.do_not_disturb and safety)
+        # "Nu deranja": setarea rutinei SI setarea generala a aplicatiei (Setari) trebuie sa fie pornite
+        dnd = bool(routine.settings.do_not_disturb and safety and self._dnd_allowed())
+        if dnd:
+            safety.DoNotDisturb.enable(wait=False)   # cererea se inregistreaza imediat, pe firul interfetei
 
         def work():
             result = None
             try:
                 if dnd:
                     self.post("status", "🌙 Activez \"Nu deranja\" (cateva secunde)...")
-                    safety.DoNotDisturb.enable()
+                    safety.DoNotDisturb.wait_settled(timeout=20)
                     self.post("status", safety.DoNotDisturb.last_message)
                 result = engine.run(routine)
             except Exception as ex:  # noqa: BLE001
@@ -1170,7 +1175,7 @@ class StudioPanel(tk.Frame):
                 result = RunResult(success=False, message=str(ex))
             finally:
                 if dnd:
-                    threading.Thread(target=safety.DoNotDisturb.restore, daemon=True).start()
+                    safety.DoNotDisturb.restore()
                 self.post("done", (result,))
 
         threading.Thread(target=work, daemon=True, name="StudioRun").start()

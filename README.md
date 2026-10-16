@@ -68,8 +68,11 @@ Starea migrării Studio RPR în Python:
 |---|---|---|
 | 1 | Motorul + Excel + rulare din linie de comandă + teste | ✅ gata |
 | 4 | Editorul vizual (Studio) în aplicație — comutatorul **🧩 Studio RPR** din bara de sus | ✅ gata (adus înainte, ca să-l poți vedea) |
-| 2 | Driver Web (Playwright): acțiuni, Spy, înregistrare, iframe-uri | urmează |
+| 2 | Driver Web (Playwright): acțiuni, Spy, înregistrare, iframe-uri | în lucru |
 | 3 | SAP GUI + aplicații desktop | urmează |
+| 3b | Programare automată (Windows Task Scheduler) din Studio | urmează |
+| 6 | **Limbi: română / engleză / germană** pentru toată interfața; limba se alege din Setări | după ce sunt gata toate funcțiile |
+| 7 | **Tab nou „Instrucțiuni”** în toate cele 3 limbi: fiecare procedură explicată pe scurt, pas cu pas, cu exemple | la final |
 | 5 | Renunțarea la versiunea C# | după testare |
 
 Interfața Python v4.1: bara de sus are două rânduri — **comutatorul Recorder / Studio RPR** + STOP URGENȚĂ, apoi

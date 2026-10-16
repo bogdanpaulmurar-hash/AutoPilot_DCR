@@ -381,9 +381,15 @@ class DoNotDisturb:
     ON = PREFIX + "PriorityOnly"
     OFF = PREFIX + "Unrestricted"
 
-    _lock = threading.RLock()
-    _users = 0
-    _changed: Optional[List[str]] = None
+    # Un singur "lucrator" aduce Windows in starea dorita, in ordine. Rularile doar spun
+    # "am nevoie de Nu deranja" (enable) / "am terminat" (restore) — contorul se schimba
+    # imediat, pe firul apelantului, deci "am terminat" nu mai poate ajunge inaintea lui "am nevoie".
+    _cv = threading.Condition(threading.RLock())
+    _users = 0          # cate rulari / inregistrari cer acum "Nu deranja"
+    _applied = False    # noi l-am pornit -> noi trebuie sa-l oprim
+    _req = 0            # cereri trimise lucratorului
+    _done = 0           # cereri terminate
+    _worker: Optional[threading.Thread] = None
     last_message = ""
 
     RECOVERY_FILE = os.path.join(os.environ.get("LOCALAPPDATA", os.path.expanduser("~")),
@@ -391,76 +397,142 @@ class DoNotDisturb:
 
     # ── API ──────────────────────────────────────────────────────
     @classmethod
-    def enable(cls) -> bool:
-        """Activeaza "Nu deranja" (cateva secunde — apeleaz-o pe un fir separat)."""
+    def enable(cls, wait: bool = True, timeout: float = 25.0) -> bool:
+        """Cere "Nu deranja". wait=False: revine imediat (aplicarea dureaza cateva secunde, in fundal)."""
         if not IS_WINDOWS:
             return False
-        with cls._lock:
+        with cls._cv:
             cls._users += 1
-            if cls._users > 1:
-                return cls.is_active() is not False
-            try:
-                targets = cls._discover()
-                if not targets:
-                    cls.last_message = "Nu deranja: setarea Windows nu a fost gasita."
-                    return False
-                if all(cls.read_profile(d) != cls.OFF for _, d in targets):
-                    cls._changed = None
-                    cls.last_message = "Nu deranja era deja activ."
-                    return True
-                cls._save_recovery([p for p, _ in targets])
-                changed = []
-                for path, data in targets:
-                    blob = cls.write_profile(data, cls.ON)
-                    if blob is not None and cls._write_blob(path, blob):
-                        changed.append(path)
-                if not changed:
-                    cls._delete_recovery()
-                    cls.last_message = "Nu deranja: setarea Windows nu a putut fi scrisa."
-                    return False
-                cls._changed = changed
-                cls._save_recovery(changed)
-                cls._restart_service()
-                ok = cls._wait_state(True)
-                cls.last_message = ("🌙 Nu deranja activ — notificarile sunt oprite pe durata rularii."
-                                    if ok else "Nu deranja a fost setat, dar Windows nu a confirmat inca.")
-                return ok
-            except Exception as e:
-                cls.last_message = f"Nu deranja nu a putut fi activat: {e}"
-                return False
+            my = cls._kick()
+            if wait:
+                cls._cv.wait_for(lambda: cls._done >= my, timeout)
+            return cls._applied
 
     @classmethod
-    def restore(cls) -> None:
-        """Reda notificarile (doar daca noi le-am oprit)."""
-        with cls._lock:
-            if cls._users == 0:
-                return
-            cls._users -= 1
+    def restore(cls, wait: bool = False, timeout: float = 25.0) -> None:
+        """Rularea s-a terminat. Notificarile revin cand nicio rulare nu mai cere "Nu deranja"
+        (si doar daca noi le-am oprit)."""
+        if not IS_WINDOWS:
+            return
+        with cls._cv:
             if cls._users > 0:
-                return
-            changed, cls._changed = cls._changed, None
-            if changed:
-                cls._restore_keys(changed)
+                cls._users -= 1
+            my = cls._kick()
+            if wait:
+                cls._cv.wait_for(lambda: cls._done >= my, timeout)
 
     @classmethod
-    def restore_all(cls) -> None:
-        """La inchiderea aplicatiei."""
-        with cls._lock:
-            if cls._users:
-                cls._users = 1
-                cls.restore()
+    def wait_settled(cls, timeout: float = 25.0) -> None:
+        """Asteapta ca Windows sa ajunga in starea ceruta (pornit / oprit)."""
+        with cls._cv:
+            my = cls._req
+            cls._cv.wait_for(lambda: cls._done >= my, timeout)
+
+    @classmethod
+    def restore_all(cls, timeout: float = 25.0) -> None:
+        """La inchiderea aplicatiei: notificarile revin chiar daca o rulare nu s-a terminat."""
+        if not IS_WINDOWS:
+            return
+        with cls._cv:
+            if cls._users == 0 and not cls._applied and cls._done >= cls._req:
+                return
+            cls._users = 0
+            my = cls._kick()
+            cls._cv.wait_for(lambda: cls._done >= my, timeout)
 
     @classmethod
     def recover_if_needed(cls) -> None:
         """La pornire: o rulare anterioara a ramas cu "Nu deranja" pornit -> il oprim."""
-        try:
-            if os.path.exists(cls.RECOVERY_FILE):
-                with open(cls.RECOVERY_FILE, "r", encoding="utf-8") as f:
-                    keys = json.load(f)
-                with cls._lock:
-                    cls._restore_keys(list(keys))
-        except Exception:
+        if IS_WINDOWS and os.path.exists(cls.RECOVERY_FILE):
+            with cls._cv:
+                cls._applied = True     # lucratorul il va opri (nicio rulare nu-l cere)
+                cls._kick()
+
+    @classmethod
+    def force_off(cls) -> None:
+        """Buton din Setari: reporneste notificarile acum (pentru cazul in care au ramas oprite)."""
+        if not IS_WINDOWS:
+            return
+        with cls._cv:
+            cls._users = 0
+            cls._applied = True
+            my = cls._kick()
+            cls._cv.wait_for(lambda: cls._done >= my, 30)
+
+    # ── lucratorul ───────────────────────────────────────────────
+    @classmethod
+    def _kick(cls) -> int:
+        cls._req += 1
+        if cls._worker is None or not cls._worker.is_alive():
+            cls._worker = threading.Thread(target=cls._work, daemon=True, name="NuDeranja")
+            cls._worker.start()
+        cls._cv.notify_all()
+        return cls._req
+
+    @classmethod
+    def _work(cls) -> None:
+        while True:
+            with cls._cv:
+                cls._cv.wait_for(lambda: cls._done < cls._req)
+                target, want_on, applied = cls._req, cls._users > 0, cls._applied
+            try:
+                if want_on and not applied:
+                    applied = cls._turn_on()
+                elif not want_on and applied:
+                    cls._turn_off()
+                    applied = False
+            except Exception as e:  # noqa: BLE001
+                cls.last_message = f"Nu deranja: {e}"
+            with cls._cv:
+                cls._applied = applied
+                cls._done = target
+                cls._cv.notify_all()
+
+    @classmethod
+    def _turn_on(cls) -> bool:
+        """Returneaza True daca NOI am pornit "Nu deranja" (si deci trebuie sa-l oprim la final)."""
+        targets = cls._discover()
+        if not targets:
+            cls.last_message = "Nu deranja: setarea Windows nu a fost gasita."
+            return False
+        if all(cls.read_profile(d) != cls.OFF for _, d in targets):
+            cls.last_message = "Nu deranja era deja pornit (de tine) — ramane asa si dupa rulare."
+            return False
+        cls._save_recovery([p for p, _ in targets])
+        changed = 0
+        for path, data in targets:
+            blob = cls.write_profile(data, cls.ON)
+            if blob is not None and cls._write_blob(path, blob):
+                changed += 1
+        if not changed:
             cls._delete_recovery()
+            cls.last_message = "Nu deranja: setarea Windows nu a putut fi scrisa."
+            return False
+        cls._restart_service()
+        ok = cls._wait_state(True)
+        cls.last_message = ("🌙 Nu deranja activ — notificarile sunt oprite pe durata rularii."
+                            if ok else "Nu deranja a fost setat, dar Windows nu a confirmat inca.")
+        return True
+
+    @classmethod
+    def _turn_off(cls) -> None:
+        """Opreste "Nu deranja" in TOATE setarile gasite acum (Windows le poate rescrie in timpul
+        rularii) si verifica; la nevoie reincearca o data."""
+        ok = False
+        for _attempt in range(2):
+            for path, data in cls._discover():
+                if cls.read_profile(data) == cls.ON:
+                    blob = cls.write_profile(data, cls.OFF)
+                    if blob:
+                        cls._write_blob(path, blob)
+            cls._restart_service()
+            ok = cls._wait_state(False)
+            if ok:
+                break
+        cls._delete_recovery()
+        cls.last_message = ("Notificarile Windows au fost repornite." if ok else
+                            "Atentie: Windows nu confirma repornirea notificarilor. Verifica in bara de jos "
+                            "(Focus Assist / Nu deranja) sau apasa in Setari \"Reporneste notificarile acum\".")
 
     @staticmethod
     def is_active() -> Optional[bool]:
@@ -565,25 +637,6 @@ class DoNotDisturb:
             return True
         except OSError:
             return False
-
-    @classmethod
-    def _restore_keys(cls, keys: List[str]) -> None:
-        import winreg
-        for path in keys:
-            try:
-                with winreg.OpenKey(winreg.HKEY_CURRENT_USER, path) as k:
-                    data, _ = winreg.QueryValueEx(k, "Data")
-                # doar daca e inca profilul pus de noi
-                if cls.read_profile(data) == cls.ON:
-                    blob = cls.write_profile(data, cls.OFF)
-                    if blob:
-                        cls._write_blob(path, blob)
-            except OSError:
-                pass
-        cls._restart_service()
-        cls._wait_state(False)
-        cls._delete_recovery()
-        cls.last_message = "Notificarile Windows au fost repornite."
 
     @classmethod
     def _wait_state(cls, on: bool) -> bool:

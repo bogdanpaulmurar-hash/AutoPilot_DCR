@@ -29,7 +29,7 @@ public partial class App : System.Windows.Application
         base.OnStartup(e);
 
         // Daca o rulare anterioara a fost intrerupta fortat cu "Nu deranja" pornit, readucem notificarile
-        _ = System.Threading.Tasks.Task.Run(DoNotDisturb.RecoverIfNeeded);
+        DoNotDisturb.RecoverIfNeeded();   // nu blocheaza: lucratorul se ocupa in fundal
 
         // Erorile neprinse NU mai sunt ascunse: utilizatorul vede mesajul (inainte aplicatia "nu facea nimic")
         DispatcherUnhandledException += (s, ex) =>
