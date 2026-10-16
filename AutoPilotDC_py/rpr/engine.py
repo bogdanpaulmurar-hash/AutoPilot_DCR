@@ -405,6 +405,7 @@ class RprEngine:
             obj = self._repo.find(a.target)
             if obj is None:
                 raise RprStepException(f"Obiectul [{a.target}] nu exista in Object Repository.")
+            self._repo.link_parents(obj)   # cautare in containerul obiectului (biblioteca)
         elif info.needs_target:
             raise RprStepException(f"Pasul \"{info.label}\" are nevoie de un obiect. Alege-l in proprietatile pasului.")
 
@@ -421,6 +422,13 @@ class RprEngine:
         # v4.1: ferestre de eroare / aplicatie blocata -> pauza + intrebare
         if self._routine.settings.guard_enabled and self.guard is not None:
             self._handle_alert(a, self.guard.check_before_action(a))
+
+        # Biblioteca: obiectul e definit pentru pagina curenta? (doar atentionare, nu oprim)
+        if obj is not None and hasattr(driver, "current_url"):
+            url = driver.current_url()
+            if url and not self._repo.valid_on(obj, url):
+                self._log(RprLogLevel.Warning, a, f"[{obj.name}] e definit pentru site-ul \"{obj.site}\", "
+                                                  f"dar pagina curenta e {url}. Verifica daca e pagina corecta.")
 
         # 3. Marcare pe ecran inainte de actiune (stil SilkTest)
         if obj is not None and (self._routine.settings.highlight_before_action or a.action == RprAction.Highlight):

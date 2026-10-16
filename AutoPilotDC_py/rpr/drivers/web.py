@@ -368,16 +368,19 @@ class PlaywrightDriver(UiDriver):
     # =========================================================
     # 2. Gasirea elementului (fallback pe toti locatorii)
     # =========================================================
-    def _build(self, page, obj: UiObject, loc: Locator):
-        root = page
-        for sel in obj.frame_path:
-            root = root.frame_locator(sel)
+    def _build(self, page, obj: UiObject, loc: Locator, scope=None):
+        """Locatorul Playwright. scope = locatorul containerului (cautare doar in interiorul lui)."""
+        if scope is not None:
+            root = scope
+        else:
+            root = page
+            for sel in obj.frame_path:
+                root = root.frame_locator(sel)
         k, v = loc.kind, loc.value
         if k == LocatorKind.Role:
             role, _, name = v.partition("|")
             if role.strip().lower() in _ROLES:
-                return root.get_by_role(role.strip().lower(), name=name or None, exact=bool(name)) if name \
-                    else root.get_by_role(role.strip().lower())
+                return root.get_by_role(role.strip().lower(), name=name or None, exact=bool(name)) if name                     else root.get_by_role(role.strip().lower())
             return root.locator(v)
         if k == LocatorKind.Label:
             return root.get_by_label(v, exact=True)
@@ -386,33 +389,47 @@ class PlaywrightDriver(UiDriver):
         if k == LocatorKind.Text:
             return root.get_by_text(v, exact=True)
         if k == LocatorKind.XPath:
-            return root.locator(v if v.lower().startswith("xpath=") else "xpath=" + v)
+            x = v[6:] if v.lower().startswith("xpath=") else v
+            if scope is not None and x.startswith("/"):
+                x = "." + x   # in container: XPath relativ la container
+            return root.locator("xpath=" + x)
         if k == LocatorKind.Id:
             return root.locator('[id="' + v.replace("\\", "\\\\").replace('"', '\\"') + '"]')
         if k == LocatorKind.Name:
             return root.locator('[name="' + v.replace("\\", "\\\\").replace('"', '\\"') + '"]')
         return root.locator(v)   # Css, TestId (selector de atribut)
 
+    def _scope_of(self, obj: UiObject):
+        """Containerul obiectului (din biblioteca), gasit pe pagina; None = toata pagina."""
+        parent = getattr(obj, "parent_ref", None)
+        if parent is None:
+            return None
+        pl, _ = self._resolve(parent, 2000, None)
+        return pl
+
     def _resolve(self, obj: UiObject, timeout_ms: int, stop: Optional[threading.Event]):
+        """Primul locator care gaseste exact UN element. Cu container: intai in container
+        (acolo e acceptat si primul din mai multe), apoi in toata pagina (doar daca e unic)."""
         page = self._require_page()
         deadline = time.monotonic() + max(0, timeout_ms) / 1000.0
         while True:
+            scope = self._scope_of(obj)
             multi = None
-            for loc in obj.active_locators:
-                if stop is not None and stop.is_set():
-                    return None, None
-                try:
-                    l = self._build(page, obj, loc)
-                    count = l.count()
-                except Exception:
-                    continue   # locator invalid / frame in navigare
-                if count == 1:
-                    return l, loc
-                if count > 1 and multi is None:
-                    multi = (l.first, loc)
-            # niciun locator unic: acceptam primul element al primului locator care gaseste ceva
-            if multi is not None:
-                return multi
+            for sc in ([scope, None] if scope is not None else [None]):
+                for loc in obj.active_locators:
+                    if stop is not None and stop.is_set():
+                        return None, None
+                    try:
+                        l = self._build(page, obj, loc, sc)
+                        count = l.count()
+                    except Exception:
+                        continue   # locator invalid / frame in navigare
+                    if count == 1:
+                        return l, loc
+                    if count > 1 and multi is None and (sc is not None or scope is None):
+                        multi = (l.first, loc)
+                if multi is not None:
+                    return multi
             if time.monotonic() >= deadline or (stop is not None and stop.is_set()):
                 return None, None
             try:
@@ -490,6 +507,57 @@ class PlaywrightDriver(UiDriver):
         except Exception:
             pass
         return True, f"[{obj.name}] gasit prin {used}" + (f" — text: \"{text}\"" if text else "")
+
+    def current_url(self) -> str:
+        try:
+            return self._call(lambda: self._page.url if self._is_open() else "")
+        except Exception:
+            return ""
+
+    def test_object(self, obj: UiObject) -> Dict[str, Any]:
+        """🧪 Testeaza: cate elemente gaseste fiecare locator (in container si in pagina) + marcheaza elementul."""
+        return self._call(self._test_object, obj)
+
+    def _test_object(self, obj: UiObject) -> Dict[str, Any]:
+        if not self._is_open():
+            raise RprStepException("Browserul nu e deschis. Deschide pagina pe care vrei sa testezi obiectul.")
+        page = self._page
+        scope = self._scope_of(obj)
+        parent = getattr(obj, "parent_ref", None)
+        rows = []
+        for loc in obj.locators:
+            row = {"locator": loc, "in_container": None, "in_page": None}
+            try:
+                if scope is not None:
+                    row["in_container"] = self._build(page, obj, loc, scope).count()
+                row["in_page"] = self._build(page, obj, loc, None).count()
+            except Exception as ex:  # noqa: BLE001
+                row["error"] = _first_line(ex)
+            rows.append(row)
+        l, used = self._resolve(obj, 1500, None)
+        if l is not None:
+            try:
+                l.scroll_into_view_if_needed(timeout=2000)
+            except Exception:
+                pass
+            self._highlight(obj, 2000, None)
+        return {"url": page.url, "found": l is not None, "used": used, "rows": rows,
+                "container": parent.name if parent is not None else "",
+                "container_found": scope is not None if parent is not None else None}
+
+    def element_inside(self, container: UiObject, child: UiObject) -> bool:
+        """Elementul capturat se afla in interiorul containerului (pe pagina curenta)?"""
+        try:
+            return bool(self._call(self._element_inside, container, child))
+        except Exception:
+            return False
+
+    def _element_inside(self, container, child):
+        cl, _ = self._resolve(container, 0, None)
+        el, _ = self._resolve(child, 0, None)
+        if cl is None or el is None:
+            return False
+        return cl.evaluate("(c, e) => c !== e && c.contains(e)", el.element_handle(timeout=1000))
 
     def capture_error_screenshot(self, folder, name):
         try:

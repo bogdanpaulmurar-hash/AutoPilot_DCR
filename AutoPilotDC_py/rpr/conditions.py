@@ -138,4 +138,4 @@ class ConditionEvaluator:
         obj = self._repo.find(name)
         if obj is None:
             raise RprStepException(f"Conditia foloseste obiectul [{name}], care nu exista in Object Repository.")
-        return obj
+        return self._repo.link_parents(obj)

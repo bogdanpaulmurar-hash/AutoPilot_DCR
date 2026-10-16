@@ -40,7 +40,8 @@ from rpr.model import (ACTIONS, ActionNode, BreakNode, CellColor, CompareOperato
                        ErrorPolicy, ForEachRowNode, GroupNode, IfNode, LegacyStepNode, Locator, LocatorKind,
                        LogNode, LoopMode, LoopNode, ObjectRepository, QuestionNode, Routine, RprAction, RprLogLevel,
                        RprNode, SetVariableNode, StopNode, TryNode, UiObject, UiTechnology, VariableOperation,
-                       WaitMode, WaitNode, WriteExcelNode, action_info, flatten, sanitize_name)
+                       WaitMode, WaitNode, WriteExcelNode, action_info, flatten, sanitize_name,
+                       OBJECT_TYPES, CONTAINER_TYPES, SiteGroup)
 from rpr.storage import Examples, ExcelInfo, RepositoryStore, RoutineStore, RprPaths, RunLogExporter
 
 try:
@@ -560,7 +561,7 @@ class StudioPanel(tk.Frame):
         nb.add(tb, text="🧱 Pasi")
         self._build_toolbox(tb.inner)
         ob = tk.Frame(nb, bg=C["bg_main"])
-        nb.add(ob, text="🎯 Obiecte")
+        nb.add(ob, text="📚 Biblioteca")
         self._build_objects(ob)
 
         # ── Centru: arborele rutinei ──
@@ -655,34 +656,52 @@ class StudioPanel(tk.Frame):
                 ToolTip(b, tip)
 
     def _build_objects(self, host):
+        """📚 Biblioteca de obiecte (ca in SilkTest): Site -> Pagina -> Container -> obiecte,
+        comuna tuturor rutinelor. Fiecare obiect poate fi testat inainte de a-l folosi."""
         C = self.C
         top = tk.Frame(host, bg=C["bg_main"])
-        top.pack(fill="x", padx=4, pady=4)
+        top.pack(fill="x", padx=4, pady=(4, 2))
         self._obj_filter = tk.StringVar()
         e = tk.Entry(top, textvariable=self._obj_filter, bg=C["bg_input"], fg=C["text"], relief="flat",
                      insertbackground=C["text"], font=("Segoe UI", 9))
-        e.pack(fill="x")
-        ToolTip(e, "Cauta un obiect dupa nume")
+        e.pack(fill="x", ipady=2)
+        ToolTip(e, "Cauta dupa nume, tip, site, pagina sau eticheta")
         self._obj_filter.trace_add("write", lambda *a: self.refresh_objects())
-        self.objects = ttk.Treeview(host, columns=("tip",), show="tree headings", style="Studio.Treeview")
-        self.objects.heading("#0", text="Obiect", anchor="w")
-        self.objects.heading("tip", text="Tehnologie", anchor="w")
-        self.objects.column("#0", width=150)
-        self.objects.column("tip", width=70, stretch=False)
-        self.objects.pack(fill="both", expand=True, padx=4)
+        self._obj_only_page = tk.BooleanVar(value=False)
+        tk.Checkbutton(top, text="Doar ce merge pe pagina din browser", variable=self._obj_only_page,
+                       command=self.refresh_objects, bg=C["bg_main"], fg=C["text_dim"], selectcolor=C["bg_input"],
+                       activebackground=C["bg_main"], font=("Segoe UI", 8)).pack(anchor="w")
+        box = tk.Frame(host, bg=C["bg_main"])
+        box.pack(fill="both", expand=True, padx=4)
+        self.objects = ttk.Treeview(box, columns=("tip",), show="tree headings", style="Studio.Treeview")
+        self.objects.heading("#0", text="Site · Pagina · Obiect", anchor="w")
+        self.objects.heading("tip", text="Tip", anchor="w")
+        self.objects.column("#0", width=170)
+        self.objects.column("tip", width=78, stretch=False)
+        vsb = ttk.Scrollbar(box, orient="vertical", command=self.objects.yview)
+        self.objects.configure(yscrollcommand=vsb.set)
+        vsb.pack(side="right", fill="y")
+        self.objects.pack(fill="both", expand=True)
+        self.objects.tag_configure("site", foreground=C["primary"], font=("Segoe UI", 9, "bold"))
+        self.objects.tag_configure("page", foreground=C["accent"], font=("Segoe UI", 9, "italic"))
+        self.objects.tag_configure("container", font=("Segoe UI", 9, "bold"))
         self.objects.bind("<Double-1>", lambda e: self.edit_object())
+        self.objects.bind("<Button-3>", self._object_menu)
         row = tk.Frame(host, bg=C["bg_main"])
         row.pack(fill="x", padx=4, pady=4)
-        for text, cmd, tip in [("👁", self.show_object, "Arata obiectul pe ecran (verifici ca e gasit)"),
+        for text, cmd, tip in [("Test", self.test_object, "Testeaza obiectul pe pagina din browser: cate elemente gaseste "
+                                                       "fiecare locator; il marcheaza pe ecran"),
+                               ("➕ Pas", self.object_to_step, "Adauga obiectul in rutina curenta (pas Click)"),
+                               ("Editeaza", self.edit_object, "Editeaza: nume, tip, site, pagina, container, locatori"),
                                ("＋ Nou", self.new_object, "Obiect nou, cu locatori scrisi de mana"),
-                               ("✎", self.edit_object, "Editeaza numele si locatorii (dublu click)"),
-                               ("➕ Pas", self.object_to_step, "Adauga un pas Click pe acest obiect"),
-                               ("🗑", self.delete_object, "Sterge obiectul din repository")]:
+                               ("🗑", self.delete_object, "Sterge obiectul din biblioteca"),
+                               ("🌐 Site-uri", self.edit_sites, "Site-uri si link-urile lor (sisteme similare: test / productie)")]:
             self._btn(row, text, cmd, tip=tip).pack(side="left", padx=1)
-        tk.Label(host, text="Obiecte noi: 🎯 Web din bara de sus (Spy) sau ⏺ Inregistreaza Web. "
-                            "Spy SAP / Desktop vine in etapa urmatoare.",
-                 bg=C["bg_main"], fg=C["text_dim"], font=("Segoe UI", 8), wraplength=220, justify="left").pack(
-            anchor="w", padx=6, pady=(0, 6))
+        hint = tk.Label(host, text="Comuna tuturor rutinelor. Obiecte noi: Spy (Web) sau Inregistreaza Web. "
+                                   "Click dreapta pe obiect: testeaza, adauga in rutina, muta in container, copiaza pentru alt site.",
+                        bg=C["bg_main"], fg=C["text_dim"], font=("Segoe UI", 8), justify="left", wraplength=220)
+        hint.pack(anchor="w", padx=6, pady=(0, 6))
+        host.bind("<Configure>", lambda e: hint.configure(wraplength=max(120, e.width - 20)), add="+")
 
     # =========================================================================
     # Rutina: nou / deschide / salveaza
@@ -1032,19 +1051,146 @@ class StudioPanel(tk.Frame):
     def refresh_objects(self):
         if not hasattr(self, "objects"):
             return
+        repo = self.repo
+        changed = False
+        for o in repo.objects:   # obiectele vechi (fara site / pagina / tip) se clasifica din link-ul capturarii
+            if (o.context and (not o.site or not o.page)) or not o.object_type:
+                before = (o.site, o.page, o.object_type)
+                repo.classify(o)
+                changed |= before != (o.site, o.page, o.object_type)
+        if changed:
+            self.save_repository()
+
         flt = self._obj_filter.get().strip().lower()
+        url = ""
+        if self._obj_only_page.get():
+            try:
+                url = self.web().current_url() if self.web().is_open else ""
+            except Exception:
+                url = ""
+
+        def matches(o: UiObject) -> bool:
+            if url and not repo.valid_on(o, url):
+                return False
+            if not flt:
+                return True
+            hay = " ".join([o.name, o.object_type, o.site, o.page, o.description, " ".join(o.tags)]).lower()
+            return flt in hay
+
+        # vizibile = potrivirile + containerele lor (ca arborele sa ramana intreg)
+        visible = set()
+        for o in repo.objects:
+            if matches(o):
+                visible.add(o.name.lower())
+                for p in repo.parent_chain(o):
+                    visible.add(p.name.lower())
+
+        open_state = {iid: self.objects.item(iid, "open") for iid in self._all_object_iids()}
+        sel = self.objects.selection()
         self.objects.delete(*self.objects.get_children())
-        for o in sorted(self.repo.objects, key=lambda x: x.name.lower()):
-            if flt and flt not in o.name.lower():
+
+        def site_of(o):
+            if o.technology in (UiTechnology.Web, UiTechnology.WebSelenium):
+                return o.site or "(fara site)"
+            return o.site or {UiTechnology.Sap: "SAP GUI", UiTechnology.Desktop: "Aplicatii desktop"}.get(o.technology, "Altele")
+
+        tree: Dict[str, Dict[str, List[UiObject]]] = {}
+        names = {o.name.lower() for o in repo.objects}
+        for o in sorted(repo.objects, key=lambda x: x.name.lower()):
+            if o.name.lower() not in visible:
                 continue
-            self.objects.insert("", "end", iid="obj:" + o.name, text=o.name, values=(str(o.technology),))
+            if o.parent and o.parent.lower() in names:
+                continue   # apare sub containerul lui
+            tree.setdefault(site_of(o), {}).setdefault(o.page or "(fara pagina)", []).append(o)
+
+        def add_obj(parent_iid, o):
+            iid = "obj:" + o.name
+            n = sum(1 for l in o.active_locators)
+            self.objects.insert(parent_iid, "end", iid=iid, text=("▣ " if o.is_container else "") + o.name,
+                                values=(o.object_type or "",), open=open_state.get(iid, True),
+                                tags=("container",) if o.is_container else ())
+            for ch in sorted(repo.children_of(o.name), key=lambda x: x.name.lower()):
+                if ch.name.lower() in visible:
+                    add_obj(iid, ch)
+
+        for site in sorted(tree, key=str.lower):
+            sid = "site:" + site
+            n = sum(len(v) for v in tree[site].values())
+            self.objects.insert("", "end", iid=sid, text=f"🌐 {site}", values=(f"{n} ob.",), open=open_state.get(sid, True),
+                                tags=("site",))
+            for page in sorted(tree[site], key=str.lower):
+                pid = f"page:{site}|{page}"
+                self.objects.insert(sid, "end", iid=pid, text=f"📄 {page}", open=open_state.get(pid, True), tags=("page",))
+                for o in tree[site][page]:
+                    add_obj(pid, o)
+        for iid in sel:
+            if self.objects.exists(iid):
+                self.objects.selection_set(iid)
+                self.objects.see(iid)
+
+    def _all_object_iids(self):
+        out, stack = [], list(self.objects.get_children())
+        while stack:
+            iid = stack.pop()
+            out.append(iid)
+            stack.extend(self.objects.get_children(iid))
+        return out
 
     def _sel_object(self) -> Optional[UiObject]:
         sel = self.objects.selection()
-        return self.repo.find(sel[0][4:]) if sel else None
+        if not sel or not sel[0].startswith("obj:"):
+            return None
+        return self.repo.find(sel[0][4:])
+
+    def _object_menu(self, e):
+        iid = self.objects.identify_row(e.y)
+        if not iid or not iid.startswith("obj:"):
+            return
+        self.objects.selection_set(iid)
+        obj = self._sel_object()
+        C = self.C
+        m = tk.Menu(self, tearoff=0, bg=C["bg_card"], fg=C["text"], activebackground=C["primary"])
+        m.add_command(label="🧪 Testeaza pe pagina din browser", command=self.test_object)
+        m.add_separator()
+        m.add_command(label="➕ Adauga in rutina: Click", command=lambda: self._obj_step(RprAction.Click))
+        m.add_command(label="➕ Adauga in rutina: Scrie text", command=lambda: self._obj_step(RprAction.TypeText))
+        m.add_command(label="➕ Adauga in rutina: Citeste textul", command=lambda: self._obj_step(RprAction.ReadText))
+        m.add_command(label="➕ Adauga in rutina: Alege din lista", command=lambda: self._obj_step(RprAction.SelectOption))
+        m.add_command(label="➕ Adauga conditie: Daca obiectul exista", command=self._obj_if_exists)
+        m.add_separator()
+        m.add_command(label="✎ Editeaza", command=self.edit_object)
+        m.add_command(label="▣ Muta in container...", command=self.move_to_container)
+        m.add_command(label="⧉ Copiaza pentru alt site / alta pagina...", command=self.copy_object)
+        m.add_separator()
+        m.add_command(label="🗑 Sterge", command=self.delete_object)
+        m.tk_popup(e.x_root, e.y_root)
+
+    def _obj_step(self, action: RprAction, obj: Optional[UiObject] = None):
+        obj = obj or self._sel_object()
+        if obj is None:
+            return
+        node = ActionNode(action=action, target=obj.name, technology=obj.technology)
+        if action == RprAction.ReadText:
+            node.output_variable = obj.name.split("_")[-1]
+        self.insert_node(node)
+
+    def _obj_if_exists(self):
+        obj = self._sel_object()
+        if obj is not None:
+            self.insert_node(IfNode(condition=Condition(kind=ConditionKind.ElementExists, target=obj.name, timeout_ms=2000)))
 
     def new_object(self):
         obj = UiObject(name=self.repo.make_unique_name("Obiect"), locators=[Locator(LocatorKind.Css, "")])
+        try:   # pagina din browser = site / pagina implicite
+            if self.web().is_open:
+                obj.context = self.web().current_url()
+                self.repo.classify(obj)
+                obj.object_type = ""
+        except Exception:
+            pass
+        sel = self._sel_object()
+        if sel is not None and sel.is_container:
+            obj.parent, obj.site, obj.page = sel.name, sel.site, sel.page
         if ObjectDialog(self, obj, is_new=True).result:
             self.repo.add(obj)
             self.save_repository()
@@ -1058,6 +1204,7 @@ class StudioPanel(tk.Frame):
         if ObjectDialog(self, obj).result:
             if obj.name != old:
                 self._rename_references(old, obj.name)
+                self.repo.rename_parent_refs(old, obj.name)
             self.save_repository()
             self.refresh_objects()
             self.rebuild_tree()
@@ -1081,19 +1228,104 @@ class StudioPanel(tk.Frame):
         if obj is None:
             return
         used = sum(1 for n in self.routine.referenced_objects() if n.lower() == obj.name.lower())
-        msg = f"Stergi obiectul \"{obj.name}\" din Object Repository?"
+        kids = self.repo.children_of(obj.name)
+        msg = f"Stergi obiectul \"{obj.name}\" din biblioteca?"
         if used:
             msg += f"\n\nAtentie: rutina curenta il foloseste in {used} pasi."
-        if messagebox.askyesno("Studio RPR", msg, parent=self):
+        if kids:
+            msg += f"\n\nE container pentru {len(kids)} obiecte: ele raman, dar vor fi cautate in toata pagina."
+        if messagebox.askyesno("Biblioteca", msg, parent=self):
             self.repo.remove(obj)
             self.save_repository()
             self.refresh_objects()
 
     def object_to_step(self):
+        self._obj_step(RprAction.Click)
+
+    def move_to_container(self):
         obj = self._sel_object()
         if obj is None:
             return
-        self.insert_node(ActionNode(action=RprAction.Click, target=obj.name, technology=obj.technology))
+        banned = {obj.name.lower()} | {o.name.lower() for o in self.repo.objects
+                                       if any(p.name.lower() == obj.name.lower() for p in self.repo.parent_chain(o))}
+        options = ["(fara container — toata pagina)"] + [
+            o.name for o in sorted(self.repo.objects, key=lambda x: x.name.lower())
+            if o.is_container and o.name.lower() not in banned and o.technology == obj.technology]
+        if len(options) == 1:
+            messagebox.showinfo("Container", "Nu exista containere. Marcheaza o sectiune / un tabel / o lista cu Spy si "
+                                             "alege tipul \"Container\", \"Tabel\" sau \"RefList\".", parent=self)
+            return
+        ans = list_dialog(self, "Muta in container", f"In ce container se afla [{obj.name}]?", options, C=self.C)
+        if ans is None:
+            return
+        parent = "" if ans == options[0] else ans
+        obj.parent = parent
+        if parent:
+            po = self.repo.find(parent)
+            if po is not None:
+                obj.site, obj.page = po.site, po.page
+        self.save_repository()
+        self.refresh_objects()
+        self.set_status(f"[{obj.name}] e cautat acum " + (f"in containerul [{parent}]." if parent else "in toata pagina."))
+
+    def copy_object(self):
+        obj = self._sel_object()
+        if obj is None:
+            return
+        sites = sorted({o.site for o in self.repo.objects if o.site} | {g.name for g in self.repo.sites}, key=str.lower)
+        site = input_dialog(self, "Copiaza obiectul", f"Copie a lui [{obj.name}] pentru site-ul (poti scrie unul nou):\n"
+                                                       f"Site-uri existente: {', '.join(sites) or '-'}", obj.site, C=self.C)
+        if site is None:
+            return
+        page = input_dialog(self, "Copiaza obiectul", "Pagina:", obj.page, C=self.C)
+        if page is None:
+            return
+        twin = copy.deepcopy(obj)
+        twin.site, twin.page = site.strip(), page.strip()
+        twin.name = self.repo.make_unique_name(obj.name + "_" + sanitize_name(site.split(".")[0] or "copie"))
+        self.repo.add(twin)
+        self.save_repository()
+        self.refresh_objects()
+        self.set_status(f"Copie creata: [{twin.name}] pentru {twin.site}{twin.page}. Testeaz-o pe noul site (🧪).")
+
+    def test_object(self, obj: Optional[UiObject] = None):
+        obj = obj or self._sel_object()
+        if obj is None:
+            return
+        if obj.technology not in (UiTechnology.Web, UiTechnology.WebSelenium):
+            messagebox.showinfo("Test", "Testarea obiectelor SAP / Desktop vine cu driverele din etapa urmatoare.", parent=self)
+            return
+        try:
+            if not self.web().is_open:
+                url = self._ask_url_if_closed()
+                if url is False:
+                    return
+            else:
+                url = None
+        except Exception:
+            url = None
+        self.repo.link_parents(obj)
+        web = self.web()
+
+        def work():
+            try:
+                if url:
+                    web.open(url)
+                self.post("test_result", (obj, web.test_object(obj), None))
+            except Exception as ex:  # noqa: BLE001
+                self.post("test_result", (obj, None, str(ex)))
+        self.set_status(f"🧪 Testez [{obj.name}] pe pagina din browser...")
+        threading.Thread(target=work, daemon=True).start()
+
+    def _test_finished(self, obj, res, error):
+        if error:
+            messagebox.showerror("Test", error, parent=self)
+            return
+        TestResultDialog(self, obj, res)
+
+    def edit_sites(self):
+        SitesDialog(self)
+        self.refresh_objects()
 
     def spy(self, technology):
         tech = str(technology).lower()
@@ -1119,6 +1351,15 @@ class StudioPanel(tk.Frame):
                 if url:
                     web.open(url)
                 obj = web.capture_object("Click = captureaza · Esc = anuleaza", RprPaths.object_images())
+                if obj is not None:
+                    self.repo.classify(obj)
+                    # containerul sugerat: un container existent pe aceeasi pagina care include elementul
+                    for c in [o for o in self.repo.objects if o.is_container and o.technology == obj.technology
+                              and o.site == obj.site]:
+                        self.repo.link_parents(c)
+                        if web.element_inside(c, obj):
+                            obj.parent = c.name
+                            break
                 self.post("spy_done", (obj, None))
             except Exception as ex:  # noqa: BLE001
                 self.post("spy_done", (None, str(ex)))
@@ -1248,6 +1489,7 @@ class StudioPanel(tk.Frame):
     def _add_recorded(self, rec):
         obj = self.find_same_object(rec.target)
         if obj is None:
+            self.repo.classify(rec.target)
             obj = self.repo.add(rec.target)
         self.save_repository()
         self.refresh_objects()
@@ -1388,6 +1630,8 @@ class StudioPanel(tk.Frame):
                     self._set_recording(False)
             elif kind == "spy_done":
                 self._spy_finished(*p)
+            elif kind == "test_result":
+                self._test_finished(*p)
             elif kind == "recorded":
                 self._add_recorded(p)
             elif kind == "record_started":
@@ -2094,9 +2338,10 @@ class ObjectDialog(tk.Toplevel):
         self.tech = ttk.Combobox(self, values=[l for _, l in TECHNOLOGIES], state="readonly")
         self.tech.current(next((i for i, (v, _) in enumerate(TECHNOLOGIES) if v == obj.technology), 0))
         self.tech.pack(fill="x", padx=14)
-        cap("Context (Web: fragment URL · Desktop: proces:nume.exe sau titlu · SAP: wnd[0])")
+        cap("Context (Web: link-ul paginii · Desktop: proces:nume.exe sau titlu · SAP: wnd[0])")
         self.context = tk.StringVar(value=obj.context)
         tk.Entry(self, textvariable=self.context, **es).pack(fill="x", padx=14, ipady=3)
+        self.lib = LibraryFields(self, panel, obj)
         cap("Locatori (in ordinea de incercare; primul care gaseste exact UN element castiga)")
         self.loc_box = tk.Frame(self, bg=C["bg_main"])
         self.loc_box.pack(fill="x", padx=14)
@@ -2112,7 +2357,7 @@ class ObjectDialog(tk.Toplevel):
         row.pack(anchor="e", padx=14, pady=12)
         panel._btn(row, "💾 Salveaza", self._ok, color=C["success"]).pack(side="left", padx=3)
         panel._btn(row, "Anuleaza", self.destroy).pack(side="left", padx=3)
-        self.geometry("620x" + str(min(720, 360 + 34 * max(1, len(obj.locators)))))
+        self.geometry("680x" + str(min(900, 640 + 34 * max(1, len(obj.locators)))))
         self.grab_set()
         self.wait_window()
 
@@ -2148,6 +2393,7 @@ class ObjectDialog(tk.Toplevel):
         self.obj.context = self.context.get().strip()
         self.obj.locators = [Locator(LocatorKind.parse(k.get()), v.get().strip(), 50, e.get())
                              for k, v, e in self.rows if v.get().strip()]
+        self.lib.apply()
         self.result = True
         self.destroy()
 
@@ -2192,6 +2438,10 @@ class ObjectReviewDialog(tk.Toplevel):
         self.name = tk.StringVar(value=panel.repo.make_unique_name(obj.name))
         tk.Entry(self, textvariable=self.name, bg=C["bg_input"], fg=C["text"], insertbackground=C["text"],
                  relief="flat", font=("Segoe UI", 11)).pack(fill="x", padx=14, ipady=3)
+        self.lib = LibraryFields(self, panel, obj, compact=True)
+        if obj.parent:
+            tk.Label(self, text=f"▣ Elementul e in interiorul containerului [{obj.parent}] — va fi cautat acolo.",
+                     bg=C["bg_main"], fg=C["accent"], font=("Segoe UI", 9, "bold")).pack(anchor="w", padx=14)
 
         tk.Label(self, text="Locatori — primul care gaseste exact UN element castiga; daca pagina se schimba, se trece "
                             "automat la urmatorul. Debifeaza ce e instabil (ex: un text care se schimba).",
@@ -2237,8 +2487,271 @@ class ObjectReviewDialog(tk.Toplevel):
             messagebox.showwarning("Obiect", f"Exista deja un obiect numit \"{name}\".", parent=self)
             return
         self.obj.name = name
+        self.lib.apply()
         for loc, en, val in self.rows:
             loc.enabled, loc.value = en.get(), val.get().strip()
         self.obj.locators = [l for l in self.obj.locators if l.value]
         self.result = result
         self.destroy()
+
+
+# ==============================================================================
+# 8. BIBLIOTECA: campuri comune, alegere din lista, rezultatul testului, site-uri
+# ==============================================================================
+class LibraryFields:
+    """Tip, site, pagina, container, link-uri valide, etichete — folosit in dialogurile de obiect."""
+
+    def __init__(self, dlg: tk.Toplevel, panel: StudioPanel, obj: UiObject, compact: bool = False):
+        self.p, self.obj = panel, obj
+        C = panel.C
+        f = tk.Frame(dlg, bg=C["bg_main"])
+        f.pack(fill="x", padx=14, pady=(6, 0))
+        es = dict(bg=C["bg_input"], fg=C["text"], insertbackground=C["text"], relief="flat", font=("Segoe UI", 10))
+        repo = panel.repo
+        sites = sorted({o.site for o in repo.objects if o.site} | {g.name for g in repo.sites} | ({obj.site} - {""}),
+                       key=str.lower)
+        banned = {obj.name.lower()} | {o.name.lower() for o in repo.objects
+                                       if any(pp.name.lower() == obj.name.lower() for pp in repo.parent_chain(o))}
+        containers = [""] + [o.name for o in sorted(repo.objects, key=lambda x: x.name.lower())
+                             if o.is_container and o.name.lower() not in banned]
+
+        def lbl(text, r, c, span=1):
+            tk.Label(f, text=text, bg=C["bg_main"], fg=C["text_dim"], font=("Segoe UI", 9, "bold")).grid(
+                row=r, column=c, columnspan=span, sticky="w", pady=(4, 0), padx=(0, 8))
+        f.columnconfigure(0, weight=1, uniform="lib")
+        f.columnconfigure(1, weight=1, uniform="lib")
+        lbl("Tip", 0, 0)
+        lbl("Container (cauta doar in interiorul lui)", 0, 1)
+        self.type = ttk.Combobox(f, values=OBJECT_TYPES, state="readonly")
+        self.type.set(obj.object_type or "Altul")
+        self.type.grid(row=1, column=0, sticky="ew", padx=(0, 8))
+        self.parent = ttk.Combobox(f, values=containers)
+        self.parent.set(obj.parent)
+        self.parent.grid(row=1, column=1, sticky="ew")
+        lbl("Site / aplicatie", 2, 0)
+        lbl("Pagina", 2, 1)
+        self.site = ttk.Combobox(f, values=sites)
+        self.site.set(obj.site)
+        self.site.grid(row=3, column=0, sticky="ew", padx=(0, 8))
+        self.page = tk.StringVar(value=obj.page)
+        tk.Entry(f, textvariable=self.page, **es).grid(row=3, column=1, sticky="ew", ipady=2)
+        self.urls = tk.StringVar(value=", ".join(obj.url_patterns))
+        self.tags = tk.StringVar(value=", ".join(obj.tags))
+        self.desc = tk.StringVar(value=obj.description)
+        if not compact:
+            lbl("Link-uri unde e valid (separate prin virgula; * = orice; gol = link-urile site-ului)", 4, 0, 2)
+            tk.Entry(f, textvariable=self.urls, **es).grid(row=5, column=0, columnspan=2, sticky="ew", ipady=2)
+            lbl("Etichete (separate prin virgula)", 6, 0)
+            lbl("Descriere", 6, 1)
+            tk.Entry(f, textvariable=self.tags, **es).grid(row=7, column=0, sticky="ew", padx=(0, 8), ipady=2)
+            tk.Entry(f, textvariable=self.desc, **es).grid(row=7, column=1, sticky="ew", ipady=2)
+
+    def apply(self):
+        o = self.obj
+        o.object_type = self.type.get()
+        o.parent = self.parent.get().strip()
+        o.site = self.site.get().strip()
+        o.page = self.page.get().strip()
+        o.url_patterns = [u.strip() for u in self.urls.get().split(",") if u.strip()]
+        o.tags = [t.strip() for t in self.tags.get().split(",") if t.strip()]
+        o.description = self.desc.get().strip()
+
+
+def list_dialog(parent, title: str, prompt: str, options: List[str], C=None) -> Optional[str]:
+    C = C or {}
+    dlg = tk.Toplevel(parent)
+    dlg.title(title)
+    dlg.configure(bg=C.get("bg_main", "#1E1E2E"))
+    dlg.attributes("-topmost", True)
+    res = {"v": None}
+    tk.Label(dlg, text=prompt, bg=dlg["bg"], fg=C.get("text", "#FFF"), font=("Segoe UI", 10)).pack(anchor="w", padx=14, pady=(12, 4))
+    lb = tk.Listbox(dlg, height=min(14, len(options)), width=50, bg=C.get("bg_input", "#333"), fg=C.get("text", "#FFF"),
+                    selectbackground=C.get("primary", "#099"), font=("Segoe UI", 10), relief="flat")
+    for o in options:
+        lb.insert("end", o)
+    lb.selection_set(0)
+    lb.pack(padx=14, fill="both", expand=True)
+
+    def ok(_e=None):
+        sel = lb.curselection()
+        res["v"] = options[sel[0]] if sel else None
+        dlg.destroy()
+    lb.bind("<Double-1>", ok)
+    row = tk.Frame(dlg, bg=dlg["bg"])
+    row.pack(anchor="e", padx=14, pady=10)
+    tk.Button(row, text="OK", command=ok, bg=C.get("success", "#0A4"), fg="white", relief="flat", padx=14).pack(side="left", padx=3)
+    tk.Button(row, text="Anuleaza", command=dlg.destroy, relief="flat", padx=10).pack(side="left", padx=3)
+    dlg.grab_set()
+    dlg.wait_window()
+    return res["v"]
+
+
+class TestResultDialog(tk.Toplevel):
+    """Rezultatul 🧪 Testeaza: obiectul gasit? cate elemente gaseste fiecare locator?"""
+
+    def __init__(self, panel: StudioPanel, obj: UiObject, res: Dict[str, Any]):
+        super().__init__(panel)
+        C = panel.C
+        self.title(f"Test: {obj.name}")
+        self.configure(bg=C["bg_main"])
+        self.attributes("-topmost", True)
+        ok = res.get("found")
+        tk.Label(self, text=("✔ Gasit pe pagina — e marcat in browser" if ok else "✖ Nu a fost gasit pe pagina"),
+                 bg=C["bg_main"], fg="#3CCF6E" if ok else "#FF6B6B", font=("Segoe UI", 13, "bold")).pack(anchor="w", padx=14, pady=(12, 2))
+        info = f"Pagina: {res.get('url', '')}"
+        if res.get("used") is not None:
+            info += f"\nGasit prin: {res['used']}"
+        if res.get("container"):
+            info += (f"\nContainer [{res['container']}]: " + ("gasit — cautarea s-a facut in interiorul lui"
+                                                                if res.get("container_found") else "NU a fost gasit pe pagina"))
+        if not panel.repo.valid_on(obj, res.get("url", "")):
+            info += f"\n⚠ Obiectul e definit pentru site-ul \"{obj.site}\", nu pentru aceasta pagina."
+        tk.Label(self, text=info, bg=C["bg_main"], fg=C["text_dim"], font=("Segoe UI", 9), justify="left",
+                 wraplength=640).pack(anchor="w", padx=14)
+        grid = tk.Frame(self, bg=C["bg_main"])
+        grid.pack(fill="x", padx=14, pady=8)
+        heads = ["Locator", "Valoare", "In container", "In pagina"]
+        for c, h in enumerate(heads):
+            tk.Label(grid, text=h, bg=C["bg_main"], fg=C["text_dim"], font=("Segoe UI", 9, "bold")).grid(row=0, column=c, sticky="w", padx=4)
+
+        def cell(n, best_one=True):
+            if n is None:
+                return "—", C["text_dim"]
+            return str(n), ("#3CCF6E" if n == 1 else "#FFC24B" if n > 1 else "#FF6B6B")
+        for r, row in enumerate(res.get("rows", []), 1):
+            loc = row["locator"]
+            tk.Label(grid, text=str(loc.kind) + ("" if loc.enabled else " (inactiv)"), bg=C["bg_main"], fg=C["accent"],
+                     font=("Segoe UI", 9, "bold")).grid(row=r, column=0, sticky="w", padx=4)
+            tk.Label(grid, text=loc.value[:60], bg=C["bg_main"], fg=C["text"], font=("Consolas", 9)).grid(row=r, column=1, sticky="w", padx=4)
+            for c, key in ((2, "in_container"), (3, "in_page")):
+                t, col = cell(row.get(key))
+                if row.get("error"):
+                    t, col = "eroare", "#FF6B6B"
+                tk.Label(grid, text=t, bg=C["bg_main"], fg=col, font=("Consolas", 10, "bold")).grid(row=r, column=c, padx=4)
+        tk.Label(self, text="1 = exact elementul (bun) · mai multe = ambiguu (se ia primul) · 0 = nu gaseste. "
+                            "Primul locator care gaseste exact UN element castiga.",
+                 bg=C["bg_main"], fg=C["text_dim"], font=("Segoe UI", 8), wraplength=640, justify="left").pack(anchor="w", padx=14)
+        row = tk.Frame(self, bg=C["bg_main"])
+        row.pack(anchor="e", padx=14, pady=12)
+        for text, action in [("➕ Pas Click", RprAction.Click), ("➕ Scrie text", RprAction.TypeText),
+                             ("➕ Citeste", RprAction.ReadText)]:
+            panel._btn(row, text, lambda a=action: (panel._obj_step(a, obj), self.destroy()), color=C["success"]).pack(side="left", padx=2)
+        panel._btn(row, "✎ Editeaza locatorii", lambda: (self.destroy(), panel.edit_object())).pack(side="left", padx=2)
+        panel._btn(row, "Inchide", self.destroy).pack(side="left", padx=2)
+
+
+class SitesDialog(tk.Toplevel):
+    """Site-uri / aplicatii si link-urile lor. Sisteme similare (test, productie, alt client) = acelasi site
+    cu mai multe link-uri: obiectele lui merg pe toate."""
+
+    def __init__(self, panel: StudioPanel):
+        super().__init__(panel)
+        self.p = panel
+        C = panel.C
+        self.title("Site-uri si link-uri")
+        self.configure(bg=C["bg_main"])
+        self.transient(panel.winfo_toplevel())
+        self.attributes("-topmost", True)
+        tk.Label(self, text="🌐  Site-uri si link-uri", bg=C["bg_main"], fg=C["primary"], font=("Segoe UI", 13, "bold")).pack(
+            anchor="w", padx=14, pady=(12, 2))
+        tk.Label(self, text="Un site grupeaza toate link-urile la care raspunde aceeasi aplicatie (ex: test + productie, "
+                            "sau acelasi sistem la alt client). Obiectele din biblioteca ale site-ului merg pe toate link-urile lui. "
+                            "Un link pe rand; * = orice (ex: *.portal.siemens.com/app/*).",
+                 bg=C["bg_main"], fg=C["text_dim"], font=("Segoe UI", 9), wraplength=640, justify="left").pack(anchor="w", padx=14)
+        body = tk.Frame(self, bg=C["bg_main"])
+        body.pack(fill="both", expand=True, padx=14, pady=8)
+        self.lb = tk.Listbox(body, width=26, height=12, bg=C["bg_input"], fg=C["text"], selectbackground=C["primary"],
+                             font=("Segoe UI", 10), relief="flat", exportselection=False)
+        self.lb.pack(side="left", fill="y")
+        self.lb.bind("<<ListboxSelect>>", lambda e: self._load())
+        right = tk.Frame(body, bg=C["bg_main"])
+        right.pack(side="left", fill="both", expand=True, padx=(10, 0))
+        es = dict(bg=C["bg_input"], fg=C["text"], insertbackground=C["text"], relief="flat", font=("Segoe UI", 10))
+        tk.Label(right, text="Nume", bg=C["bg_main"], fg=C["text_dim"], font=("Segoe UI", 9, "bold")).pack(anchor="w")
+        self.name = tk.StringVar()
+        tk.Entry(right, textvariable=self.name, **es).pack(fill="x", ipady=2)
+        tk.Label(right, text="Link-uri (unul pe rand)", bg=C["bg_main"], fg=C["text_dim"], font=("Segoe UI", 9, "bold")).pack(anchor="w", pady=(6, 0))
+        self.urls = tk.Text(right, height=7, width=50, **es)
+        self.urls.pack(fill="both", expand=True)
+        tk.Label(right, text="Descriere", bg=C["bg_main"], fg=C["text_dim"], font=("Segoe UI", 9, "bold")).pack(anchor="w", pady=(6, 0))
+        self.desc = tk.StringVar()
+        tk.Entry(right, textvariable=self.desc, **es).pack(fill="x", ipady=2)
+        row = tk.Frame(right, bg=C["bg_main"])
+        row.pack(anchor="w", pady=6)
+        panel._btn(row, "＋ Site nou", self._new).pack(side="left", padx=2)
+        panel._btn(row, "💾 Aplica", self._apply, color=C["success"]).pack(side="left", padx=2)
+        panel._btn(row, "🗑 Sterge", self._delete).pack(side="left", padx=2)
+        panel._btn(row, "Grupeaza obiectele dupa link-uri", self._reclassify).pack(side="left", padx=2)
+        panel._btn(self, "Inchide", self.destroy).pack(anchor="e", padx=14, pady=(0, 12))
+        self._cur: Optional[SiteGroup] = None
+        self._fill()
+        self.grab_set()
+        self.wait_window()
+
+    def _fill(self):
+        self.lb.delete(0, "end")
+        for g in self.p.repo.sites:
+            self.lb.insert("end", g.name)
+
+    def _load(self):
+        sel = self.lb.curselection()
+        if not sel:
+            return
+        g = self.p.repo.sites[sel[0]]
+        self._cur = g
+        self.name.set(g.name)
+        self.urls.delete("1.0", "end")
+        self.urls.insert("1.0", "\n".join(g.url_patterns))
+        self.desc.set(g.description)
+
+    def _new(self):
+        g = SiteGroup(name="Site nou", url_patterns=[])
+        try:
+            if self.p.web().is_open:
+                host = __import__("rpr.model", fromlist=["split_url"]).split_url(self.p.web().current_url())[0]
+                if host:
+                    g.name, g.url_patterns = host, [host]
+        except Exception:
+            pass
+        self.p.repo.sites.append(g)
+        self._fill()
+        self.lb.selection_set(len(self.p.repo.sites) - 1)
+        self._load()
+
+    def _apply(self):
+        g = self._cur
+        if g is None:
+            return
+        old = g.name
+        g.name = self.name.get().strip() or old
+        g.url_patterns = [u.strip() for u in self.urls.get("1.0", "end").splitlines() if u.strip()]
+        g.description = self.desc.get().strip()
+        if old != g.name:   # obiectele site-ului vechi trec la numele nou
+            for o in self.p.repo.objects:
+                if o.site == old:
+                    o.site = g.name
+        self.p.save_repository()
+        self._fill()
+        self.p.set_status(f"Site-ul \"{g.name}\" salvat ({len(g.url_patterns)} link-uri).")
+
+    def _delete(self):
+        g = self._cur
+        if g is None:
+            return
+        if messagebox.askyesno("Site-uri", f"Stergi site-ul \"{g.name}\"? Obiectele raman (cu numele site-ului).", parent=self):
+            self.p.repo.sites.remove(g)
+            self._cur = None
+            self.p.save_repository()
+            self._fill()
+
+    def _reclassify(self):
+        """Obiectele capturate pe link-urile unui site trec in acel site."""
+        n = 0
+        for o in self.p.repo.objects:
+            if o.context:
+                site = self.p.repo.site_for_url(o.context)
+                if site and site != o.site and self.p.repo.find_site(site) is not None:
+                    o.site = site
+                    n += 1
+        self.p.save_repository()
+        messagebox.showinfo("Site-uri", f"{n} obiecte au fost mutate in site-urile lor.", parent=self)

@@ -75,6 +75,7 @@ Starea migrării Studio RPR în Python:
 | 1 | Motorul + Excel + rulare din linie de comandă + teste | ✅ gata |
 | 4 | Editorul vizual (Studio) în aplicație — comutatorul **🧩 Studio RPR** din bara de sus | ✅ gata (adus înainte, ca să-l poți vedea) |
 | 2 | Driver Web (Playwright): acțiuni, Spy, înregistrare, iframe-uri (v4.4) | ✅ gata |
+| 2b | **Biblioteca de obiecte** (ca SilkTest): site → pagină → container, test înainte de folosire, sisteme similare (v4.5) | ✅ gata |
 | 3 | SAP GUI + aplicații desktop | urmează |
 | 3b | Programare automată (Windows Task Scheduler) din Studio | urmează |
 | 6 | **Limbi: română / engleză / germană** pentru toată interfața; limba se alege din Setări | după ce sunt gata toate funcțiile |

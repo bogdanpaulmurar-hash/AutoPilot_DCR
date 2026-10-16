@@ -30,7 +30,9 @@ Cerințe pe calculator:
 
 - **Bara de sus**: Nou, Deschide, Salvează, Exemple · Rulează, Pauză, Pas cu pas, Stop · Spy Web, Spy SAP, Spy Desktop, Înregistrează Web · Marchează înainte de acțiune · Programează, Setări, Ghid.
 - **Stânga, tab-ul 🧱 Pași**: blocurile pe care le adaugi în rutină.
-- **Stânga, tab-ul 🎯 Obiecte**: Object Repository — toate elementele marcate. Le poți arăta pe ecran (👁), edita, șterge sau transforma direct în pas (➕).
+- **Stânga, tab-ul 📚 Biblioteca**: toate elementele marcate, comune tuturor rutinelor, grupate **Site → Pagină → Container → obiect**. Le poți testa pe pagina din browser (**Test**), edita, șterge sau transforma direct în pas (**➕ Pas**); click dreapta pentru mai multe.
+  - **Container** (secțiune, tabel, RefList, formular): obiectele din el sunt căutate doar în interiorul lui — util când același buton apare în mai multe secțiuni.
+  - **🌐 Site-uri**: un site cu mai multe link-uri (test, producție, alt client) — obiectele lui merg pe toate. *Copiază pentru alt site* face o copie a obiectului pentru alt sistem.
 - **Centru**: arborele rutinei. Ramurile (↳ Atunci, ↳ Altfel, ↳ Pași) conțin pașii din interiorul blocurilor.
 - **Dreapta**: proprietățile pasului selectat. Când nu e selectat nimic (sau apeși **⚙ Rutina**) vezi setările rutinei și variabilele.
 - **Jos**: **📋 Log rulare** (roșu = eroare, galben = atenționare) și **🔤 Variabile** (valorile după ultima rulare).
@@ -87,7 +89,7 @@ Sfat: în loc de pașii 2–7 poți folosi **⏺ Înregistrează Web** — lucre
 
 ### Verificarea obiectelor
 
-- În tab-ul **🎯 Obiecte** selectează un obiect și apasă **👁 Arată**: obiectul e căutat și conturat pe ecran, iar în bara de jos vezi prin ce locator a fost găsit și ce text are.
+- În tab-ul **📚 Biblioteca** selectează un obiect și apasă **Test**: obiectul e căutat și conturat în browser, iar fereastra arată câte elemente găsește fiecare locator (1 = bun, mai multe = ambiguu, 0 = nu găsește), în container și în toată pagina.
 - **✎ Editează** (sau dublu click) schimbă numele, contextul și locatorii. Redenumirea actualizează automat toți pașii care folosesc obiectul.
 
 ## 5. Înregistrare Web (Recorder)
