@@ -46,6 +46,10 @@ Toate se pot opri din **Setări → 🛡 Siguranța la rulare** (în Studio RPR:
   `.rpr.json` și `obiecte.json` sunt **identice cu cele din C#** (verificat pe cele 5 exemple).
   Rulare fără interfață: `py -m rpr run "rutina.rpr.json"`.
 - `tests/` — testele motorului: `py -m unittest discover -s tests`.
+- `app_shell.py` + `assets/` — **iconița aplicației**, **pornire cu Windows** și **pictograma din tray** (lângă ceas).
+  Din **Setări → 🪟 Pornire și tray**: pornește cu Windows (opțional direct ascuns în tray), butonul ✕ ascunde
+  aplicația în tray, „Creează scurtătură pe Desktop” — scurtătura pornește direct `pythonw.exe`, deci **niciodată
+  fereastră CMD**, indiferent cum e asociat `.pyw` în Windows.
 - `AutoPilot_DCv4.1.py` — aplicația principală (recorder + player pași
   desktop/mouse/tastatură cu `pynput`, GUI `customtkinter`). Pornită direct, deschide și consola.
 - `autopilot_safety.py` — **v4.1**: Nu deranja, chenarul RUN/REC, sistemul de prevenție.

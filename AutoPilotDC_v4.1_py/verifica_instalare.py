@@ -10,6 +10,7 @@ PACHETE = [
     ("pyautogui", "redare pasi"),
     ("openpyxl", "Excel"),
     ("PIL", "capturi de ecran (pillow)"),
+    ("pystray", "pictograma langa ceas (tray)"),
     ("playwright", "Studio: Web"),
     ("win32com", "Studio: SAP GUI (pywin32)"),
     ("uiautomation", "Studio: aplicatii desktop"),

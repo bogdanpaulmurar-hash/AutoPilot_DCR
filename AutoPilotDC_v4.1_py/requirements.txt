@@ -7,6 +7,7 @@ pynput>=1.7
 pyautogui>=0.9.54
 openpyxl>=3.1
 pillow>=10.0
+pystray>=0.19     # pictograma langa ceas (tray)
 
 # Studio RPR — automatizare pe obiecte
 playwright>=1.44      # Web (foloseste Edge / Chrome instalat, nu descarca browsere)

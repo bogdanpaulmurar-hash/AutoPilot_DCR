@@ -91,9 +91,9 @@ rem -- 5. Scurtatura pe Desktop (optional) --
 echo.
 choice /c DN /n /m "  Creez o scurtatura AutoPilot DC pe Desktop? [D = da / N = nu] "
 if errorlevel 2 goto :done
-powershell -NoProfile -ExecutionPolicy Bypass -Command "$s=(New-Object -ComObject WScript.Shell).CreateShortcut([Environment]::GetFolderPath('Desktop')+'\AutoPilot DC.lnk'); $s.TargetPath='%~dp0AutoPilot_DC.pyw'; $s.WorkingDirectory='%~dp0'; $s.Description='AutoPilot DC v4.1'; $s.Save()"
+rem scurtatura porneste direct pythonw.exe: fara fereastra CMD, cu iconita aplicatiei
+%PY% app_shell.py scurtatura
 if errorlevel 1 goto :shortcut_failed
-echo  Scurtatura "AutoPilot DC" a fost creata pe Desktop.
 goto :done
 
 :shortcut_failed

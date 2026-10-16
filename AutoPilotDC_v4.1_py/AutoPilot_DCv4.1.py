@@ -88,6 +88,7 @@ except ImportError:
 
 # 1.8b — Siguranta la rulare v4.1 (Nu deranja, chenar RUN/REC, sistem de preventie)
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import app_shell  # v4.1: iconita, pornire cu Windows, tray
 from autopilot_safety import (DoNotDisturb, RunFrame, SafetyGuard, GuardAlert,
                               CONTINUE, IGNORE_STEP, RETRY, SKIP_STEP, STOP)
 
@@ -2381,7 +2382,19 @@ class MainWindow:
         # ── 14.3 Fereastra CTk ────────────────────────────────────
         ctk.set_appearance_mode("dark" if theme == "dark" else "light")
         ctk.set_default_color_theme("blue")
+        app_shell.set_app_id()          # iconita AutoPilot in bara de activitati (nu cea a lui Python)
         self.root = ctk.CTk()
+        app_shell.apply_icon(self.root)
+        self._start_in_tray = "--tray" in sys.argv
+        self._really_quit = False
+        self._tray_hint_shown = False
+        self.tray = app_shell.Tray(
+            ui_call=lambda fn: self.root.after(0, fn),
+            items=[("🎬 Recorder", lambda: (self._show_from_tray(), self._set_mode("recorder")), False),
+                   ("🧩 Studio RPR", lambda: (self._show_from_tray(), self._set_mode("studio")), False),
+                   ("🚨 STOP URGENTA", self._emergency_stop, True),
+                   ("Iesire", self._quit_app, True)],
+            on_open=self._show_from_tray)
         self.root.title(f"{APP_NAME} v{APP_VERSION}")
         self.root.geometry("1280x800")
         self.root.minsize(1024, 600)
@@ -2462,7 +2475,12 @@ class MainWindow:
                 self.root.focus_force()
             except Exception:
                 pass
-        self.root.after(300, _bring_to_front)
+        if self._start_in_tray and app_shell.tray_available():
+            # pornit cu Windows: fara fereastra, doar pictograma langa ceas
+            self.root.withdraw()
+            self.root.after(500, self.tray.show)
+        else:
+            self.root.after(300, _bring_to_front)
         self.root.mainloop()
 
     # ==========================================================================
@@ -2494,7 +2512,7 @@ class MainWindow:
         fm.add_command(label="Export Log CSV",   command=self._export_log_csv)
         fm.add_command(label="Export Log JSON",  command=self._export_log_json)
         fm.add_separator()
-        fm.add_command(label="Iesire",           command=self._on_close)
+        fm.add_command(label="Iesire",           command=self._quit_app)
 
         # ── Editare ──
         em = sub("Editare")
@@ -3546,6 +3564,50 @@ class MainWindow:
                 p, textvariable=v, width=14,
                 bg=C["bg_input"], fg=C["text"], font=("Segoe UI", 11),
                 relief="flat", insertbackground=C["text"]).pack(side="left"))
+
+        # ── v4.1: Pornire si tray ──
+        f_start = section("🪟  Pornire si zona de notificari (tray)")
+        tray_ok = app_shell.tray_available()
+        self._var_autostart = tk.BooleanVar(value=app_shell.is_autostart_enabled())
+        self._var_start_tray = tk.BooleanVar(value=bool(self.settings.get("start_minimized_tray", True)))
+        self._var_close_tray = tk.BooleanVar(value=bool(self.settings.get("close_to_tray", False)))
+
+        def _apply_autostart():
+            self.settings.set("start_minimized_tray", bool(self._var_start_tray.get()))
+            ok, msg = app_shell.set_autostart(bool(self._var_autostart.get()), bool(self._var_start_tray.get()))
+            self._status_var.set(msg)
+            if not ok:
+                messagebox.showwarning("Pornire cu Windows", msg)
+                self._var_autostart.set(app_shell.is_autostart_enabled())
+
+        def _apply_close_tray():
+            self.settings.set("close_to_tray", bool(self._var_close_tray.get()))
+            self._status_var.set("Butonul ✕ ascunde aplicatia langa ceas." if self._var_close_tray.get()
+                                 else "Butonul ✕ inchide aplicatia.")
+
+        for text, var, cmd, needs_tray in [
+            ("Porneste AutoPilot DC automat cu Windows", self._var_autostart, _apply_autostart, False),
+            ("   ... si porneste ascuns in tray (fara fereastra, doar pictograma langa ceas)",
+             self._var_start_tray, _apply_autostart, True),
+            ("Butonul ✕ ascunde aplicatia in tray (nu o inchide); Iesire din meniul pictogramei",
+             self._var_close_tray, _apply_close_tray, True),
+        ]:
+            tk.Checkbutton(f_start, text=text, variable=var, command=cmd, bg=C["bg_card"], fg=C["text"],
+                           selectcolor=C["bg_input"], activebackground=C["bg_card"], activeforeground=C["text"],
+                           font=("Segoe UI", 11), anchor="w",
+                           state="normal" if (tray_ok or not needs_tray) else "disabled").pack(fill="x", padx=12, pady=2)
+        tk.Label(f_start, text=("Setarile se aplica imediat. Pornirea cu Windows foloseste contul tau (fara drepturi de "
+                                "administrator). Din tray: click = deschide; click dreapta = Recorder, Studio, "
+                                "STOP URGENTA, Iesire." if tray_ok else
+                                "Pentru tray lipseste pachetul pystray: ruleaza INSTALEAZA.bat."),
+                 bg=C["bg_card"], fg=C["text_dim"] if tray_ok else C["warning"], font=("Segoe UI", 9),
+                 wraplength=720, justify="left").pack(anchor="w", padx=12, pady=(2, 8))
+        def _make_shortcut():
+            ok, msg = app_shell.create_shortcut()
+            (messagebox.showinfo if ok else messagebox.showwarning)("Scurtatura", msg)
+        tk.Button(f_start, text="🖥  Creeaza scurtatura pe Desktop (porneste fara fereastra CMD)",
+                  command=_make_shortcut, bg=C["bg_input"], fg=C["text"], relief="flat", font=("Segoe UI", 10),
+                  padx=8, pady=3, cursor="hand2").pack(anchor="w", padx=12, pady=(0, 8))
 
         # ── Tema ──
         f_theme = section("🎨  Tema")
@@ -5304,8 +5366,37 @@ CONTACT: {APP_AUTHOR}
             self._btn_sc.configure(bg=C["bg_input"], fg=C["text"])
         ))
 
+    # ── v4.1: tray ────────────────────────────────────────────────
+    def _hide_to_tray(self) -> bool:
+        if not app_shell.tray_available() or not self.tray.show():
+            return False
+        self.root.withdraw()
+        if not self._tray_hint_shown:
+            self._tray_hint_shown = True
+            self.tray.notify("AutoPilot DC ruleaza in continuare aici. Click pe pictograma ca sa-l deschizi; "
+                             "Iesire din meniul pictogramei il inchide.")
+        return True
+
+    def _show_from_tray(self):
+        self.root.deiconify()
+        self.root.lift()
+        self.root.attributes("-topmost", True)
+        self.root.after(300, lambda: self.root.attributes("-topmost", False))
+        self.root.focus_force()
+        if not self.settings.get("close_to_tray", False):
+            self.tray.hide()
+
+    def _quit_app(self):
+        """Inchidere reala (din meniul tray / Fisier → Iesire)."""
+        self._show_from_tray()
+        self._really_quit = True
+        self._on_close()
+        self._really_quit = False
+
     def _on_close(self):
         """Gestioneaza inchiderea aplicatiei cu dialog de salvare."""
+        if self.settings.get("close_to_tray", False) and not self._really_quit and self._hide_to_tray():
+            return  # ✕ ascunde aplicatia langa ceas (rularile si scurtaturile F7/F12 merg in continuare)
         if self._studio is not None:
             if self._studio.busy:
                 self._studio.stop()
@@ -5419,6 +5510,7 @@ CONTACT: {APP_AUTHOR}
         self.hotkey_mgr.stop()
         self._floating_sc.hide()
         self._save_notes()
+        self.tray.hide()
         self.root.destroy()
 
 # ==============================================================================
