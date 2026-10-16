@@ -62,3 +62,14 @@ def register_all(provider: DriverProvider, settings: Optional[StudioSettings] = 
     provider.register(UiTechnology.Web, web)
     # Selenium nu e portat: obiectele "Web (Selenium)" ruleaza prin acelasi browser Playwright
     provider.register(UiTechnology.WebSelenium, lambda: provider.get(UiTechnology.Web))
+
+    def desktop():
+        from .desktop import DesktopDriver
+        return DesktopDriver()
+
+    def sap():
+        from .sap import SapDriver
+        return SapDriver()
+
+    provider.register(UiTechnology.Desktop, desktop)
+    provider.register(UiTechnology.Sap, sap)

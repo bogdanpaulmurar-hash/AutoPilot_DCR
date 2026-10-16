@@ -5,7 +5,8 @@
 #
 #   python -m rpr run "C:\...\rutina.rpr.json" [--var Nume=Valoare ...] [--fara-chenar]
 #
-# Cod de iesire: 0 = succes, 1 = rutina a esuat, 2 = fisier invalid.
+#   --anunta: la final apare un mesaj scurt cu rezultatul (programari) + istoric
+# Cod de iesire: 0 = succes, 1 = rutina a esuat, 2 = fisier invalid, 3 = alta rutina programata ruleaza deja.
 # Logul se salveaza in %APPDATA%\AutoPilotDC\Studio\rezultate (txt + xlsx).
 # Fara utilizator: intrebarile primesc primul buton, iar erorile sar randul
 # Excel curent (sau opresc rutina in afara unei bucle Excel).
@@ -48,8 +49,63 @@ def _safety():
         return None
 
 
-def run_file(path: str, variables: dict, show_frame: bool = True) -> int:
-    stamp = _dt.datetime.now().strftime("%Y%m%d_%H%M%S")
+def _single_instance():
+    """O singura rulare programata o data (doua rutine nu pot folosi ecranul simultan)."""
+    try:
+        import ctypes
+        h = ctypes.windll.kernel32.CreateMutexW(None, False, "Local\\AutoPilotDC_RprRun")
+        return h if ctypes.windll.kernel32.GetLastError() != 183 else None   # 183 = exista deja
+    except Exception:
+        return True
+
+
+def notify(title: str, text: str, success: bool, log_path: str = "", seconds: int = 25) -> None:
+    """Fereastra mica in coltul din dreapta-jos (se inchide singura)."""
+    try:
+        import tkinter as tk
+    except ImportError:
+        return
+    root = tk.Tk()
+    root.overrideredirect(True)
+    root.attributes("-topmost", True)
+    bg = "#1F7A4D" if success else "#A12A2A"
+    root.configure(bg=bg)
+    tk.Label(root, text=title, bg=bg, fg="white", font=("Segoe UI", 11, "bold"), anchor="w").pack(
+        fill="x", padx=14, pady=(10, 2))
+    tk.Label(root, text=text, bg=bg, fg="white", font=("Segoe UI", 9), wraplength=360, justify="left",
+             anchor="w").pack(fill="x", padx=14)
+    row = tk.Frame(root, bg=bg)
+    row.pack(anchor="e", padx=10, pady=8)
+    if log_path and os.path.exists(log_path):
+        tk.Button(row, text="Deschide logul", relief="flat",
+                  command=lambda: (os.startfile(log_path), root.destroy())).pack(side="left", padx=3)
+    tk.Button(row, text="Inchide", relief="flat", command=root.destroy).pack(side="left", padx=3)
+    root.update_idletasks()
+    w, h = max(380, root.winfo_reqwidth()), root.winfo_reqheight()
+    root.geometry(f"{w}x{h}+{root.winfo_screenwidth() - w - 16}+{root.winfo_screenheight() - h - 56}")
+    root.after(seconds * 1000, root.destroy)
+    root.mainloop()
+
+
+def run_file(path: str, variables: dict, show_frame: bool = True, announce: bool = False) -> int:
+    started = _dt.datetime.now()
+    mutex = _single_instance() if announce else True
+    if mutex is None:
+        notify("AutoPilot DC — rulare amanata", f"{os.path.basename(path)}: alta rutina programata ruleaza acum.", False)
+        return 3
+    code, name, msg, log = _run_file(path, variables, show_frame, started)
+    if announce:
+        try:
+            from .schedule import add_history
+            add_history(name, path, code == 0, msg, log, started)
+        except Exception:
+            pass
+        notify(("✔ " if code == 0 else "✖ ") + f"AutoPilot DC — {name}", msg, code == 0, log)
+    return code
+
+
+def _run_file(path: str, variables: dict, show_frame: bool, started) -> tuple:
+    stamp = started.strftime("%Y%m%d_%H%M%S")
     text_log = os.path.join(RprPaths.output(), f"Log_programat_{stamp}.txt")
     with open(text_log, "w", encoding="utf-8", buffering=1) as writer:
         try:
@@ -59,7 +115,7 @@ def run_file(path: str, variables: dict, show_frame: bool = True) -> int:
                 repo = RepositoryStore.load(routine.repository_path)
         except Exception as ex:  # noqa: BLE001
             writer.write(f"EROARE la citirea rutinei: {ex}\n")
-            return 2
+            return 2, os.path.basename(path), f"Rutina nu poate fi citita: {ex}", text_log
 
         host = HeadlessRunHost(lambda line: writer.write(line + "\n"))
         host.legacy_executor = execute_legacy_step
@@ -112,7 +168,10 @@ def run_file(path: str, variables: dict, show_frame: bool = True) -> int:
             RunLogExporter.export_xlsx(host.entries, xlsx)
         except Exception as ex:  # noqa: BLE001
             writer.write(f"Exportul logului in Excel a esuat: {ex}\n")
-        return 0 if result is not None and result.success else 1
+            xlsx = text_log
+        ok = result is not None and result.success
+        msg = result.message if result is not None else "Rutina nu s-a terminat."
+        return (0 if ok else 1), routine.name, msg, xlsx
 
 
 def main(argv=None) -> int:
@@ -122,10 +181,11 @@ def main(argv=None) -> int:
     r.add_argument("file")
     r.add_argument("--var", action="append", default=[], metavar="NUME=VALOARE", help="suprascrie o variabila")
     r.add_argument("--fara-chenar", action="store_true", help="fara chenarul RUN pe ecran")
+    r.add_argument("--anunta", action="store_true", help="mesaj cu rezultatul la final + istoric (programari)")
     a = p.parse_args(argv)
     if a.cmd == "run":
         variables = dict(v.split("=", 1) for v in a.var if "=" in v)
-        return run_file(a.file, variables, show_frame=not a.fara_chenar)
+        return run_file(a.file, variables, show_frame=not a.fara_chenar, announce=a.anunta)
     return 2
 
 

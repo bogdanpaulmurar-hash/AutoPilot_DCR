@@ -1293,7 +1293,15 @@ class StudioPanel(tk.Frame):
         if obj is None:
             return
         if obj.technology not in (UiTechnology.Web, UiTechnology.WebSelenium):
-            messagebox.showinfo("Test", "Testarea obiectelor SAP / Desktop vine cu driverele din etapa urmatoare.", parent=self)
+            driver = self.drivers.get(obj.technology)
+
+            def work_win():
+                try:
+                    self.post("test_result", (obj, driver.test_object(obj), None))
+                except Exception as ex:  # noqa: BLE001
+                    self.post("test_result", (obj, None, str(ex)))
+            self.set_status(f"🧪 Testez [{obj.name}] pe ecran...")
+            threading.Thread(target=work_win, daemon=True).start()
             return
         try:
             if not self.web().is_open:
@@ -1330,9 +1338,7 @@ class StudioPanel(tk.Frame):
     def spy(self, technology):
         tech = str(technology).lower()
         if tech not in ("web", "webselenium"):
-            messagebox.showinfo("Spy", f"Spy pentru {technology} vine cu driverul SAP / Desktop, in etapa urmatoare.\n\n"
-                                       "Pana atunci poti adauga obiecte manual: tab-ul 🎯 Obiecte → ＋ Nou.", parent=self)
-            return
+            return self._spy_windows(UiTechnology.Sap if tech == "sap" else UiTechnology.Desktop)
         if self.busy:
             self.set_status("Asteapta sa se termine operatia curenta.")
             return
@@ -1342,6 +1348,7 @@ class StudioPanel(tk.Frame):
         if url is False:
             return
         self.busy = True
+        self._spy_driver = None
         self._show_spy_hint("🎯 SPY WEB: du mouse-ul peste element in browser (contur verde) si da CLICK.  "
                             "Esc in browser = anuleaza.")
         web = self.web()
@@ -1366,6 +1373,33 @@ class StudioPanel(tk.Frame):
         self.set_status("SPY WEB: du mouse-ul peste element in browser si da CLICK ca sa-l capturezi. Esc = anulare.")
         threading.Thread(target=work, daemon=True, name="Spy").start()
 
+    def _spy_windows(self, tech: UiTechnology):
+        """Spy SAP / Desktop: mouse-ul peste element (contur pe ecran) + F2 = captureaza, Esc = anuleaza."""
+        if self.busy:
+            self.set_status("Asteapta sa se termine operatia curenta.")
+            return
+        driver = self.drivers.get(tech)
+        self._spy_driver = driver
+        self.busy = True
+        is_sap = tech == UiTechnology.Sap
+        self._show_spy_hint(("🎯 SPY SAP: du mouse-ul peste camp / buton in SAP GUI (contur rosu) si apasa F2.  "
+                             if is_sap else
+                             "🎯 SPY DESKTOP: du mouse-ul peste element in aplicatie (contur verde) si apasa F2.  ")
+                            + "Esc = anuleaza.")
+        if self.studio_settings.minimize_on_run:
+            self.winfo_toplevel().iconify()
+
+        def work():
+            try:
+                obj = driver.capture_object("F2 = captureaza · Esc = anuleaza", RprPaths.object_images())
+                if obj is not None:
+                    self.repo.classify(obj)
+                self.post("spy_done", (obj, None))
+            except Exception as ex:  # noqa: BLE001
+                self.post("spy_done", (None, str(ex)))
+        self.set_status(("SPY SAP" if is_sap else "SPY DESKTOP") + ": mouse-ul peste element, apoi F2. Esc = anulare.")
+        threading.Thread(target=work, daemon=True, name="Spy").start()
+
     def _ask_url_if_closed(self):
         """None = browserul e deja deschis; False = anulat; altfel adresa de deschis."""
         try:
@@ -1387,7 +1421,7 @@ class StudioPanel(tk.Frame):
         w.attributes("-topmost", True)
         w.configure(bg=C["primary"])
         tk.Label(w, text=text, bg=C["primary"], fg="white", font=("Segoe UI", 10, "bold"), padx=12, pady=6).pack(side="left")
-        tk.Button(w, text="Anuleaza", command=lambda: self.web().cancel_spy(), bg="white", fg=C["primary"],
+        tk.Button(w, text="Anuleaza", command=lambda: (getattr(self, "_spy_driver", None) or self.web()).cancel_spy(), bg="white", fg=C["primary"],
                   relief="flat", font=("Segoe UI", 9, "bold"), cursor="hand2").pack(side="left", padx=8, pady=4)
         w.update_idletasks()
         w.geometry(f"+{(w.winfo_screenwidth() - w.winfo_reqwidth()) // 2}+8")
@@ -1508,10 +1542,7 @@ class StudioPanel(tk.Frame):
         obj = self._sel_object()
         if obj is None:
             return
-        if obj.technology not in (UiTechnology.Web, UiTechnology.WebSelenium):
-            self.set_status("👁 Arata pentru SAP / Desktop vine in etapa urmatoare.")
-            return
-        web = self.web()
+        web = self.web() if obj.technology in (UiTechnology.Web, UiTechnology.WebSelenium)             else self.drivers.get(obj.technology)
 
         def work():
             try:
@@ -1520,6 +1551,16 @@ class StudioPanel(tk.Frame):
                 msg = str(ex)
             self.post("status", "👁 " + msg)
         threading.Thread(target=work, daemon=True).start()
+
+    # ── Programare (Windows Task Scheduler) ──
+    def show_schedule(self):
+        if self.dirty or not self.routine_path:
+            if not messagebox.askyesno("Programare", "Rutina trebuie salvata inainte de programare. Salvez acum?",
+                                       parent=self):
+                return
+            if not self.save_routine():
+                return
+        ScheduleDialog(self, self.routine_path, self.routine.name)
 
     # ── Setari Studio ──
     def show_settings(self):
@@ -2596,21 +2637,24 @@ class TestResultDialog(tk.Toplevel):
         self.configure(bg=C["bg_main"])
         self.attributes("-topmost", True)
         ok = res.get("found")
-        tk.Label(self, text=("✔ Gasit pe pagina — e marcat in browser" if ok else "✖ Nu a fost gasit pe pagina"),
+        web = obj.technology in (UiTechnology.Web, UiTechnology.WebSelenium)
+        where = "pagina" if web else ("ecranul SAP" if obj.technology == UiTechnology.Sap else "fereastra")
+        tk.Label(self, text=(("✔ Gasit pe pagina — e marcat in browser" if web else "✔ Gasit — e marcat pe ecran") if ok
+                             else f"✖ Nu a fost gasit pe {where}"),
                  bg=C["bg_main"], fg="#3CCF6E" if ok else "#FF6B6B", font=("Segoe UI", 13, "bold")).pack(anchor="w", padx=14, pady=(12, 2))
-        info = f"Pagina: {res.get('url', '')}"
+        info = f"{'Pagina' if web else 'Unde'}: {res.get('url', '')}"
         if res.get("used") is not None:
             info += f"\nGasit prin: {res['used']}"
         if res.get("container"):
             info += (f"\nContainer [{res['container']}]: " + ("gasit — cautarea s-a facut in interiorul lui"
                                                                 if res.get("container_found") else "NU a fost gasit pe pagina"))
-        if not panel.repo.valid_on(obj, res.get("url", "")):
+        if web and not panel.repo.valid_on(obj, res.get("url", "")):
             info += f"\n⚠ Obiectul e definit pentru site-ul \"{obj.site}\", nu pentru aceasta pagina."
         tk.Label(self, text=info, bg=C["bg_main"], fg=C["text_dim"], font=("Segoe UI", 9), justify="left",
                  wraplength=640).pack(anchor="w", padx=14)
         grid = tk.Frame(self, bg=C["bg_main"])
         grid.pack(fill="x", padx=14, pady=8)
-        heads = ["Locator", "Valoare", "In container", "In pagina"]
+        heads = ["Locator", "Valoare", "In container", "In pagina" if web else "Gasite"]
         for c, h in enumerate(heads):
             tk.Label(grid, text=h, bg=C["bg_main"], fg=C["text_dim"], font=("Segoe UI", 9, "bold")).grid(row=0, column=c, sticky="w", padx=4)
 
@@ -2755,3 +2799,206 @@ class SitesDialog(tk.Toplevel):
                     n += 1
         self.p.save_repository()
         messagebox.showinfo("Site-uri", f"{n} obiecte au fost mutate in site-urile lor.", parent=self)
+
+
+# ==============================================================================
+# 9. PROGRAMARE (Windows Task Scheduler)
+# ==============================================================================
+class ScheduleDialog(tk.Toplevel):
+    """Programeaza rutina curenta + lista programarilor AutoPilot + istoricul rularilor programate."""
+
+    def __init__(self, panel: StudioPanel, routine_path: str, routine_name: str):
+        super().__init__(panel)
+        import datetime as dt
+        from rpr import schedule as sch
+        self.p, self.sch, self.path, self.rname = panel, sch, routine_path, routine_name
+        C = panel.C
+        self.title("Programare rutine")
+        self.configure(bg=C["bg_main"])
+        self.transient(panel.winfo_toplevel())
+        self.geometry("780x660")
+        tk.Label(self, text="🕒  Programeaza rutina", bg=C["bg_main"], fg=C["primary"],
+                 font=("Segoe UI", 13, "bold")).pack(anchor="w", padx=14, pady=(12, 0))
+        tk.Label(self, text=f"{routine_name}  ·  {routine_path}", bg=C["bg_main"], fg=C["text"],
+                 font=("Segoe UI", 9, "bold"), wraplength=740, justify="left").pack(anchor="w", padx=14)
+        tk.Label(self, text="Rutina ruleaza fara Studio, cu chenarul RUN si \"Nu deranja\" (daca e activ in rutina). "
+                            "Calculatorul trebuie sa fie pornit si tu autentificat (rutinele folosesc ecranul). "
+                            "La final apare un mesaj in coltul ecranului; logul ramane in folderul de rezultate.",
+                 bg=C["bg_main"], fg=C["text_dim"], font=("Segoe UI", 9), wraplength=740, justify="left").pack(
+            anchor="w", padx=14, pady=(2, 6))
+
+        f = tk.Frame(self, bg=C["bg_main"])
+        f.pack(fill="x", padx=14)
+        es = dict(bg=C["bg_input"], fg=C["text"], insertbackground=C["text"], relief="flat", font=("Segoe UI", 10))
+
+        def lbl(t, c):
+            tk.Label(f, text=t, bg=C["bg_main"], fg=C["text_dim"], font=("Segoe UI", 9, "bold")).grid(
+                row=0, column=c, sticky="w", padx=(0, 10))
+        lbl("Cand", 0)
+        lbl("Ora (HH:mm)", 1)
+        lbl("Data (zz.ll.aaaa)", 2)
+        lbl("La fiecare (minute)", 3)
+        self.kind = ttk.Combobox(f, values=sch.KINDS, state="readonly", width=30)
+        self.kind.current(1)
+        self.kind.grid(row=1, column=0, sticky="w", padx=(0, 10))
+        self.kind.bind("<<ComboboxSelected>>", lambda e: self._sync())
+        self.time = tk.StringVar(value="08:00")
+        tk.Entry(f, textvariable=self.time, width=8, **es).grid(row=1, column=1, sticky="w", padx=(0, 10), ipady=2)
+        self.date = tk.StringVar(value=(dt.date.today() + dt.timedelta(days=1)).strftime("%d.%m.%Y"))
+        self.date_e = tk.Entry(f, textvariable=self.date, width=12, **es)
+        self.date_e.grid(row=1, column=2, sticky="w", padx=(0, 10), ipady=2)
+        self.every = tk.StringVar(value="60")
+        self.every_e = tk.Entry(f, textvariable=self.every, width=6, **es)
+        self.every_e.grid(row=1, column=3, sticky="w", ipady=2)
+        days = tk.Frame(self, bg=C["bg_main"])
+        days.pack(anchor="w", padx=14, pady=(6, 0))
+        tk.Label(days, text="Zile:", bg=C["bg_main"], fg=C["text_dim"], font=("Segoe UI", 9, "bold")).pack(side="left")
+        self.days = []
+        for i, d in enumerate(sch.DAY_LABELS):
+            v = tk.BooleanVar(value=i < 5)
+            cb = tk.Checkbutton(days, text=d, variable=v, bg=C["bg_main"], fg=C["text"], selectcolor=C["bg_input"],
+                                activebackground=C["bg_main"])
+            cb.pack(side="left")
+            self.days.append((v, cb))
+        name_row = tk.Frame(self, bg=C["bg_main"])
+        name_row.pack(fill="x", padx=14, pady=(6, 0))
+        tk.Label(name_row, text="Numele programarii", bg=C["bg_main"], fg=C["text_dim"],
+                 font=("Segoe UI", 9, "bold")).pack(side="left")
+        self.task_name = tk.StringVar(value=sanitize_name(routine_name))
+        tk.Entry(name_row, textvariable=self.task_name, width=34, **es).pack(side="left", padx=8, ipady=2)
+        tk.Label(name_row, text="(acelasi nume = inlocuieste programarea)", bg=C["bg_main"], fg=C["text_dim"],
+                 font=("Segoe UI", 8)).pack(side="left")
+        row = tk.Frame(self, bg=C["bg_main"])
+        row.pack(anchor="w", padx=14, pady=8)
+        panel._btn(row, "✔ Creeaza programarea", self._create, color=C["success"]).pack(side="left", padx=2)
+        panel._btn(row, "Deschide Task Scheduler", sch.open_task_scheduler).pack(side="left", padx=2)
+
+        nb = ttk.Notebook(self)
+        nb.pack(fill="both", expand=True, padx=14, pady=(4, 6))
+        t1 = tk.Frame(nb, bg=C["bg_main"])
+        t2 = tk.Frame(nb, bg=C["bg_main"])
+        nb.add(t1, text="Programari AutoPilot")
+        nb.add(t2, text="Istoric rulari programate")
+        self.tasks = ttk.Treeview(t1, columns=("next", "last", "res", "status"), show="tree headings", height=7,
+                                  style="Studio.Treeview")
+        for col, text, w in (("#0", "Programare", 170), ("next", "Urmatoarea rulare", 140), ("last", "Ultima rulare", 140),
+                             ("res", "Rezultat", 150), ("status", "Stare", 90)):
+            self.tasks.heading(col, text=text, anchor="w")
+            self.tasks.column(col, width=w, stretch=col == "res")
+        self.tasks.pack(fill="both", expand=True)
+        r2 = tk.Frame(t1, bg=C["bg_main"])
+        r2.pack(anchor="w", pady=4)
+        panel._btn(r2, "▶ Ruleaza acum", self._run_now).pack(side="left", padx=2)
+        panel._btn(r2, "🗑 Sterge programarea", self._delete).pack(side="left", padx=2)
+        panel._btn(r2, "↻ Reimprospateaza", self._refresh).pack(side="left", padx=2)
+        self.hist = ttk.Treeview(t2, columns=("rez", "durata", "mesaj"), show="tree headings", height=7,
+                                 style="Studio.Treeview")
+        for col, text, w in (("#0", "Pornita / rutina", 230), ("rez", "Rezultat", 70), ("durata", "Durata", 60),
+                             ("mesaj", "Mesaj", 330)):
+            self.hist.heading(col, text=text, anchor="w")
+            self.hist.column(col, width=w, stretch=col == "mesaj")
+        self.hist.pack(fill="both", expand=True)
+        self.hist.bind("<Double-1>", self._open_log)
+        tk.Label(t2, text="Dublu click = deschide logul rularii.", bg=C["bg_main"], fg=C["text_dim"],
+                 font=("Segoe UI", 8)).pack(anchor="w")
+        panel._btn(self, "Inchide", self.destroy).pack(anchor="e", padx=14, pady=(0, 10))
+        self._hist_items: List[dict] = []
+        self._sync()
+        self.after(50, self._refresh)
+
+    def _sync(self):
+        k = self.kind.current()
+        for v, cb in self.days:
+            cb.configure(state="normal" if k == 2 else "disabled")
+        self.every_e.configure(state="normal" if k == 4 else "disabled")
+        self.date_e.configure(state="normal" if k in (3, 4) else "disabled")
+
+    def _create(self):
+        import datetime as dt
+        k = self.kind.current()
+        try:
+            hh, mm = (int(x) for x in self.time.get().strip().split(":"))
+            d = dt.datetime.strptime(self.date.get().strip(), "%d.%m.%Y") if k in (3, 4) else dt.datetime.now()
+            at = d.replace(hour=hh, minute=mm, second=0, microsecond=0)
+        except ValueError:
+            messagebox.showerror("Programare", "Ora trebuie sa fie de forma 08:30, iar data de forma 25.12.2026.",
+                                 parent=self)
+            return
+        if k == 3 and at < dt.datetime.now():
+            messagebox.showerror("Programare", "Data si ora sunt in trecut.", parent=self)
+            return
+        try:
+            every = int(self.every.get() or 0)
+        except ValueError:
+            every = 0
+        days = [i for i, (v, _) in enumerate(self.days) if v.get()]
+        try:
+            ok, out, name = self.sch.create(self.path, self.rname, k, at, days, every, self.task_name.get())
+        except ValueError as ex:
+            messagebox.showerror("Programare", str(ex), parent=self)
+            return
+        if ok:
+            self.p.set_status(f"🕒 Programare creata: {name}")
+            messagebox.showinfo("Programare", f"Programare creata: {name}\n\n{out}", parent=self)
+        else:
+            messagebox.showerror("Programare", f"Programarea nu a putut fi creata:\n\n{out}", parent=self)
+        self._refresh()
+
+    def _refresh(self):
+        """Lista din Task Scheduler se citeste pe alt fir (schtasks dureaza cateva secunde)."""
+        self.tasks.delete(*self.tasks.get_children())
+        self.tasks.insert("", "end", iid="__load", text="Se incarca...", values=("", "", "", ""))
+        box: Dict[str, Any] = {}
+
+        def work():
+            try:
+                box["tasks"] = self.sch.list_tasks()
+            except Exception:  # noqa: BLE001
+                box["tasks"] = []
+
+        def fill():
+            if "tasks" not in box:
+                if self.winfo_exists():
+                    self.after(200, fill)
+                return
+            if not self.winfo_exists():
+                return
+            self.tasks.delete(*self.tasks.get_children())
+            for t in box["tasks"]:
+                self.tasks.insert("", "end", iid=t.name, text=t.short,
+                                  values=(t.next_run, t.last_run, t.last_result, t.status))
+            if not box["tasks"]:
+                self.tasks.insert("", "end", iid="__none", text="(nicio programare)", values=("", "", "", ""))
+        threading.Thread(target=work, daemon=True).start()
+        self.after(200, fill)
+        self.hist.delete(*self.hist.get_children())
+        self._hist_items = self.sch.load_history()
+        for i, h in enumerate(self._hist_items):
+            self.hist.insert("", "end", iid=str(i), text=f"{h.get('pornita', '')}  {h.get('rutina', '')}",
+                             values=("✔" if h.get("succes") else "✖", f"{h.get('durata_s', 0)} s", h.get("mesaj", "")))
+
+    def _sel_task(self):
+        sel = self.tasks.selection()
+        return sel[0] if sel and not sel[0].startswith("__") else None
+
+    def _run_now(self):
+        name = self._sel_task()
+        if name:
+            ok, out = self.sch.run_now(name)
+            (messagebox.showinfo if ok else messagebox.showerror)("Programare", out, parent=self)
+            self.after(1500, self._refresh)
+
+    def _delete(self):
+        name = self._sel_task()
+        if name and messagebox.askyesno("Programare", f"Stergi programarea {name}?", parent=self):
+            ok, out = self.sch.delete(name)
+            if not ok:
+                messagebox.showerror("Programare", out, parent=self)
+            self._refresh()
+
+    def _open_log(self, _e=None):
+        sel = self.hist.selection()
+        if sel:
+            log = self._hist_items[int(sel[0])].get("log", "")
+            if log and os.path.exists(log):
+                os.startfile(log)

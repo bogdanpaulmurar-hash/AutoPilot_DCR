@@ -2686,6 +2686,9 @@ class MainWindow:
              "browser) ca sa opresti.")
         r = group("studio", "RUTINA CURENTA")
         abtn(r, "⚙ Setari rutina", st("show_routine_settings"), None, "Setarile rutinei si variabilele")
+        abtn(r, "🕒 Programeaza", st("show_schedule"), None,
+             "Ruleaza rutina automat (zilnic, in anumite zile, o data...) prin Windows Task Scheduler; "
+             "lista programarilor si istoricul rularilor")
         abtn(r, "🌐 Setari Studio", st("show_settings"), None, "Browserul folosit (Edge / Chrome), profilul browserului")
         abtn(r, "❓ Ghid", st("show_guide"), None, "Ghidul pas cu pas al Studio")
 

@@ -1,9 +1,9 @@
 # Ghid Studio RPR — AutoPilot DC v4
 
-> **Versiunea Python (AutoPilot DC 4.1):** Studio se deschide din comutatorul **🧩 Studio RPR** din bara de sus.
-> Disponibil acum: editorul (pasi, conditii, bucle, variabile, Excel, Incearca/La eroare), rularea cu Pas cu pas /
-> Pauza / Stop, logul, exemplele si obiectele adaugate manual. **Spy, Inregistrarea Web si driverele Web / SAP /
-> Desktop sosesc in etapele urmatoare** — pana atunci pasii pe obiecte raporteaza ca driverul nu e disponibil.
+> **Versiunea Python (AutoPilot DC 4.6):** Studio se deschide din comutatorul **🧩 Studio RPR** din bara de sus.
+> Totul din acest ghid functioneaza: editorul, rularea, Spy si driverele Web / SAP / Desktop, Inregistrarea Web,
+> Biblioteca de obiecte si programarea. Diferente fata de C#: obiectele se verifica cu **Test** din tab-ul 📚 Biblioteca,
+> iar butonul de programare este **🕒 Programeaza**.
 
 Studio RPR este editorul vizual în care construiești rutine reale de automatizare (RPR — Rutine Reale care Procesează) pentru **web**, **SAP GUI** și **aplicații desktop Windows**, combinate cu **Excel**, fără să scrii cod.
 
@@ -259,13 +259,14 @@ Pe ecran, cât timp rulează rutina, apare un **chenar roșu** cu „▶ RUN” 
 ## 14. Programare automată
 
 1. Salvează rutina.
-2. Apasă **⏰ Programează**: alege zilnic / zile lucrătoare / săptămânal / o singură dată și ora.
-3. Se creează o sarcină în Windows Task Scheduler (`AutoPilotDC\NumeRutina`), vizibilă și modificabilă cu „Deschide Task Scheduler”.
-4. La ora stabilită rutina rulează fără Studio. Logul se salvează în folderul de rezultate (`Log_programat_...xlsx`).
-5. Calculatorul trebuie să fie pornit și utilizatorul autentificat (rutinele folosesc ecranul).
-6. La rularea programată, întrebările primesc automat primul buton, iar erorile sar rândul Excel curent (sau opresc rutina în afara unei bucle Excel).
+2. Apasă **🕒 Programează**. Alege când: zilnic, în zilele lucrătoare, în anumite zile (bifezi zilele), o singură dată, repetat la fiecare N minute sau la autentificarea în Windows; apoi ora (și data, unde e cazul).
+3. Se creează o sarcină în Windows Task Scheduler (`AutoPilotDC\NumeProgramare`), fără drepturi de administrator. Același nume = programarea se înlocuiește.
+4. În aceeași fereastră vezi **toate programările AutoPilot** (următoarea rulare, ultima rulare, rezultatul), le poți **rula acum** sau **șterge**, iar în tab-ul **Istoric** vezi fiecare rulare programată (dublu click = deschide logul).
+5. La ora stabilită rutina rulează fără Studio, fără fereastră CMD, cu chenarul RUN. La final apare un mesaj mic în colțul din dreapta-jos (verde = succes, roșu = eroare) cu butonul „Deschide logul”.
+6. Calculatorul trebuie să fie pornit și utilizatorul autentificat (rutinele folosesc ecranul). Dacă o altă rutină programată rulează deja, a doua nu pornește peste ea (apare un mesaj).
+7. La rularea programată, întrebările primesc automat primul buton, iar erorile sar rândul Excel curent (sau opresc rutina în afara unei bucle Excel).
 
-Linie de comandă: `AutoPilotDC.UI.exe --run "C:\cale\rutina.rpr.json"`.
+Linie de comandă: `pythonw -m rpr run "C:\cale\rutina.rpr.json" [--var Nume=Valoare] [--anunta]` (din folderul `AutoPilotDC_py`).
 
 ## 15. Rutinele vechi (v3.9)
 
@@ -278,7 +279,7 @@ Linie de comandă: `AutoPilotDC.UI.exe --run "C:\cale\rutina.rpr.json"`.
 - **01 Învățare**: variabile, Repetă, Dacă, Întrebare, Încearcă — fără aplicații externe. Rulează-l cu Pas cu pas.
 - **02 Web – Login demo**: site public de test. Schimbă variabila `Parola` ca să vezi ramura Altfel.
 - **03 Web + Excel – Wikipedia**: pentru fiecare termen din `Exemplu_Termeni.xlsx` caută pe Wikipedia și scrie titlul, observația și ora în Excel.
-- **04 SAP – VA03 (șablon)**: pune numere de comenzi în `Exemplu_Comenzi_SAP.xlsx`; verifică obiectul `SAP_Camp_Comanda_VA03` cu 👁 pe sistemul tău.
+- **04 SAP – VA03 (șablon)**: pune numere de comenzi în `Exemplu_Comenzi_SAP.xlsx`; verifică obiectul `SAP_Camp_Comanda_VA03` cu **Test** (📚 Biblioteca) pe sistemul tău.
 - **05 Desktop – Notepad**: pornește Notepad și scrie trei linii dintr-o buclă.
 
 Exemplele se instalează în folderul de lucru, sub `exemple`; le poți modifica liber și le poți reinstala oricând din 📚 Exemple.
