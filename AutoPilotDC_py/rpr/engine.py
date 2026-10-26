@@ -606,6 +606,10 @@ class RprEngine:
 
                 table.load_row_into(self._vars, f.row_variable, row)
                 self._log(RprLogLevel.Info, f, f"Rand {row}")
+                try:
+                    self._host.row_started(row, table.sheet_name)
+                except Exception:  # noqa: BLE001 — gazda (ex. video) nu are voie sa opreasca rutina
+                    pass
 
                 # 3. pasii pentru rand
                 stop_loop, rethrow = False, None
@@ -638,6 +642,11 @@ class RprEngine:
                     if has_status:
                         table.write(row, f.status_column, f"OPRIT {_dt.datetime.now():%H:%M:%S}", CellColor.Yellow)
                     raise
+
+                try:
+                    self._host.row_finished(row, status)
+                except Exception:  # noqa: BLE001
+                    pass
 
                 # 4. status + culoare + salvare
                 if has_status:

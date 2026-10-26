@@ -80,6 +80,12 @@ class RunHost:
     def node_finished(self, node: RprNode, success: bool) -> None:
         pass
 
+    def row_started(self, row: int, sheet: str) -> None:
+        """Inceputul unui rand Excel (ex. video separat pentru fiecare rand)."""
+
+    def row_finished(self, row: int, status: str) -> None:
+        """Sfarsitul unui rand Excel, cu statusul scris in fisier (OK / EROARE / SARIT)."""
+
     def ask(self, title: str, text: str, buttons: List[str]) -> str:
         """Intrebare cu butoane personalizate. Fara utilizator: primul buton."""
         return buttons[0] if buttons else ""

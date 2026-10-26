@@ -49,6 +49,31 @@ def _safety():
         return None
 
 
+def _start_video(name: str, host, writer):
+    """Film al rularii programate (Setari → Video: "la fiecare rulare" + "si la rularile programate")."""
+    try:
+        sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        import screen_recorder as sr
+        vs = sr.VideoSettings.load()
+        if not (vs.record_on_run and vs.on_schedule):
+            return None
+        rec = sr.ScreenRecorder(vs)
+        rec.start(name)
+
+        def row_started(row, sheet):
+            if vs.per_row:
+                old = rec.split(f"{name}_rand{row}")
+                if old:
+                    writer.write(f"Film: {old}\n")
+            rec.marker(f"Rand {row}")
+        host.row_started = row_started
+        host.row_finished = lambda row, status: rec.marker(f"Rand {row}: {status[:60]}")
+        return rec
+    except Exception as ex:  # noqa: BLE001 — filmul nu are voie sa opreasca rutina
+        writer.write(f"Filmul nu a putut porni: {ex}\n")
+        return None
+
+
 def _single_instance():
     """O singura rulare programata o data (doua rutine nu pot folosi ecranul simultan)."""
     try:
@@ -135,6 +160,7 @@ def _run_file(path: str, variables: dict, show_frame: bool, started) -> tuple:
             writer.write(safety.DoNotDisturb.last_message + "\n")
 
         result_box = {}
+        rec = _start_video(routine.name, host, writer)   # 🎥 daca e activ in Setari → Video (si la programari)
 
         def work():
             result_box["r"] = engine.run(routine, variables)
@@ -162,6 +188,8 @@ def _run_file(path: str, variables: dict, show_frame: bool, started) -> tuple:
                 root.mainloop()
             t.join()
         finally:
+            if rec is not None:
+                writer.write(f"Film: {rec.stop()}\n")
             drivers.close()
             if dnd:
                 # procesul se inchide imediat dupa: asteptam ca notificarile sa revina efectiv

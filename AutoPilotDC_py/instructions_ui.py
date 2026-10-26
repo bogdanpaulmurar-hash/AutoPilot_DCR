@@ -21,6 +21,18 @@ except ImportError:   # pragma: no cover
     i18n = None
 
 DOCS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "docs", "instructiuni")
+VIDEO_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "docs", "video")
+# filmele scurte (docs/video/<cod>.apvid), generate cu tools/make_tutorials.py
+VIDEOS = [("01_recorder", {"ro": "Recorder", "en": "Recorder", "de": "Recorder"}),
+          ("02_studio_web", {"ro": "Studio: Web", "en": "Studio: Web", "de": "Studio: Web"}),
+          ("03_studio_excel", {"ro": "Studio: Excel", "en": "Studio: Excel", "de": "Studio: Excel"}),
+          ("04_studio_desktop", {"ro": "Studio: Desktop", "en": "Studio: Desktop", "de": "Studio: Desktop"}),
+          ("05_studio_sap", {"ro": "Studio: SAP", "en": "Studio: SAP", "de": "Studio: SAP"}),
+          ("06_biblioteca", {"ro": "Biblioteca", "en": "Library", "de": "Bibliothek"}),
+          ("07_programare", {"ro": "Programare", "en": "Scheduling", "de": "Planung"}),
+          ("08_video", {"ro": "Video", "en": "Video", "de": "Video"})]
+_VIDEO_LABEL = {"ro": "🎬 Filme scurte:", "en": "🎬 Short videos:", "de": "🎬 Kurze Videos:"}
+_VIDEO_LINK = {"ro": "Film", "en": "Video", "de": "Video"}
 LANGS = [("ro", "Română"), ("en", "English"), ("de", "Deutsch")]
 _INLINE = re.compile(r"(\*\*[^*]+\*\*|`[^`]+`)")
 
@@ -76,6 +88,10 @@ class InstructionsPanel(tk.Frame):
         self.search.trace_add("write", lambda *a: self._apply_search())
         e.bind("<Return>", lambda ev: self._next_hit())
 
+        # filmele scurte, cate unul pentru fiecare tip de rutina
+        self.vbar = tk.Frame(self, bg=C["bg_main"])
+        self.vbar.pack(fill="x", padx=10, pady=(0, 6))
+
         body = ttk.PanedWindow(self, orient="horizontal")
         body.pack(fill="both", expand=True, padx=10, pady=(0, 10))
         left = tk.Frame(body, bg=C["bg_card"])
@@ -108,6 +124,8 @@ class InstructionsPanel(tk.Frame):
         t.tag_configure("note", lmargin1=14, lmargin2=14, rmargin=14, background=C["bg_input"],
                         foreground=C["text"], spacing1=6, spacing3=6)
         t.tag_configure("hit", background="#FFC24B", foreground="#000000")
+        t.tag_configure("video", foreground="white", background=C["primary"], font=("Segoe UI", 10, "bold"),
+                        lmargin1=14, spacing1=4, spacing3=4)
         self._hits: List[str] = []
         self._hit_i = -1
         self.set_language(self.lang)
@@ -121,7 +139,29 @@ class InstructionsPanel(tk.Frame):
             b.configure(bg=C["primary"] if on else C["bg_input"], fg="white" if on else C["text_dim"],
                         activebackground=C["primary"], activeforeground="white")
         self._render(load_doc(lang))
+        self._fill_videos()
         self._apply_search()
+
+    def _fill_videos(self):
+        C = self.C
+        for w in self.vbar.winfo_children():
+            w.destroy()
+        tk.Label(self.vbar, text=_VIDEO_LABEL.get(self.lang, _VIDEO_LABEL["ro"]), bg=C["bg_main"], fg=C["primary"],
+                 font=("Segoe UI", 10, "bold")).pack(side="left", padx=(0, 6))
+        for code, names in VIDEOS:
+            if not os.path.isfile(os.path.join(VIDEO_DIR, code + ".apvid")):
+                continue
+            tk.Button(self.vbar, text="▶ " + names.get(self.lang, names["ro"]), relief="flat", bd=0, cursor="hand2",
+                      bg=C["bg_card"], fg=C["text"], activebackground=C["primary"], activeforeground="white",
+                      font=("Segoe UI", 9, "bold"), padx=8, pady=2,
+                      command=lambda c=code: self.play(c)).pack(side="left", padx=2)
+
+    def play(self, code: str):
+        path = os.path.join(VIDEO_DIR, code + ".apvid")
+        if not os.path.isfile(path):
+            return
+        from video_ui import VideoEditor
+        VideoEditor(self.winfo_toplevel(), self.C, path, readonly=True, lang=self.lang)
 
     def _inline(self, line: str, base_tags: Tuple[str, ...]):
         for part in _INLINE.split(line):
@@ -154,6 +194,16 @@ class InstructionsPanel(tk.Frame):
                 self._marks[title] = mark
                 self.toc.insert("end", title)
                 t.insert("end", title + "\n", ("h2",))
+            elif line.startswith("[video:") and line.endswith("]"):
+                code = line[7:-1]
+                name = dict(VIDEOS).get(code, {}).get(self.lang, code)
+                tag = "vid_" + code
+                t.tag_configure(tag)
+                t.tag_bind(tag, "<Button-1>", lambda e, c=code: self.play(c))
+                t.tag_bind(tag, "<Enter>", lambda e: t.configure(cursor="hand2"))
+                t.tag_bind(tag, "<Leave>", lambda e: t.configure(cursor="arrow"))
+                t.insert("end", f"  ▶  {_VIDEO_LINK.get(self.lang, 'Film')}: {name}  ", ("video", tag))
+                t.insert("end", "\n")
             elif line.startswith("### "):
                 t.insert("end", line[4:] + "\n", ("h3",))
             elif line.startswith("> "):

@@ -15,6 +15,8 @@ Fiecare capitol explică pe scurt o procedură, pas cu pas, cu un exemplu. Alege
 
 ## 2. Recorder: înregistrare și redare
 
+[video:01_recorder]
+
 1. În zona **🎬 Recorder** apasă **⏺ Înregistrează** (F5).
 2. Fă acțiunile pe ecran (click-uri, text, taste). Pe margini apare un chenar verde **REC**.
 3. Apasă **⏹ Stop Rec** (F6). Pașii apar în listă.
@@ -57,6 +59,8 @@ Fiecare capitol explică pe scurt o procedură, pas cu pas, cu un exemplu. Alege
 
 ## 6. Prima rutină Web (pas cu pas)
 
+[video:02_studio_web]
+
 1. Studio → **📄 Nou**.
 2. Bloc **🌐 Deschide browser**, adresa `https://the-internet.herokuapp.com/login`.
 3. **🎯 Web** (Spy): mouse-ul peste câmpul Username (contur verde) și **click**. În fereastra „Obiect capturat” apasă **+ pas Scrie text**. Scrie valoarea `tomsmith`.
@@ -78,6 +82,8 @@ Fiecare capitol explică pe scurt o procedură, pas cu pas, cu un exemplu. Alege
 
 ## 8. SAP GUI
 
+[video:05_studio_sap]
+
 1. Activează scripting-ul: SAP GUI → Options → Accessibility & Scripting → Scripting → **Enable scripting** (debifează avertismentele). Pe server, `sapgui/user_scripting` trebuie să fie TRUE.
 2. Deschide SAP Logon și autentifică-te.
 3. Primul pas al rutinei: **🟦 SAP: conectează** (gol = prima sesiune).
@@ -90,6 +96,8 @@ Fiecare capitol explică pe scurt o procedură, pas cu pas, cu un exemplu. Alege
 
 ## 9. Aplicații desktop Windows
 
+[video:04_studio_desktop]
+
 1. **🖥 Pornește aplicație** (`notepad.exe` sau `"C:\Program Files\App\app.exe" /param`) sau **🖥 Atașează fereastra** (`proces:notepad.exe` sau titlul ferestrei).
 2. **🎯 Desktop**: mouse-ul peste element (contur verde) și **F2**; Esc = anulează.
 3. Folosește obiectul în pași: Click, Scrie text, Citește, Alege din listă, Bifează.
@@ -100,6 +108,8 @@ Fiecare capitol explică pe scurt o procedură, pas cu pas, cu un exemplu. Alege
 > Exemplu: rutina 05 „Desktop Notepad” pornește Notepad și scrie trei rânduri într-o buclă.
 
 ## 10. Biblioteca de obiecte
+
+[video:06_biblioteca]
 
 - Tab-ul **📚 Bibliotecă** arată toate obiectele, comune tuturor rutinelor: **Site → Pagină → Container → obiect**. Site-ul și pagina se completează singure din link-ul unde ai capturat obiectul.
 - **Test**: înainte să folosești un obiect într-o rutină nouă, vezi câte elemente găsește fiecare locator (1 = bun, mai multe = ambiguu, 0 = nu găsește); obiectul e marcat pe ecran. Din rezultat îl adaugi direct ca pas.
@@ -142,6 +152,8 @@ Fiecare capitol explică pe scurt o procedură, pas cu pas, cu un exemplu. Alege
 
 ## 14. Excel: o rutină pentru fiecare rând
 
+[video:03_studio_excel]
+
 1. Bloc **📊 Pentru fiecare rând Excel**: alege fișierul, foaia, rândul cu titluri, primul / ultimul rând, coloana cheie (rând gol = sfârșitul listei).
 2. Pune pașii **în interiorul** blocului; folosește `{Rand.NumeColoana}`.
 3. **📝 Scrie în Excel** (în interiorul buclei) scrie un rezultat în rândul curent (coloana se creează dacă lipsește) și poate colora celula.
@@ -170,6 +182,8 @@ Fiecare capitol explică pe scurt o procedură, pas cu pas, cu un exemplu. Alege
 > Exemplu: rulează o rutină nouă întâi cu ⏭ Pas cu pas și Marchează obiectul înainte de fiecare acțiune.
 
 ## 17. Programare automată
+
+[video:07_programare]
 
 1. Salvează rutina și apasă **🕒 Programează**.
 2. Alege **când**: zilnic, în zilele lucrătoare, în anumite zile, o singură dată, la fiecare N minute sau la autentificarea în Windows; apoi ora (și data).
@@ -204,3 +218,15 @@ Fiecare capitol explică pe scurt o procedură, pas cu pas, cu un exemplu. Alege
 - Studio: `%APPDATA%\AutoPilotDC\Studio` — `rutine`, `rezultate` (loguri, capturi), `obiecte.json` (biblioteca), `exemple`, `browser-profil`.
 - Pentru un coleg: trimite fișierul `.rpr.json` și `obiecte.json` (sau exportă obiectele folosite); colegul rulează INSTALEAZA.bat o singură dată.
 - Versiunea aplicației apare în bara de jos; noutățile sunt în `CHANGELOG.md`.
+
+## 21. Video: înregistrarea ecranului
+
+[video:08_video]
+
+- **🎥** (bara de sus sau meniul din tray) pornește o înregistrare oricând, fără rutină — de exemplu ca să arăți unui coleg o procedură. Apasă din nou 🎥 sau **⏹ Stop** din bara mică ● REC (care nu apare în film). **⏸** pune filmul pe pauză.
+- La oprire se deschide **editorul**: capitolele (pașii rutinei, rândurile Excel), **A ▸ / ◂ B** pentru o selecție, **✂ Taie A–B**, **💬 Text A–B** (un text pe ecran), **▦ Ascunde zona** (blur peste date personale), **⟦ Început / Sfârșit ⟧**, **scurtarea pauzelor** lungi. Filmul original rămâne neschimbat; **💾 Salvează** păstrează editările, **GIF** / **MP4** exportă.
+- **⚙ Setări → 🎥 Video**: folderul filmelor, **film automat la fiecare rulare** (Studio și Recorder), **câte un film pentru fiecare rând Excel**, și la rulările programate, capturi pe secundă, mărimea și calitatea.
+- Filmele se fac din **capturi de ecran salvate doar când ecranul se schimbă** (fișiere `.apvid` mici). Cursorul și click-urile se desenează la redare. **🎬** din bara de sus deschide un film salvat.
+- MP4 are nevoie de pachetul `opencv-python` (opțional); GIF merge mereu.
+
+> Exemplu: Setări → Video → bifează „film la fiecare rulare” și „câte un film pe rând Excel”; rulează rutina 03 — în folder apare câte un film pentru fiecare rând, cu capitole pentru fiecare pas.

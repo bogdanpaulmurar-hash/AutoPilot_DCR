@@ -373,6 +373,17 @@ class StudioRunHost(RunHost):
 
     def node_started(self, node):
         self._p.post("started", node)
+        v = self._p.video
+        if v is not None and isinstance(node, ActionNode):
+            v.marker(node.title)   # capitolele filmului = pasii rutinei
+
+    def row_started(self, row, sheet):
+        if self._p.video is not None:
+            self._p.video.row_started(row, sheet)   # fara Tk: poate rula pe firul motorului
+
+    def row_finished(self, row, status):
+        if self._p.video is not None:
+            self._p.video.row_finished(row, status)
 
     def node_finished(self, node, success):
         self._p.post("finished", (node, success))
@@ -457,9 +468,10 @@ class RunControlWindow(tk.Toplevel):
 class StudioPanel(tk.Frame):
     def __init__(self, master, colors: Dict[str, str], run_frame=None,
                  on_status: Optional[Callable[[str], None]] = None,
-                 dnd_allowed: Optional[Callable[[], bool]] = None):
+                 dnd_allowed: Optional[Callable[[], bool]] = None, video=None):
         super().__init__(master, bg=colors["bg_main"])
         self.C = colors
+        self.video = video          # VideoController (🎥 film la rulare) sau None
         self._dnd_allowed = dnd_allowed or (lambda: True)
         self._run_frame = run_frame
         self._on_status = on_status or (lambda s: None)
@@ -822,7 +834,7 @@ class StudioPanel(tk.Frame):
         tk.Label(dlg, text="📚  Rutine exemplu", bg=C["bg_main"], fg=C["primary"], font=("Segoe UI", 13, "bold")).pack(
             anchor="w", padx=16, pady=(14, 2))
         tk.Label(dlg, text="Incepe cu 01 Invatare: apasa ⏭ Pas cu pas de mai multe ori si urmareste fiecare bloc.\n"
-                           "Exemplele Web / SAP / Desktop au nevoie de driverele din etapele urmatoare.",
+                           "Exemplele Web / SAP / Desktop au nevoie de aplicatia respectiva (browser, SAP GUI, Notepad).",
                  bg=C["bg_main"], fg=C["text_dim"], font=("Segoe UI", 9), justify="left").pack(anchor="w", padx=16)
         for ex in examples:
             card = tk.Frame(dlg, bg=C["bg_card"])
@@ -1762,6 +1774,11 @@ class StudioPanel(tk.Frame):
             self.winfo_toplevel().iconify()
         self.set_status("PAS CU PAS: apasa ⏭ Pas pentru fiecare pas." if step_mode else "Rulez...")
         engine, routine = self.engine, self.routine
+        if self.video is not None and not step_mode:
+            try:
+                self.video.run_started(routine.name)   # 🎥 daca e activ in Setari → Video
+            except Exception as ex:  # noqa: BLE001
+                self.set_status(f"🎥 {ex}")
         # "Nu deranja": setarea rutinei SI setarea generala a aplicatiei (Setari) trebuie sa fie pornite
         dnd = bool(routine.settings.do_not_disturb and safety and self._dnd_allowed())
         if dnd:
@@ -1787,6 +1804,11 @@ class StudioPanel(tk.Frame):
 
     def _run_finished(self, result):
         self.busy = False
+        if self.video is not None:
+            try:
+                self.video.run_finished()
+            except Exception:  # noqa: BLE001
+                pass
         if self._run_control:
             self._run_control.destroy()
             self._run_control = None

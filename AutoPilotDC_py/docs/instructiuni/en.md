@@ -17,6 +17,8 @@ Each chapter briefly explains one procedure, step by step, with an example. Pick
 
 ## 2. Recorder: recording and playback
 
+[video:01_recorder]
+
 1. In **🎬 Recorder** press **⏺ Record** (F5).
 2. Perform the actions on screen (clicks, text, keys). A green **REC** border appears around the screen.
 3. Press **⏹ Stop Rec** (F6). The steps appear in the list.
@@ -59,6 +61,8 @@ Each chapter briefly explains one procedure, step by step, with an example. Pick
 
 ## 6. Your first Web routine (step by step)
 
+[video:02_studio_web]
+
 1. Studio → **📄 New**.
 2. Block **🌐 Open browser**, address `https://the-internet.herokuapp.com/login`.
 3. **🎯 Web** (Spy): move the mouse over the Username field (green outline) and **click**. In the "Captured object" window press **+ Type text step**. Enter the value `tomsmith`.
@@ -80,6 +84,8 @@ Each chapter briefly explains one procedure, step by step, with an example. Pick
 
 ## 8. SAP GUI
 
+[video:05_studio_sap]
+
 1. Enable scripting: SAP GUI → Options → Accessibility & Scripting → Scripting → **Enable scripting** (uncheck the warnings). On the server, `sapgui/user_scripting` must be TRUE.
 2. Open SAP Logon and log in.
 3. First step of the routine: **🟦 SAP: connect** (empty = first session).
@@ -92,6 +98,8 @@ Each chapter briefly explains one procedure, step by step, with an example. Pick
 
 ## 9. Windows desktop applications
 
+[video:04_studio_desktop]
+
 1. **🖥 Start application** (`notepad.exe` or `"C:\Program Files\App\app.exe" /param`) or **🖥 Attach window** (`proces:notepad.exe` or the window title).
 2. **🎯 Desktop**: mouse over the element (green outline) and **F2**; Esc = cancel.
 3. Use the object in steps: Click, Type text, Read, Choose from list, Check.
@@ -102,6 +110,8 @@ Each chapter briefly explains one procedure, step by step, with an example. Pick
 > Example: routine 05 "Desktop Notepad" starts Notepad and types three lines in a loop.
 
 ## 10. The object library
+
+[video:06_biblioteca]
 
 - The **📚 Library** tab shows all objects, shared by all routines: **Site → Page → Container → object**. Site and page are filled in from the link where you captured the object.
 - **Test**: before using an object in a new routine, see how many elements each locator finds (1 = good, several = ambiguous, 0 = not found); the object is highlighted on screen. From the result you add it directly as a step.
@@ -144,6 +154,8 @@ Each chapter briefly explains one procedure, step by step, with an example. Pick
 
 ## 14. Excel: one routine for every row
 
+[video:03_studio_excel]
+
 1. Block **📊 For each Excel row**: choose the file, the sheet, the title row, the first / last row and the key column (empty row = end of the list).
 2. Put the steps **inside** the block; use `{Rand.ColumnName}`.
 3. **📝 Write to Excel** (inside the loop) writes a result into the current row (the column is created if missing) and can color the cell.
@@ -172,6 +184,8 @@ Each chapter briefly explains one procedure, step by step, with an example. Pick
 > Example: run a new routine first with ⏭ Step by step and "Highlight the object before every action".
 
 ## 17. Scheduling
+
+[video:07_programare]
 
 1. Save the routine and press **🕒 Schedule**.
 2. Choose **when**: daily, on working days, on certain days, once, every N minutes or at Windows logon; then the time (and date).
@@ -206,3 +220,15 @@ Each chapter briefly explains one procedure, step by step, with an example. Pick
 - Studio: `%APPDATA%\AutoPilotDC\Studio` — `rutine` (routines), `rezultate` (logs, screenshots), `obiecte.json` (the library), `exemple`, `browser-profil`.
 - For a colleague: send the `.rpr.json` file and `obiecte.json`; the colleague runs INSTALEAZA.bat once.
 - The application version is shown in the bottom bar; what's new is in `CHANGELOG.md`.
+
+## 21. Video: screen recording
+
+[video:08_video]
+
+- **🎥** (top bar or tray menu) starts a recording at any time, without a routine — for example to show a colleague a procedure. Press 🎥 again or **⏹ Stop** in the small ● REC bar (which does not appear in the video). **⏸** pauses the video.
+- When it stops, the **editor** opens: chapters (routine steps, Excel rows), **A ▸ / ◂ B** for a selection, **✂ Cut A–B**, **💬 Text A–B** (a caption on screen), **▦ Hide area** (blur over personal data), **⟦ Start / End ⟧**, **shortening long pauses**. The original video stays unchanged; **💾 Save** keeps the edits, **GIF** / **MP4** export.
+- **⚙ Settings → 🎥 Video**: the video folder, **automatic video on every run** (Studio and Recorder), **one video per Excel row**, also for scheduled runs, captures per second, size and quality.
+- Videos are made of **screenshots saved only when the screen changes** (small `.apvid` files). The cursor and clicks are drawn during playback. **🎬** in the top bar opens a saved video.
+- MP4 needs the `opencv-python` package (optional); GIF always works.
+
+> Example: Settings → Video → check "video on every run" and "one video per Excel row"; run routine 03 — the folder gets one video per row, with chapters for every step.

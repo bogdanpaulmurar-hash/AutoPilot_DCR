@@ -17,6 +17,8 @@ Jedes Kapitel erklärt kurz einen Ablauf, Schritt für Schritt, mit einem Beispi
 
 ## 2. Recorder: Aufnahme und Wiedergabe
 
+[video:01_recorder]
+
 1. Im **🎬 Recorder** **⏺ Aufnehmen** (F5) drücken.
 2. Die Aktionen am Bildschirm ausführen (Klicks, Text, Tasten). Ein grüner **REC**-Rahmen erscheint.
 3. **⏹ Aufnahme stopp** (F6) drücken. Die Schritte erscheinen in der Liste.
@@ -59,6 +61,8 @@ Jedes Kapitel erklärt kurz einen Ablauf, Schritt für Schritt, mit einem Beispi
 
 ## 6. Die erste Web-Routine (Schritt für Schritt)
 
+[video:02_studio_web]
+
 1. Studio → **📄 Neu**.
 2. Block **🌐 Browser öffnen**, Adresse `https://the-internet.herokuapp.com/login`.
 3. **🎯 Web** (Spy): Maus über das Feld Username (grüner Rahmen) und **klicken**. Im Fenster „Erfasstes Objekt“ **+ Schritt Text schreiben** drücken. Wert `tomsmith` eintragen.
@@ -80,6 +84,8 @@ Jedes Kapitel erklärt kurz einen Ablauf, Schritt für Schritt, mit einem Beispi
 
 ## 8. SAP GUI
 
+[video:05_studio_sap]
+
 1. Scripting aktivieren: SAP GUI → Optionen → Barrierefreiheit und Scripting → Scripting → **Scripting aktivieren** (Warnungen abwählen). Auf dem Server muss `sapgui/user_scripting` TRUE sein.
 2. SAP Logon öffnen und anmelden.
 3. Erster Schritt der Routine: **🟦 SAP: verbinden** (leer = erste Sitzung).
@@ -92,6 +98,8 @@ Jedes Kapitel erklärt kurz einen Ablauf, Schritt für Schritt, mit einem Beispi
 
 ## 9. Windows-Desktop-Anwendungen
 
+[video:04_studio_desktop]
+
 1. **🖥 Anwendung starten** (`notepad.exe` oder `"C:\Program Files\App\app.exe" /param`) oder **🖥 Fenster verbinden** (`proces:notepad.exe` oder der Fenstertitel).
 2. **🎯 Desktop**: Maus über das Element (grüner Rahmen) und **F2**; Esc = abbrechen.
 3. Das Objekt in Schritten verwenden: Klick, Text schreiben, Lesen, Aus Liste wählen, Ankreuzen.
@@ -102,6 +110,8 @@ Jedes Kapitel erklärt kurz einen Ablauf, Schritt für Schritt, mit einem Beispi
 > Beispiel: Routine 05 „Desktop Notepad“ startet den Editor und schreibt drei Zeilen in einer Schleife.
 
 ## 10. Die Objektbibliothek
+
+[video:06_biblioteca]
 
 - Der Tab **📚 Bibliothek** zeigt alle Objekte, gemeinsam für alle Routinen: **Website → Seite → Container → Objekt**. Website und Seite werden aus dem Link ausgefüllt, auf dem das Objekt erfasst wurde.
 - **Test**: Bevor Sie ein Objekt in einer neuen Routine verwenden, sehen Sie, wie viele Elemente jeder Locator findet (1 = gut, mehrere = mehrdeutig, 0 = nicht gefunden); das Objekt wird auf dem Bildschirm markiert. Aus dem Ergebnis fügen Sie es direkt als Schritt ein.
@@ -144,6 +154,8 @@ Jedes Kapitel erklärt kurz einen Ablauf, Schritt für Schritt, mit einem Beispi
 
 ## 14. Excel: eine Routine für jede Zeile
 
+[video:03_studio_excel]
+
 1. Block **📊 Für jede Excel-Zeile**: Datei, Blatt, Titelzeile, erste / letzte Zeile und Schlüsselspalte wählen (leere Zeile = Ende der Liste).
 2. Die Schritte **in** den Block setzen; `{Rand.Spaltenname}` verwenden.
 3. **📝 In Excel schreiben** (in der Schleife) schreibt ein Ergebnis in die aktuelle Zeile (die Spalte wird bei Bedarf angelegt) und kann die Zelle einfärben.
@@ -172,6 +184,8 @@ Jedes Kapitel erklärt kurz einen Ablauf, Schritt für Schritt, mit einem Beispi
 > Beispiel: Eine neue Routine zuerst mit ⏭ Schrittweise und „Objekt vor jeder Aktion markieren“ ausführen.
 
 ## 17. Zeitplanung
+
+[video:07_programare]
 
 1. Routine speichern und **🕒 Planen** drücken.
 2. **Wann** wählen: täglich, an Werktagen, an bestimmten Tagen, einmalig, alle N Minuten oder bei der Windows-Anmeldung; dann die Uhrzeit (und das Datum).
@@ -206,3 +220,15 @@ Jedes Kapitel erklärt kurz einen Ablauf, Schritt für Schritt, mit einem Beispi
 - Studio: `%APPDATA%\AutoPilotDC\Studio` — `rutine` (Routinen), `rezultate` (Logs, Screenshots), `obiecte.json` (die Bibliothek), `exemple`, `browser-profil`.
 - Für einen Kollegen: die `.rpr.json`-Datei und `obiecte.json` senden; der Kollege führt einmal INSTALEAZA.bat aus.
 - Die Version steht in der unteren Leiste; Neuerungen in `CHANGELOG.md`.
+
+## 21. Video: Bildschirmaufnahme
+
+[video:08_video]
+
+- **🎥** (obere Leiste oder Tray-Menü) startet jederzeit eine Aufnahme, ohne Routine — z. B. um einem Kollegen einen Ablauf zu zeigen. Erneut 🎥 oder **⏹ Stopp** in der kleinen ● REC-Leiste drücken (sie erscheint nicht im Video). **⏸** pausiert das Video.
+- Beim Stoppen öffnet sich der **Editor**: Kapitel (Schritte der Routine, Excel-Zeilen), **A ▸ / ◂ B** für eine Auswahl, **✂ A–B schneiden**, **💬 Text A–B** (Einblendung), **▦ Bereich verdecken** (Unschärfe über persönliche Daten), **⟦ Anfang / Ende ⟧**, **lange Pausen kürzen**. Das Original bleibt unverändert; **💾 Speichern** behält die Änderungen, **GIF** / **MP4** exportieren.
+- **⚙ Einstellungen → 🎥 Video**: Videoordner, **automatisches Video bei jeder Ausführung** (Studio und Recorder), **ein Video pro Excel-Zeile**, auch bei geplanten Ausführungen, Aufnahmen pro Sekunde, Größe und Qualität.
+- Videos bestehen aus **Screenshots, die nur bei Bildschirmänderungen gespeichert werden** (kleine `.apvid`-Dateien). Cursor und Klicks werden bei der Wiedergabe gezeichnet. **🎬** in der oberen Leiste öffnet ein gespeichertes Video.
+- MP4 benötigt das Paket `opencv-python` (optional); GIF funktioniert immer.
+
+> Beispiel: Einstellungen → Video → „Video bei jeder Ausführung“ und „ein Video pro Excel-Zeile“ ankreuzen; Routine 03 ausführen — im Ordner entsteht pro Zeile ein Video mit Kapiteln für jeden Schritt.

@@ -91,6 +91,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import app_shell  # v4.1: iconita, pornire cu Windows, tray
 import i18n       # v4.7: romana / engleza / germana (limba din Setari)
 i18n.install()
+import video_ui   # v4.8: 🎥 inregistrare video a ecranului + editor
 from autopilot_safety import (DoNotDisturb, RunFrame, SafetyGuard, GuardAlert,
                               CONTINUE, IGNORE_STEP, RETRY, SKIP_STEP, STOP)
 
@@ -2390,10 +2391,13 @@ class MainWindow:
         self._start_in_tray = "--tray" in sys.argv
         self._really_quit = False
         self._tray_hint_shown = False
+        # v4.8: 🎥 filme (manual sau la rularea rutinelor)
+        self.video = video_ui.VideoController(self.root, C, on_status=lambda m: self._status_var.set(m))
         self.tray = app_shell.Tray(
             ui_call=lambda fn: self.root.after(0, fn),
             items=[("🎬 Recorder", lambda: (self._show_from_tray(), self._set_mode("recorder")), False),
                    ("🧩 Studio RPR", lambda: (self._show_from_tray(), self._set_mode("studio")), False),
+                   ("🎥 Inregistrare video (start / stop)", lambda: self.video.toggle_manual(), True),
                    ("🚨 STOP URGENTA", self._emergency_stop, True),
                    ("Iesire", self._quit_app, True)],
             on_open=self._show_from_tray)
@@ -2607,6 +2611,10 @@ class MainWindow:
         self._btn_emg.pack(side="right", padx=(4, 10), pady=6)
         self._btn_exit = hbtn("✕", self._on_close, bg=C["bg_main"], fg=C["text_dim"], tip="Inchide aplicatia")
         hbtn("❓", self._help_for_mode, tip="📖 Instructiuni: toate procedurile, pe scurt, cu exemple (RO / EN / DE)")
+        hbtn("🎬", lambda: self.video.open_file(), tip="Deschide un film inregistrat (redare, editare, export GIF / MP4)")
+        self._btn_video = hbtn("🎥", lambda: self.video.toggle_manual(),
+                               tip="Inregistreaza ecranul acum (fara rutina); apasa din nou ca sa opresti. "
+                                   "Filmele: Setari → Video")
         hbtn("⚙", lambda: (self._set_mode("recorder"), self._open_settings_tab()), tip="Setari aplicatie")
         self._btn_sc = hbtn("⌨", self._toggle_shortcuts_panel, tip="Afiseaza / ascunde panoul de shortcut-uri")
         self._lbl_cd = tk.Label(hdr, textvariable=self._countdown_var, bg=C["bg_card"], fg=C["warning"],
@@ -2705,7 +2713,8 @@ class MainWindow:
                 from studio_ui import StudioPanel
                 self._studio = StudioPanel(self._workspace, C, run_frame=self.run_frame,
                                            on_status=self._status_var.set,
-                                           dnd_allowed=lambda: bool(self.settings.get("dnd_during_run", True)))
+                                           dnd_allowed=lambda: bool(self.settings.get("dnd_during_run", True)),
+                                           video=self.video)
             except Exception as ex:
                 import traceback
                 traceback.print_exc()
@@ -3646,6 +3655,10 @@ class MainWindow:
                            font=("Segoe UI", 11)).pack(side="left", padx=4),
         ))
 
+        # ── Video ──
+        f_vid = section("🎥  Video (inregistrarea ecranului)")
+        self._video_save = video_ui.build_settings_section(f_vid, C)
+
         # ── Limba ──
         f_lang = section("🌐  Limba / Language / Sprache")
         self._var_lang = tk.StringVar(value=dict(i18n.LANGUAGES).get(i18n.saved_language(), "Română"))
@@ -4234,8 +4247,11 @@ CONTACT: {APP_AUTHOR}
         self.player.suppress_notifications = bool(self.settings.get("dnd_during_run", True))
         self.guard.enabled = bool(self.settings.get("guard_enabled", True))
         self.guard.sensitivity = str(self.settings.get("guard_sensitivity", "normal"))
+        self.video.run_started("Recorder")   # 🎥 daca e activ in Setari → Video
         if self.player.play(steps, repeat=repeat):
             self.run_frame.show("run")
+        else:
+            self.video.run_finished()
 
     def _toggle_pause(self):
         """Comuta pauza/reluare."""
@@ -4298,6 +4314,7 @@ CONTACT: {APP_AUTHOR}
     def _on_play_stopped(self):
         # [v3.9] Hide RUN + mode indicators
         self.root.after(0, self.run_frame.hide)
+        self.root.after(0, self.video.run_finished)
         try:
             self.run_indicator.hide()
             self.mode_indicator.hide()
@@ -5257,6 +5274,9 @@ CONTACT: {APP_AUTHOR}
             # Salveaza shortcut-urile
             sc = {k: v.get() for k, v in self._sc_vars.items()}
             self.settings.set("shortcuts", sc)
+            # Video (folder, la rulare, per rand Excel, calitate)
+            if getattr(self, "_video_save", None):
+                self._video_save()
             # Salveaza limba + tema (repornire doar daca s-a schimbat ceva)
             lang = next((c for c, n in i18n.LANGUAGES if n == self._var_lang.get()), "ro")
             lang_changed = lang != i18n.saved_language()
@@ -5434,6 +5454,8 @@ CONTACT: {APP_AUTHOR}
         """Gestioneaza inchiderea aplicatiei cu dialog de salvare."""
         if self.settings.get("close_to_tray", False) and not self._really_quit and self._hide_to_tray():
             return  # ✕ ascunde aplicatia langa ceas (rularile si scurtaturile F7/F12 merg in continuare)
+        if self.video.active:
+            self.video.stop(open_editor=False)   # filmul inceput se salveaza
         if self._studio is not None:
             if self._studio.busy:
                 self._studio.stop()
