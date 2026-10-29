@@ -213,6 +213,7 @@ Jedes Kapitel erklärt kurz einen Ablauf, Schritt für Schritt, mit einem Beispi
 - **SAP reagiert nicht**: Scripting prüfen (Kapitel 8).
 - **Das Tray-Symbol fehlt**: Einstellungen → Autostart und Tray zeigt den Status; unter Windows 10/11 evtl. unter dem Pfeil ^ versteckt.
 - **Benachrichtigungen bleiben aus**: Einstellungen → 🔔 Benachrichtigungen jetzt wieder einschalten.
+- **„Nicht stören“ geht nicht an oder aus**: Einstellungen → 🔍 Nicht stören prüfen (auf Wunsch mit „echtem Test“). Der Bericht zeigt die Windows-Version, die gefundene Einstellung und ob Windows den Neustart des Benachrichtigungsdienstes erlaubt; er wird auch in `loguri\nu_deranja_diagnostic.txt` gespeichert.
 
 ## 20. Dateien, Ordner und Kollegen
 
@@ -256,3 +257,14 @@ Jedes Kapitel erklärt kurz einen Ablauf, Schritt für Schritt, mit einem Beispi
 - Eine Vorbereitung lässt sich wie eine Routine planen: `py -m rpr run "Sandbox.pregatire.json"`.
 
 > Beispiel: ein Test-Sandbox mit `01_Benutzer`, `02_Rollen`, `03_Objekte`. Du startest die Vorbereitung abends; morgens öffnest du die Dokumentation und siehst für jede Routine, wie lange sie dauerte, was sie angelegt hat und ihr Video.
+
+## 24. Sicherung und Wiederherstellung
+
+1. **⚙ Einstellungen → 💾 Sicherung und Wiederherstellung → Sicherung erstellen...**: wähle, wo die `.zip`-Datei gespeichert wird (z. B. USB-Stick oder Drive-Ordner).
+2. „Auch die Ergebnisse einschließen“ nur anhaken, wenn du auch Berichte, Studio-Logs und Fehler-Screenshots willst (die Datei wird größer).
+3. Auf einem anderen PC oder nach einer Neuinstallation: **♻ Aus Sicherung wiederherstellen...**, Datei wählen, bestätigen, dann AutoPilot DC neu starten.
+- Enthalten: Einstellungen, Recorder- und Studio-Routinen, die Objektbibliothek mit Bildern, Zeitpläne, Notizen, Sprache, Video-Einstellungen und der Routinenordner aus 📂 Manager.
+- Nicht enthalten: das Browserprofil (Anmeldungen) und die Videos.
+- Vor der Wiederherstellung wird der aktuelle Stand automatisch in `%APPDATA%\AutoPilotDC\backup-automat` gesichert. Gibt es den Routinenordner auf dem neuen PC nicht, landen die Routinen in `Studio\rutine\biblioteca` und der Manager zeigt dorthin.
+
+> Beispiel: Vor dem Laptopwechsel erstellst du eine Sicherung in Drive; auf dem neuen Laptop installierst du mit INSTALEAZA.bat, stellst die Sicherung wieder her und hast dieselben Routinen, Objekte und Einstellungen.
