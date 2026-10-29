@@ -2,6 +2,14 @@
 
 Pornirea aplicației: **`AutoPilot_DC.pyw`** (sau scurtătura „AutoPilot DC” de pe Desktop). Numele fișierelor nu se mai schimbă de la o versiune la alta, deci scurtăturile și pornirea cu Windows rămân valabile.
 
+## 4.8.3 — 2026-10-29
+- **💾 Raportul Excel se salvează din mers**, după fiecare rând / repetare (cel mult o dată la 5 s; la rulări mari mai rar), în același fișier care se completează la final. Dacă aplicația se blochează sau PC-ul se oprește, rămâne tot ce s-a făcut. Dacă fișierul e deschis în Excel la final, raportul final primește sufixul `_final`.
+- **Filmele pe rutină**: ⚙ Setări rutină → 🎥 Filmele rutinei (gol = folderul din Setări → Video); la pregătiri, filmele stau lângă rezumat (`filme`), dacă rutina nu are alt folder.
+- **☁ OneDrive**: buton pentru folderul raportului și al filmelor, care alege un folder din OneDrive-ul sincronizat (`AutoPilotDC\rapoarte|filme\<rutina>`); clientul OneDrive le duce singur în cloud, fără conturi sau chei în aplicație.
+- **Film întrerupt brusc**: la înregistrare se scrie un jurnal la 10 s; la deschidere, un film neterminat se reface automat din cadrele deja salvate (originalul rămâne `.stricat`).
+- Excel-ul de intrare se salva deja după fiecare rând (opțiunea buclei).
+- Teste (Linux, Python 3.12): 93 rulate, 12 sărite; aceleași 3 eșecuri vechi. Teste noi: salvarea din mers, folderul filmelor, recuperarea filmului.
+
 ## 4.8.2 — 2026-10-29
 - **🎥 Filmul direct din listă**: în bucla „Pentru fiecare rând Excel”, cu filmul pornit, fiecare rând primește în Excel-ul de intrare coloana **Film**, cu linkul spre film și minutul la care începe rândul (din proprietățile buclei se schimbă coloana sau se oprește). Un rând marcat greșit se verifică dintr-un click.
 - **Player separat pentru `.apvid`**: dublu-click pe film sau click pe link în Excel / raport îl deschide în player (proces separat, fără aplicația principală). Asocierea se face la pornirea aplicației, doar pentru utilizatorul curent, fără drepturi de administrator. Manual: `pythonw video_ui.py "film.apvid" --t 75`.

@@ -242,6 +242,7 @@ Fiecare capitol explică pe scurt o procedură, pas cu pas, cu un exemplu. Alege
 - Un rând pentru fiecare rând Excel sau repetare de pe primul nivel; fără bucle, un rând pentru toată rutina. Merge și fără un Excel de intrare.
 - Fiecare rând are ora de start, durata, statusul, mesajul, valorile bifate, filmul (cu minutul în film) și captura erorii. Filmul apare când e pornit în ⚙ Setări → Video.
 - Excel-ul de intrare primește în continuare statusul și ce scrii cu **📝 Scrie în Excel**.
+- **Salvare din mers și cloud**: raportul se salvează după fiecare rând / repetare (cel mult o dată la câteva secunde), deci rămâne și dacă aplicația se blochează. Folderul raportului și folderul filmelor (⚙ Setări rutină → 🎥 Filmele rutinei) pot fi alese pe fiecare rutină; **☁ OneDrive** pune folderul în OneDrive-ul sincronizat, ca fișierele să ajungă singure în cloud. Un film întrerupt brusc se reface automat la deschidere, din cadrele deja salvate.
 
 > Exemplu: listă cu numere unice. În buclă: dacă `{Rand.Data}` e gol, citești data din link, o formatezi și o scrii; altfel apeși butonul Y. Bifează `Rand.Nr`, `DataCitita` și `Actiune` pentru raport. Raportul arată, pentru fiecare număr, ce s-a făcut, când și unde în film.
 

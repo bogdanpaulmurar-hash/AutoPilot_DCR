@@ -168,5 +168,52 @@ class EngineRowHooksTests(unittest.TestCase):
                          h.ev)
 
 
+class RecoverTests(unittest.TestCase):
+    """Film neterminat (aplicatia blocata in timpul inregistrarii): se reface din cadre + jurnal."""
+
+    def _broken(self, with_journal):
+        import io
+        import json
+        import zipfile
+        d = tempfile.mkdtemp(prefix="apdc_rec_")
+        path = os.path.join(d, "film.apvid")
+        z = zipfile.ZipFile(path, "w", zipfile.ZIP_STORED)
+        frames = []
+        for k in range(4):
+            buf = io.BytesIO()
+            Image.new("RGB", (64, 40), (k * 40, 10, 10)).save(buf, "WEBP")
+            name = f"frames/{k + 1:06d}.webp"
+            z.writestr(name, buf.getvalue())
+            frames.append([k * 2.0, name])
+        z.fp.flush()
+        if with_journal:   # jurnalul are doar primele 3 cadre (al 4-lea a venit dupa ultimul jurnal)
+            m = {"version": 1, "title": "Rutina", "size": [64, 40], "fps": 4, "frames": frames[:3],
+                 "cursor": [], "clicks": [], "markers": [[2.0, "Rand 2"]], "duration": 4.0,
+                 "edits": {"trim": None, "cuts": [], "captions": [], "blur": [], "idle": 2.0}}
+            with open(path + sr.JOURNAL_EXT, "w", encoding="utf-8") as f:
+                json.dump(m, f)
+        # fara z.close(): ca dupa o oprire brusca (lipseste cuprinsul zip-ului si manifest.json)
+        z.fp.close()
+        z.fp = None
+        return path
+
+    def test_recover_with_journal(self):
+        path = self._broken(True)
+        v = sr.VideoFile(path)
+        self.assertEqual(4, len(v.m["frames"]))
+        self.assertEqual([[2.0, "Rand 2"]], v.m["markers"])
+        self.assertIn("recuperat", v.m["title"])
+        v.close()
+        self.assertTrue(os.path.exists(path + ".stricat"))
+        self.assertFalse(os.path.exists(path + sr.JOURNAL_EXT))
+
+    def test_recover_without_journal(self):
+        path = self._broken(False)
+        v = sr.VideoFile(path)
+        self.assertEqual(4, len(v.m["frames"]))
+        self.assertEqual([64, 40], list(v.size))
+        v.close()
+
+
 if __name__ == "__main__":
     unittest.main()

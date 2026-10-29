@@ -268,7 +268,8 @@ class ScreenRecorder:
         In ambele cazuri restul ecranului (alte aplicatii, bara de activitati) nu apare in film."""
         if self.active:
             return self.path
-        folder = folder or self.s.folder
+        folder = folder or getattr(self, "folder", "") or self.s.folder
+        self.folder = folder            # split() pastreaza acelasi folder (ex. folderul filmelor rutinei)
         os.makedirs(folder, exist_ok=True)
         stamp = _dt.datetime.now().strftime("%Y%m%d_%H%M%S")
         self.path = os.path.join(folder, f"{safe_name(title)}_{stamp}{EXT}")
@@ -341,6 +342,7 @@ class ScreenRecorder:
         x0, y0 = bbox[0], bbox[1]
         _dpi_aware_thread()
         size = tuple(self._m["size"])
+        last_journal = time.monotonic()
         try:
             while not self._stop.is_set():
                 tick = time.monotonic()
@@ -410,6 +412,9 @@ class ScreenRecorder:
                         self._m["frames"].append([t, name])
                     last_saved_t = t
                     prev_thumb = thumb
+                if time.monotonic() - last_journal > 10:   # 💾 jurnal pentru recuperare (aplicatie blocata, PC oprit)
+                    self._write_journal()
+                    last_journal = time.monotonic()
                 # ritmul de captura (capturile mari pot dura mai mult decat perioada)
                 time.sleep(max(0.01, period - (time.monotonic() - tick)))
         finally:
@@ -418,6 +423,22 @@ class ScreenRecorder:
                 self._zip.writestr("manifest.json", json.dumps(self._m, ensure_ascii=False))
             self._zip.close()
             self._zip = None
+            try:
+                os.remove(self.path + JOURNAL_EXT)   # filmul e complet: jurnalul nu mai trebuie
+            except OSError:
+                pass
+
+    def _write_journal(self):
+        """Cronologia de pana acum langa film. Daca filmul ramane neterminat, recover() il reface din ea."""
+        try:
+            with self._lock:
+                data = json.dumps(dict(self._m, duration=round(self.elapsed(), 2)), ensure_ascii=False)
+            tmp = self.path + JOURNAL_EXT + ".tmp"
+            with open(tmp, "w", encoding="utf-8") as f:
+                f.write(data)
+            os.replace(tmp, self.path + JOURNAL_EXT)
+        except OSError:
+            pass
 
 
 # ─────────────────────────────────────────────────────────────
@@ -475,12 +496,90 @@ def _font(size: int):
     return ImageFont.load_default()
 
 
+JOURNAL_EXT = ".jurnal.json"
+
+
+def recover(path: str) -> bool:
+    """Reface un film neterminat (aplicatia s-a blocat / PC-ul s-a oprit in timpul inregistrarii):
+    cadrele scrise deja se citesc direct din fisier, cronologia din jurnalul de langa el (sau, fara jurnal,
+    cadrele primesc timpi la rand). Originalul ramane ca .stricat."""
+    import struct
+    try:
+        with open(path, "rb") as f:
+            raw = f.read()
+    except OSError:
+        return False
+    frames: Dict[str, bytes] = {}
+    i = raw.find(b"PK\x03\x04")
+    while 0 <= i < len(raw) - 30:
+        _sig, _ver, flag, method, _t, _d, _crc, csize, _usize, nlen, xlen = struct.unpack("<IHHHHHIIIHH", raw[i:i + 30])
+        name = raw[i + 30:i + 30 + nlen].decode("utf-8", "replace")
+        start = i + 30 + nlen + xlen
+        if method != 0 or flag & 0x08 or start + csize > len(raw):
+            break                               # cadru taiat la jumatate: ne oprim aici
+        if name.startswith("frames/"):
+            frames[name] = raw[start:start + csize]
+        i = raw.find(b"PK\x03\x04", start + csize)
+    if not frames:
+        return False
+    m = None
+    try:
+        with open(path + JOURNAL_EXT, encoding="utf-8") as f:
+            m = json.load(f)
+    except (OSError, ValueError):
+        pass
+    if m:
+        m["frames"] = [fr for fr in m.get("frames", []) if fr[1] in frames]
+    else:
+        m = {"version": 1, "title": os.path.basename(path), "fps": 4, "cursor": [], "clicks": [], "markers": [],
+             "edits": {"trim": None, "cuts": [], "captions": [], "blur": [], "idle": 2.0}}
+        m["frames"] = [[round(k * 0.5, 2), n] for k, n in enumerate(sorted(frames))]
+        try:
+            from PIL import Image as _Img
+            first = _Img.open(io.BytesIO(frames[sorted(frames)[0]]))
+            m["size"] = [first.width, first.height]
+        except Exception:  # noqa: BLE001
+            m["size"] = [1280, 720]
+    known = {fr[1] for fr in m["frames"]}
+    last_t = m["frames"][-1][0] if m["frames"] else 0.0
+    for n in sorted(frames):   # cadre scrise dupa ultimul jurnal
+        if n not in known:
+            last_t = round(last_t + 0.5, 2)
+            m["frames"].append([last_t, n])
+    m["duration"] = max(float(m.get("duration") or 0), m["frames"][-1][0] if m["frames"] else 0.0)
+    m["title"] = str(m.get("title", "")) + " (recuperat)"
+    tmp = path + ".recuperat.tmp"
+    with zipfile.ZipFile(tmp, "w", zipfile.ZIP_STORED) as z:
+        for _t, n in m["frames"]:
+            z.writestr(n, frames[n])
+        z.writestr("manifest.json", json.dumps(m, ensure_ascii=False))
+    try:
+        os.replace(path, path + ".stricat")
+    except OSError:
+        pass
+    os.replace(tmp, path)
+    try:
+        os.remove(path + JOURNAL_EXT)
+    except OSError:
+        pass
+    return True
+
+
 class VideoFile:
     """Un film .apvid deschis: cadre la cerere, cronologie dupa editari, compunere (cursor, texte, blur)."""
 
     def __init__(self, path: str):
         self.path = path
-        self._zip = zipfile.ZipFile(path, "r")
+        self._zip = None
+        try:
+            self._zip = zipfile.ZipFile(path, "r")
+            self._zip.getinfo("manifest.json")
+        except (zipfile.BadZipFile, KeyError):
+            if self._zip is not None:
+                self._zip.close()      # Windows: fisierul trebuie eliberat inainte de refacere
+            if not recover(path):      # film neterminat: il refacem din cadrele scrise deja
+                raise
+            self._zip = zipfile.ZipFile(path, "r")
         self.m: Dict[str, Any] = json.loads(self._zip.read("manifest.json").decode("utf-8"))
         self.m.setdefault("edits", {})
         e = self.m["edits"]

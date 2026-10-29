@@ -145,6 +145,51 @@ class ReportRunTests(unittest.TestCase):
         self.assertEqual("nou", src[2][src[0].index("Nota")])
 
 
+class CheckpointTests(unittest.TestCase):
+    def test_saved_during_run_then_final_in_same_file(self):
+        from rpr.host import RunResult
+        from rpr.report import RunReport
+        d = tempfile.mkdtemp(prefix="apdc_cp_")
+        r = _routine()
+        ReportSettings(enabled=True, folder=d).save_to(r)
+        rep = RunReport.create(r, d)
+        rep.item_started("Rand 2", 0)
+        rep.item_finished("OK", {})
+        self.assertTrue(rep.checkpoint(RunResult()))              # salvat dupa primul element
+        mid = rep.path
+        rows = _rows(openpyxl.load_workbook(mid)["Rezultate"])
+        self.assertEqual("Rand 2", rows[1][1])
+        info = [x for x in _rows(openpyxl.load_workbook(mid)["Rutina"]) if x[0] == "Rezultat"]
+        self.assertIn("salvare automata", info[0][1])
+        rep.item_started("Rand 3", 0)
+        rep.item_finished("OK", {})
+        self.assertFalse(rep.checkpoint(RunResult()))             # prea devreme: urmatoarea salvare peste 5 s
+        final = rep.finish(RunResult(success=True, message="gata"), {})
+        self.assertEqual(mid, final)                              # acelasi fisier, completat
+        self.assertEqual(3, len(_rows(openpyxl.load_workbook(final)["Rezultate"])))
+        self.assertEqual(1, len([f for f in os.listdir(d) if f.endswith(".xlsx")]))
+
+    def test_routine_video_folder_and_onedrive(self):
+        from rpr.report import onedrive_folder, set_video_folder, video_folder
+        r = _routine()
+        self.assertEqual("", video_folder(r))
+        set_video_folder(r, ' "C:\\Filme" ')
+        self.assertEqual("C:\\Filme", video_folder(r))
+        self.assertEqual("C:\\Filme", video_folder(Routine.from_dict(r.to_dict())))
+        set_video_folder(r, "")
+        self.assertNotIn("video_folder", r.settings.extra)
+        d = tempfile.mkdtemp(prefix="apdc_od_")
+        old = os.environ.get("OneDriveCommercial")
+        os.environ["OneDriveCommercial"] = d
+        try:
+            self.assertEqual(d, onedrive_folder())
+        finally:
+            if old is None:
+                os.environ.pop("OneDriveCommercial")
+            else:
+                os.environ["OneDriveCommercial"] = old
+
+
 class InputExcelFilmLinkTests(unittest.TestCase):
     def _xl(self, d):
         xl = os.path.join(d, "date.xlsx")

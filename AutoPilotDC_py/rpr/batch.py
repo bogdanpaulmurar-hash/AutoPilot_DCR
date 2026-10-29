@@ -31,7 +31,7 @@ from dataclasses import dataclass, field
 from typing import Callable, Dict, List, Optional, Tuple
 
 from .model import Routine, sanitize_name
-from .report import REPORT_KEY, ReportSettings, _fmt_dur, _t, _walk
+from .report import REPORT_KEY, ReportSettings, _fmt_dur, _t, _walk, set_video_folder, video_folder
 
 PREP_EXT = ".pregatire.json"
 ROUTINE_EXT = ".rpr.json"
@@ -297,6 +297,8 @@ class PreparationRunner:
                 if rs.enabled and not rs.folder:
                     rs.folder = os.path.join(folder, "rapoarte")
                     rs.save_to(routine)
+            if not video_folder(routine):   # filmele pregatirii stau langa rezumat (daca rutina nu are alt folder)
+                set_video_folder(routine, os.path.join(folder, "filme"))
             step.routine = routine
             try:
                 result, video = self._run_one(routine, item, folder)
