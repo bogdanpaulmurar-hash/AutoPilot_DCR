@@ -150,21 +150,10 @@ def save_language(lang: str) -> None:
     _write_settings(d)
 
 
-def saved_file_language() -> str:
-    """Limba aleasa pentru fisiere: "" = ca interfata, altfel ro / en / de."""
-    lang = str(_read_settings().get("fisiere", ""))
-    return lang if lang in dict(LANGUAGES) else ""
-
-
-def save_file_language(lang: str) -> None:
-    d = _read_settings()
-    d["fisiere"] = lang if lang in dict(LANGUAGES) else ""
-    _write_settings(d)
-
-
 def file_language() -> str:
-    """Limba efectiva in care se scriu Excel-ul, rapoartele si logurile text."""
-    return saved_file_language() or saved_language()
+    """Limba in care se scriu Excel-ul, rapoartele si logurile text: aceeasi cu a interfetei (v4.8.6).
+    Se citeste din setare, ca rularile programate (alt proces) sa scrie in aceeasi limba."""
+    return saved_language()
 
 
 # ─────────────────────────────────────────────────────────────
@@ -216,7 +205,7 @@ def tr_to(lang: str, text):
 
 
 def tr_file(text):
-    """Textul in limba fisierelor (Excel, rapoarte, loguri text). Setarea se citeste la fiecare apel."""
+    """Textul in limba aplicatiei, pentru fisiere (Excel, rapoarte, loguri text)."""
     return _table(file_language()).tr(text)
 
 

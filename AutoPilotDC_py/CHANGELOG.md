@@ -2,6 +2,11 @@
 
 Pornirea aplicației: **`AutoPilot_DC.pyw`** (sau scurtătura „AutoPilot DC” de pe Desktop). Numele fișierelor nu se mai schimbă de la o versiune la alta, deci scurtăturile și pornirea cu Windows rămân valabile.
 
+## 4.8.6 — 2026-10-29
+- **O singură limbă pentru toată aplicația**: setarea separată „Limba fișierelor” din 4.8.5 a fost scoasă. ⚙ Setări → 🌐 Limba schimbă acum totul: interfața, logurile (și nivelurile Info / Avertisment / Eroare), statusurile din Excel, raportul rulării, rezumatul și documentația pregătirilor. Română = totul în română, English = totul în engleză. Reluarea recunoaște în continuare statusurile în orice limbă.
+- Instrucțiuni: capitolul 18 actualizat, în RO / EN / DE.
+- Teste (Linux, Python 3.12): 96 rulate, 5 sărite; aceleași 3 eșecuri vechi. `test_file_language` adaptat (fișierele urmează limba aplicației, nivelurile din log). Ecranul de Setări doar compilat, nepornit.
+
 ## 4.8.5 — 2026-10-29
 - **🌐 Limba fișierelor** (⚙ Setări → 🌐 Limba): o setare separată de limba interfeței pentru tot ce se scrie în fișiere: coloana de status din Excel-ul rutinei (OK / EROARE / SARIT / OPRIT / IN LUCRU), raportul Excel al rulării, rezumatul și `Documentatie.html` ale pregătirilor, logul exportat în Excel și logurile text ale rulărilor programate. Implicit „Ca interfața” (deci română, ca până acum); se poate alege English sau Deutsch fără să schimbi interfața. Se aplică de la următoarea rulare, fără repornire. Setarea stă în `limba.json` (cheia `fisiere`) și intră în backup.
 - **Reluarea recunoaște statusurile în orice limbă**: un Excel început în română și reluat în engleză (sau invers) sare rândurile OK și întreabă la rândul „IN LUCRU” / „IN PROGRESS” / „IN BEARBEITUNG”.

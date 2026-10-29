@@ -270,7 +270,7 @@ class RunLogExporter:
         from openpyxl.styles import Font, PatternFill
         wb = openpyxl.Workbook()
         ws = wb.active
-        from .lang import ft   # v4.8.5: in limba fisierelor
+        from .lang import ft, level_label   # v4.8.5: in limba aplicatiei
         ws.title = ft("Log")
         headers = [ft(h) for h in ["Ora", "Nivel", "Rand Excel", "Pas", "Mesaj", "Durata (ms)", "Captura"]]
         for c, h in enumerate(headers, 1):
@@ -280,7 +280,7 @@ class RunLogExporter:
         fills = {RprLogLevel.Error: "FFC7CE", RprLogLevel.Warning: "FFEB9C"}
         r = 2
         for e in entries:
-            vals = [e.time.strftime("%Y-%m-%d %H:%M:%S"), ft(str(e.level)), e.excel_row or None, e.node_title,
+            vals = [e.time.strftime("%Y-%m-%d %H:%M:%S"), level_label(e.level), e.excel_row or None, e.node_title,
                     ft(e.message), round(e.duration_ms) if e.duration_ms > 0 else None, e.screenshot]
             for c, v in enumerate(vals, 1):
                 ws.cell(row=r, column=c, value=v)

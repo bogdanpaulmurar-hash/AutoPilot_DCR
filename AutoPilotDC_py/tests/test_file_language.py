@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # ============================================================
-# AutoPilot DC v4.8.5 — Limba fisierelor (Excel, rapoarte, loguri), separata de interfata.
+# AutoPilot DC v4.8.6 — Fisierele (Excel, rapoarte, loguri) in limba aplicatiei.
 #   Rulare:  py -m unittest tests.test_file_language
 # ============================================================
 
@@ -31,27 +31,25 @@ class _TempSettings(unittest.TestCase):
 
 
 class FileLanguageSetting(_TempSettings):
-    def test_default_follows_interface_and_can_differ(self):
-        self.assertEqual("", i18n.saved_file_language())
+    def test_files_follow_the_application_language(self):
         self.assertEqual("ro", i18n.file_language())
-        i18n.save_language("de")
-        self.assertEqual("de", i18n.file_language())          # "ca interfata"
-        i18n.save_file_language("en")
-        self.assertEqual("de", i18n.saved_language())          # interfata nu se schimba
+        self.assertEqual("EROARE: x", ft("EROARE: x"))
+        i18n.save_language("en")
         self.assertEqual("en", i18n.file_language())
-        i18n.save_file_language("")
-        self.assertEqual("de", i18n.file_language())
-
-    def test_translation_independent_of_interface(self):
-        i18n.save_file_language("en")
-        self.assertEqual("ro", i18n.LANG)                      # interfata ramane in romana
-        self.assertEqual("Salveaza", i18n.tr("Salveaza"))
         self.assertEqual("ERROR: x", ft("EROARE: x"))
         self.assertEqual("IN PROGRESS 29.10 10:00", ft("IN LUCRU 29.10 10:00"))
-        i18n.save_file_language("de")
+        i18n.save_language("de")
         self.assertEqual("IN BEARBEITUNG (gestoppt 10:00:00)", ft("IN LUCRU (oprit 10:00:00)"))
-        i18n.save_file_language("ro")
-        self.assertEqual("EROARE: x", ft("EROARE: x"))
+
+    def test_log_levels(self):
+        from rpr.lang import level_label
+        self.assertEqual("Eroare", level_label("Error"))
+        self.assertEqual("Avertisment", level_label("Warning"))
+        i18n.save_language("en")
+        self.assertEqual("Error", level_label("Error"))
+        self.assertEqual("Warning", level_label("Warning"))
+        i18n.save_language("de")
+        self.assertEqual("Fehler", level_label("Error"))
 
     def test_statuses_recognised_in_any_language(self):
         for s in ("IN LUCRU 29.10 10:00", "IN PROGRESS (stopped 10:00:00)", "in bearbeitung 29.10"):
@@ -66,7 +64,7 @@ class FileLanguageExcel(_TempSettings):
     _make_file = test_rpr.Excel._make_file
 
     def test_statuses_written_in_english_and_resumed(self):
-        i18n.save_file_language("en")
+        i18n.save_language("en")
         path = self._make_file()
         try:
             with ExcelTable.open(path, None, 1) as t:   # inceput in romana, reluat in engleza
@@ -87,7 +85,7 @@ class FileLanguageExcel(_TempSettings):
             os.remove(path)
 
     def test_error_status_in_german(self):
-        i18n.save_file_language("de")
+        i18n.save_language("de")
         path = self._make_file()
         try:
             from rpr import ActionNode, RprAction

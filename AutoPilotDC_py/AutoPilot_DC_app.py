@@ -3706,20 +3706,11 @@ class MainWindow:
                          state="readonly", width=14, font=("Segoe UI", 10)).pack(side="left", padx=4),
         ))
         tk.Label(f_lang, text="Se aplica dupa repornirea aplicatiei (se cere confirmarea la Salveaza Setarile).",
-                 bg=C["bg_card"], fg=C["text_dim"], font=("Segoe UI", 9)).pack(anchor="w", padx=12, pady=(0, 4))
-        # v4.8.5: limba fisierelor (Excel, rapoarte, loguri), separata de interfata; se aplica imediat
-        self._file_lang_names = [i18n.tr(n) for _, n in i18n.FILE_LANGUAGES]
-        cur = dict(i18n.FILE_LANGUAGES).get(i18n.saved_file_language(), "Ca interfata")
-        self._var_file_lang = tk.StringVar(value=i18n.tr(cur))
-        row(f_lang, "Limba fisierelor:", lambda p: (
-            ttk.Combobox(p, textvariable=self._var_file_lang, values=self._file_lang_names,
-                         state="readonly", width=14, font=("Segoe UI", 10)).pack(side="left", padx=4),
-        ))
-        tk.Label(f_lang, text="Excel-ul rutinei (coloana de status), raportul rularii, rezumatul pregatirilor si "
-                              "logurile. Se aplica de la urmatoarea rulare, fara repornire.",
+                 bg=C["bg_card"], fg=C["text_dim"], font=("Segoe UI", 9)).pack(anchor="w", padx=12, pady=(0, 2))
+        tk.Label(f_lang, text="Aceeasi limba pentru toata aplicatia: interfata, logurile, statusurile din Excel, "
+                              "rapoartele si documentatia pregatirilor.",
                  bg=C["bg_card"], fg=C["text_dim"], font=("Segoe UI", 9), wraplength=620,
                  justify="left").pack(anchor="w", padx=12, pady=(0, 8))
-
         # ── Locatie fisiere ──
         f_loc = section("📁  Locatie Fisiere")
         for label, path in [
@@ -5420,9 +5411,6 @@ CONTACT: {APP_AUTHOR}
             lang_changed = lang != i18n.saved_language()
             if lang_changed:
                 i18n.save_language(lang)
-            names = getattr(self, "_file_lang_names", [])
-            if self._var_file_lang.get() in names:
-                i18n.save_file_language(i18n.FILE_LANGUAGES[names.index(self._var_file_lang.get())][0])
             self._set_theme(self._var_theme.get(), force_restart=lang_changed)
             # Reporneste hotkeys cu noile setari
             self.hotkey_mgr.stop()

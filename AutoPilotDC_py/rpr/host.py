@@ -32,10 +32,10 @@ class RunLogEntry:
         return f"{self.time:%H:%M:%S} [{self.level}]{row} {self.node_title}: {self.message}"
 
     def file_line(self) -> str:
-        """Randul pentru logul text, in limba fisierelor (v4.8.5)."""
-        from .lang import ft
+        """Randul pentru logul text, in limba aplicatiei (v4.8.5)."""
+        from .lang import ft, level_label
         row = " " + ft(f"rand {self.excel_row}") if self.excel_row > 0 else ""
-        return f"{self.time:%H:%M:%S} [{ft(str(self.level))}]{row} {self.node_title}: {ft(self.message)}"
+        return f"{self.time:%H:%M:%S} [{level_label(self.level)}]{row} {self.node_title}: {ft(self.message)}"
 
 
 class ErrorDecision(Enum):
