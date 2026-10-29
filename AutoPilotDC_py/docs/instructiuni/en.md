@@ -213,6 +213,7 @@ Each chapter briefly explains one procedure, step by step, with an example. Pick
 - **SAP does not respond**: check scripting (chapter 8).
 - **The tray icon is missing**: Settings → Startup and tray shows the status; on Windows 10/11 it may be hidden under the ^ arrow.
 - **Notifications stay off**: Settings → 🔔 Turn notifications back on now.
+- **"Do not disturb" does not turn on or off**: Settings → 🔍 Check Do not disturb (with a "real test" if you want). The report shows the Windows version, the setting found and whether Windows allows restarting the notification service; it is also saved in `loguri\nu_deranja_diagnostic.txt`.
 
 ## 20. Files, folders and colleagues
 
@@ -256,3 +257,14 @@ Each chapter briefly explains one procedure, step by step, with an example. Pick
 - A preparation can be scheduled like a routine: `py -m rpr run "Sandbox.pregatire.json"`.
 
 > Example: a test sandbox with `01_Users`, `02_Roles`, `03_Objects`. You run the preparation in the evening; in the morning you open the documentation and see for every routine how long it took, what it created and its video.
+
+## 24. Backup and restore
+
+1. **⚙ Settings → 💾 Backup and restore → Create backup...**: choose where the `.zip` file is saved (e.g. a USB stick or a Drive folder).
+2. Tick "Include the results too" only if you also want the reports, Studio logs and error screenshots (the file gets bigger).
+3. On another PC or after a reinstall: **♻ Restore from backup...**, choose the file, confirm, then restart AutoPilot DC.
+- Included: the settings, Recorder and Studio routines, the object library with its images, the schedules, the notes, the language, the video settings and the routines folder from 📂 Manager.
+- Not included: the browser profile (logins) and the videos.
+- Before restoring, the current state is saved automatically in `%APPDATA%\AutoPilotDC\backup-automat`. If the routines folder does not exist on the new PC, the routines go to `Studio\rutine\biblioteca` and the Manager points there.
+
+> Example: before changing laptops you create a backup in Drive; on the new laptop you install with INSTALEAZA.bat, restore the backup and have the same routines, objects and settings.

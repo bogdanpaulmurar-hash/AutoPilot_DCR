@@ -3569,6 +3569,31 @@ class MainWindow:
             p, text="🔔 Reporneste notificarile acum", command=_force_notifications_on,
             bg=C["bg_input"], fg=C["text"], relief="flat", font=("Segoe UI", 10), padx=8,
             cursor="hand2").pack(side="left"))
+
+        def _diagnose_dnd():
+            real = messagebox.askyesno(
+                "Nu deranja", "Fac si un test real? \"Nu deranja\" porneste si se opreste o data "
+                              "(cateva secunde).\n\nNu = doar citesc setarile.")
+            self._status_var.set("Verific \"Nu deranja\"...")
+
+            def work():
+                from autopilot_safety import diagnose_dnd
+                try:
+                    text = diagnose_dnd(real)
+                except Exception as ex:  # noqa: BLE001
+                    text = f"Diagnosticul a esuat: {ex}"
+                path = LOGS_DIR / "nu_deranja_diagnostic.txt"
+                try:
+                    LOGS_DIR.mkdir(parents=True, exist_ok=True)
+                    path.write_text(text, encoding="utf-8")
+                except OSError:
+                    pass
+                self.root.after(0, lambda: self._show_text_dialog("Nu deranja — diagnostic", text, str(path)))
+            threading.Thread(target=work, daemon=True).start()
+        row(f_safe, "Nu deranja nu merge?", lambda p: tk.Button(
+            p, text="🔍 Verifica Nu deranja", command=_diagnose_dnd,
+            bg=C["bg_input"], fg=C["text"], relief="flat", font=("Segoe UI", 10), padx=8,
+            cursor="hand2").pack(side="left"))
         row(f_safe, "Sensibilitate preventie:", lambda p: ttk.Combobox(
             p, textvariable=self._var_guard_sens, values=["relaxed", "normal", "strict"],
             state="readonly", width=12).pack(side="left"))
@@ -3696,6 +3721,26 @@ class MainWindow:
                   bg=C["primary"], fg="white", relief="flat",
                   font=("Segoe UI", 10), padx=8, pady=3,
                   cursor="hand2").pack(anchor="w", padx=12, pady=(4, 8))
+
+        # ── 💾 Backup setari + context (backup.py) ──
+        f_bak = section("💾  Backup si restaurare")
+        self._var_bak_results = tk.BooleanVar(value=False)
+        tk.Label(f_bak, text=("Un fisier .zip, salvat unde alegi: setarile, rutinele Recorder si Studio, biblioteca "
+                              "de obiecte, programarile, notitele si folderul rutinelor din 📂 Manager. Fara profilul "
+                              "browserului si fara filme. La restaurare, starea curenta se salveaza intai automat."),
+                 bg=C["bg_card"], fg=C["text_dim"], font=("Segoe UI", 9), wraplength=720,
+                 justify="left").pack(anchor="w", padx=12, pady=(6, 2))
+        tk.Checkbutton(f_bak, text="Include si rezultatele (rapoarte, loguri Studio, capturi de eroare)",
+                       variable=self._var_bak_results, bg=C["bg_card"], fg=C["text"], selectcolor=C["bg_input"],
+                       activebackground=C["bg_card"], activeforeground=C["text"], font=("Segoe UI", 10),
+                       anchor="w").pack(fill="x", padx=12)
+        bak_row = tk.Frame(f_bak, bg=C["bg_card"])
+        bak_row.pack(anchor="w", padx=12, pady=(4, 8))
+        tk.Button(bak_row, text="💾 Creeaza backup...", command=self._create_backup, bg=C["primary"], fg="white",
+                  relief="flat", font=("Segoe UI", 10), padx=8, pady=3, cursor="hand2").pack(side="left", padx=(0, 6))
+        tk.Button(bak_row, text="♻ Restaureaza din backup...", command=self._restore_backup, bg=C["bg_input"],
+                  fg=C["text"], relief="flat", font=("Segoe UI", 10), padx=8, pady=3,
+                  cursor="hand2").pack(side="left")
 
         # ── Buton Salveaza ──
         tk.Frame(inner, bg=C["separator"], height=1).pack(fill="x", padx=8, pady=8)
@@ -5017,6 +5062,73 @@ CONTACT: {APP_AUTHOR}
             self._status_var.set(f"Rutina '{name}' salvata")
         else:
             messagebox.showerror("Eroare", "Nu s-a putut salva rutina.")
+
+    def _create_backup(self):
+        import backup
+        path = filedialog.asksaveasfilename(title="Salveaza backup-ul", initialfile=backup.default_name(),
+                                            defaultextension=".zip", filetypes=[("Backup AutoPilot DC", "*.zip")])
+        if not path:
+            return
+        include = bool(self._var_bak_results.get())
+        self._status_var.set("Creez backup-ul...")
+
+        def work():
+            try:
+                info = backup.create_backup(path, include_results=include)
+                msg = (True, f"Backup creat: {path}\n{info.files} fisiere.")
+            except Exception as ex:  # noqa: BLE001
+                msg = (False, f"Backup-ul nu a putut fi creat:\n{ex}")
+            self.root.after(0, lambda: (messagebox.showinfo if msg[0] else messagebox.showerror)("Backup", msg[1]))
+        threading.Thread(target=work, daemon=True).start()
+
+    def _restore_backup(self):
+        import backup
+        path = filedialog.askopenfilename(title="Alege backup-ul", filetypes=[("Backup AutoPilot DC", "*.zip")])
+        if not path:
+            return
+        try:
+            info = backup.read_info(path)
+        except Exception as ex:  # noqa: BLE001
+            messagebox.showerror("Backup", f"Fisierul nu e un backup AutoPilot DC:\n{ex}")
+            return
+        if not messagebox.askyesno("Restaurare", f"Restaurez backup-ul din {info.created[:16].replace('T', ' ')} "
+                                                 f"(versiunea {info.version}, {info.files} fisiere)?\n\n"
+                                                 "Setarile si rutinele de acum se inlocuiesc; inainte se face "
+                                                 "automat un backup al starii curente."):
+            return
+        try:
+            res = backup.restore_backup(path)
+        except Exception as ex:  # noqa: BLE001
+            messagebox.showerror("Restaurare", f"Restaurarea a esuat:\n{ex}")
+            return
+        notes = ("\n" + "\n".join(res.notes)) if res.notes else ""
+        messagebox.showinfo("Restaurare", f"Restaurat: {res.files} fisiere.{notes}\n\nBackup-ul starii anterioare: "
+                                          f"{res.safety_backup}\n\nReporneste AutoPilot DC ca setarile sa se aplice.")
+
+    def _show_text_dialog(self, title: str, text: str, saved_path: str = ""):
+        """Text de citit si de copiat (ex. diagnosticul "Nu deranja")."""
+        dlg = tk.Toplevel(self.root)
+        dlg.title(title)
+        dlg.configure(bg=C["bg_main"])
+        dlg.transient(self.root)
+        box = tk.Text(dlg, width=90, height=18, wrap="word", bg=C["bg_input"], fg=C["text"],
+                      font=("Consolas", 10), relief="flat")
+        box.insert("1.0", text)
+        box.pack(fill="both", expand=True, padx=10, pady=(10, 4))
+        if saved_path:
+            tk.Label(dlg, text="Salvat si in: " + saved_path, bg=C["bg_main"], fg=C["text_dim"],
+                     font=("Segoe UI", 9)).pack(anchor="w", padx=10)
+        bar = tk.Frame(dlg, bg=C["bg_main"])
+        bar.pack(anchor="e", padx=10, pady=8)
+
+        def copy():
+            self.root.clipboard_clear()
+            self.root.clipboard_append(text)
+            self._status_var.set("Textul a fost copiat.")
+        tk.Button(bar, text="📋 Copiaza", command=copy, bg=C["primary"], fg="white", relief="flat",
+                  font=("Segoe UI", 10, "bold"), padx=10).pack(side="left", padx=3)
+        tk.Button(bar, text="Inchide", command=dlg.destroy, bg=C["bg_input"], fg=C["text"], relief="flat",
+                  font=("Segoe UI", 10), padx=10).pack(side="left", padx=3)
 
     def _open_routine_dialog(self):
         """Deschide dialog de incarcare rutina din fisier."""

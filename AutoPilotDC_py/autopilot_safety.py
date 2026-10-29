@@ -391,6 +391,7 @@ class DoNotDisturb:
     _done = 0           # cereri terminate
     _worker: Optional[threading.Thread] = None
     last_message = ""
+    last_service = ""   # rezultatul ultimei reporniri a serviciului de notificari (pentru diagnostic)
 
     RECOVERY_FILE = os.path.join(os.environ.get("LOCALAPPDATA", os.path.expanduser("~")),
                                  "AutoPilotDC", "dnd_restore.json")
@@ -510,8 +511,14 @@ class DoNotDisturb:
             return False
         cls._restart_service()
         ok = cls._wait_state(True)
-        cls.last_message = ("🌙 Nu deranja activ — notificarile sunt oprite pe durata rularii."
-                            if ok else "Nu deranja a fost setat, dar Windows nu a confirmat inca.")
+        if ok:
+            cls.last_message = "🌙 Nu deranja activ — notificarile sunt oprite pe durata rularii."
+        elif cls.last_service.startswith("refuzat"):
+            cls.last_message = ("Nu deranja a fost setat, dar Windows nu permite repornirea serviciului de "
+                                "notificari (" + cls.last_service + "), deci setarea poate sa nu se aplice. "
+                                "Detalii: Setari → 🔍 Verifica Nu deranja.")
+        else:
+            cls.last_message = "Nu deranja a fost setat, dar Windows nu a confirmat inca."
         return True
 
     @classmethod
@@ -530,8 +537,9 @@ class DoNotDisturb:
             if ok:
                 break
         cls._delete_recovery()
+        why = f" Serviciul de notificari: {cls.last_service}." if cls.last_service.startswith("refuzat") else ""
         cls.last_message = ("Notificarile Windows au fost repornite." if ok else
-                            "Atentie: Windows nu confirma repornirea notificarilor. Verifica in bara de jos "
+                            "Atentie: Windows nu confirma repornirea notificarilor." + why + " Verifica in bara de jos "
                             "(Focus Assist / Nu deranja) sau apasa in Setari \"Reporneste notificarile acum\".")
 
     @staticmethod
@@ -663,10 +671,12 @@ class DoNotDisturb:
             pass
 
     # ── Serviciul de notificari al utilizatorului ────────────────
-    @staticmethod
-    def _restart_service() -> None:
+    @classmethod
+    def _restart_service(cls) -> None:
+        """Reporneste WpnUserService_xxxx al utilizatorului; rezultatul ramane in last_service."""
         import winreg
         names = []
+        cls.last_service = "serviciul nu a fost gasit"
         try:
             with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, r"SYSTEM\CurrentControlSet\Services") as k:
                 i = 0
@@ -683,28 +693,41 @@ class DoNotDisturb:
 
         scm = OpenSCManagerW(None, None, 0x0001)  # SC_MANAGER_CONNECT
         if not scm:
+            cls.last_service = f"refuzat: managerul de servicii (cod {ctypes.get_last_error()})"
             return
+        results = []
         try:
             for n in names:
                 svc = OpenServiceW(scm, n, 0x0010 | 0x0020 | 0x0004)  # START | STOP | QUERY_STATUS
                 if not svc:
-                    continue  # instantele altor sesiuni
+                    err = ctypes.get_last_error()
+                    if err == 5:     # ERROR_ACCESS_DENIED: a noastra, dar fara drept de oprire / pornire
+                        results.append(f"refuzat: {n} (acces interzis)")
+                    continue  # altfel: instantele altor sesiuni
                 try:
                     st = _SERVICE_STATUS()
                     if not QueryServiceStatus(svc, ctypes.byref(st)) or st.dwCurrentState != 4:
                         continue
-                    ControlService(svc, 1, ctypes.byref(st))  # SERVICE_CONTROL_STOP
+                    stopped = bool(ControlService(svc, 1, ctypes.byref(st)))  # SERVICE_CONTROL_STOP
+                    if not stopped:
+                        results.append(f"refuzat: {n} nu se opreste (cod {ctypes.get_last_error()})")
+                        continue
                     DoNotDisturb._wait_service(svc, 1)
                     # pornim mereu la loc: un serviciu de notificari oprit e mai rau decat un DND neaplicat
+                    started = False
                     for _ in range(20):
                         if StartServiceW(svc, 0, None):
+                            started = True
                             break
                         time.sleep(0.1)
                     DoNotDisturb._wait_service(svc, 4)
+                    results.append(f"ok: {n} repornit" if started else f"atentie: {n} oprit, nu a repornit")
                 finally:
                     CloseServiceHandle(svc)
         finally:
             CloseServiceHandle(scm)
+        ok = [r for r in results if r.startswith("ok")]
+        cls.last_service = ok[0] if ok else (results[0] if results else "nicio instanta pornita in sesiunea ta")
 
     @staticmethod
     def _wait_service(svc, state: int) -> None:
@@ -713,6 +736,48 @@ class DoNotDisturb:
             if QueryServiceStatus(svc, ctypes.byref(st)) and st.dwCurrentState == state:
                 return
             time.sleep(0.1)
+
+
+def diagnose_dnd(real_test: bool = False) -> str:
+    """Raport "Nu deranja" pentru depanare (Setari → 🔍 Verifica Nu deranja, sau
+    `python autopilot_safety.py dnd [--test]`). Fara date personale: doar versiunea Windows,
+    setarile gasite si raspunsurile Windows. real_test=True porneste si opreste "Nu deranja" o data."""
+    D = DoNotDisturb
+    out = []
+    if not IS_WINDOWS:
+        return "Nu deranja exista doar pe Windows."
+    try:
+        v = sys.getwindowsversion()
+        out.append(f"Windows: {v.major}.{v.minor} build {v.build}" + (" (Windows 11)" if v.build >= 22000 else ""))
+    except Exception:
+        pass
+    state = D.is_active()
+    out.append("Stare acum: " + {True: "notificari blocate (Nu deranja pornit)", False: "notificari libere",
+                                 None: "necunoscuta (Windows nu raspunde la citire)"}[state])
+    try:
+        found = D._discover()
+    except Exception as ex:  # noqa: BLE001
+        found = []
+        out.append(f"Setari: eroare la citire: {ex}")
+    out.append(f"Setari \"quiet hours\" gasite: {len(found)}")
+    for path, data in found:
+        out.append(f"  - ...\\{path.split(chr(92))[-2][:70]}: {D.read_profile(data)}")
+    out.append("Fisier de recuperare: " + ("DA (o rulare anterioara nu a terminat)" if os.path.exists(D.RECOVERY_FILE)
+                                           else "nu"))
+    out.append(f"Stare interna: cereri active {D._users}, pornit de AutoPilot: {'da' if D._applied else 'nu'}")
+    if real_test:
+        out.append("")
+        out.append("Test real:")
+        t0 = time.monotonic()
+        applied = D.enable(wait=True)
+        out.append(f"  pornire: {D.last_message} (serviciu: {D.last_service or '-'}; "
+                   f"stare: {D.is_active()}; {time.monotonic() - t0:.1f} s)")
+        time.sleep(2)
+        t0 = time.monotonic()
+        D.restore(wait=True)
+        out.append(f"  oprire: {D.last_message if applied else 'nu era nimic de oprit'} "
+                   f"(serviciu: {D.last_service or '-'}; stare: {D.is_active()}; {time.monotonic() - t0:.1f} s)")
+    return "\n".join(out)
 
 
 # ==============================================================================
@@ -1009,3 +1074,8 @@ class RunFrame:
             except Exception:
                 pass
         self._after = self._root.after(2000, self._keep_on_top)
+
+
+if __name__ == "__main__":   # python autopilot_safety.py dnd [--test]
+    if len(sys.argv) > 1 and sys.argv[1] == "dnd":
+        print(diagnose_dnd("--test" in sys.argv))

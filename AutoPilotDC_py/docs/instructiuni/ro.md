@@ -211,6 +211,7 @@ Fiecare capitol explică pe scurt o procedură, pas cu pas, cu un exemplu. Alege
 - **SAP nu răspunde**: verifică scripting-ul (capitolul 8).
 - **Pictograma din tray lipsește**: Setări → Pornire și tray arată starea; pe Windows 10/11 poate fi ascunsă sub săgeata ^.
 - **Notificările rămân oprite**: Setări → 🔔 Repornește notificările acum.
+- **„Nu deranja” nu pornește sau nu se oprește**: Setări → 🔍 Verifică Nu deranja (cu „test real” dacă vrei). Raportul arată versiunea Windows, setarea găsită și dacă Windows permite repornirea serviciului de notificări; e salvat și în `loguri\nu_deranja_diagnostic.txt`.
 
 ## 20. Fișiere, foldere și colegi
 
@@ -254,3 +255,14 @@ Fiecare capitol explică pe scurt o procedură, pas cu pas, cu un exemplu. Alege
 - O pregătire se poate programa ca o rutină: `py -m rpr run "Sandbox.pregatire.json"`.
 
 > Exemplu: sandbox de test cu `01_Useri`, `02_Roluri`, `03_Obiecte`. Rulezi pregătirea seara; dimineața deschizi documentația și vezi pentru fiecare rutină cât a durat, ce a creat și filmul ei.
+
+## 24. Backup și restaurare
+
+1. **⚙ Setări → 💾 Backup și restaurare → Creează backup...**: alegi unde se salvează fișierul `.zip` (ex. un stick sau un folder din Drive).
+2. Bifează „Include și rezultatele” doar dacă vrei și rapoartele, logurile Studio și capturile erorilor (fișierul crește).
+3. Pe alt PC sau după o reinstalare: **♻ Restaurează din backup...**, alegi fișierul, confirmi, apoi repornești AutoPilot DC.
+- Intră: setările, rutinele Recorder și Studio, biblioteca de obiecte cu imaginile ei, programările, notițele, limba, setările video și folderul rutinelor din 📂 Manager.
+- Nu intră: profilul browserului (login-urile) și filmele.
+- Înainte de restaurare, starea curentă se salvează automat în `%APPDATA%\AutoPilotDC\backup-automat`. Dacă folderul rutinelor nu există pe PC-ul nou, rutinele ajung în `Studio\rutine\biblioteca`, iar Managerul e mutat acolo.
+
+> Exemplu: înainte de schimbarea laptopului creezi un backup în Drive; pe laptopul nou instalezi cu INSTALEAZA.bat, apoi restaurezi backup-ul și ai aceleași rutine, obiecte și setări.
