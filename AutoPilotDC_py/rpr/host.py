@@ -31,6 +31,12 @@ class RunLogEntry:
         row = f" rand {self.excel_row}" if self.excel_row > 0 else ""
         return f"{self.time:%H:%M:%S} [{self.level}]{row} {self.node_title}: {self.message}"
 
+    def file_line(self) -> str:
+        """Randul pentru logul text, in limba fisierelor (v4.8.5)."""
+        from .lang import ft
+        row = " " + ft(f"rand {self.excel_row}") if self.excel_row > 0 else ""
+        return f"{self.time:%H:%M:%S} [{ft(str(self.level))}]{row} {self.node_title}: {ft(self.message)}"
+
 
 class ErrorDecision(Enum):
     """Decizia utilizatorului cand un pas esueaza (politica Intreaba)."""
@@ -122,7 +128,7 @@ class HeadlessRunHost(RunHost):
         with self._lock:
             self.entries.append(entry)
         try:
-            self._write(str(entry))
+            self._write(entry.file_line())
         except Exception:
             pass
 

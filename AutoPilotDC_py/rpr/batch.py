@@ -31,6 +31,7 @@ from dataclasses import dataclass, field
 from typing import Callable, Dict, List, Optional, Tuple
 
 from .model import Routine, sanitize_name
+from .lang import file_language
 from .report import REPORT_KEY, ReportSettings, _fmt_dur, _t, _walk, set_video_folder, video_folder
 
 PREP_EXT = ".pregatire.json"
@@ -379,7 +380,7 @@ def write_summary_xlsx(res: PrepResult, prep: Preparation) -> str:
     end = res.end or _dt.datetime.now()
     info = [("Pregatire", prep.name), ("Descriere", prep.description),
             ("Start", res.start.strftime("%d.%m.%Y %H:%M:%S")), ("Sfarsit", end.strftime("%d.%m.%Y %H:%M:%S")),
-            ("Durata", _fmt_dur((end - res.start).total_seconds())), ("Rezultat", res.message)]
+            ("Durata", _fmt_dur((end - res.start).total_seconds())), ("Rezultat", _t(res.message))]
     for k, v in info:
         ws.append([_t(k), v])
         ws.cell(row=ws.max_row, column=1).font = bold
@@ -397,7 +398,7 @@ def write_summary_xlsx(res: PrepResult, prep: Preparation) -> str:
     for n, s in enumerate(res.steps, 1):
         e = s.end or s.start
         ws.append([n, s.name, s.path, s.start.strftime("%d.%m.%Y %H:%M:%S"), e.strftime("%d.%m.%Y %H:%M:%S"),
-                   _fmt_dur((e - s.start).total_seconds()), s.status, s.message, s.steps, s.errors, s.rows_ok,
+                   _fmt_dur((e - s.start).total_seconds()), _t(s.status), _t(s.message), s.steps, s.errors, s.rows_ok,
                    s.rows_failed, "", ""])
         r = ws.max_row
         if s.status in fills:
@@ -419,7 +420,7 @@ def write_summary_xlsx(res: PrepResult, prep: Preparation) -> str:
         if s.routine is None:
             continue
         for depth, node in _walk(s.routine.steps):
-            ds.append([s.name, _t(node.KIND_LABEL), "    " * depth + ("" if node.enabled else "(dezactivat) ") + node.title])
+            ds.append([s.name, _t(node.KIND_LABEL), "    " * depth + ("" if node.enabled else _t("(dezactivat)") + " ") + node.title])
 
     path = os.path.join(res.folder, f"Pregatire_{sanitize_name(prep.name) or 'Pregatire'}.xlsx")
     wb.save(path)
@@ -435,14 +436,14 @@ def write_documentation(res: PrepResult, prep: Preparation) -> str:
            "text-align:left;vertical-align:top}th{background:#DDEBF7}.OK{background:#C6EFCE}"
            ".EROARE,.LIPSA{background:#FFC7CE}.OPRIT,.SARIT{background:#FFEB9C}"
            "pre{background:#f6f8fa;padding:8px;white-space:pre-wrap;font-family:Consolas,monospace;font-size:13px}")
-    out = [f"<!doctype html><html lang='ro'><head><meta charset='utf-8'><title>{e(prep.name)}</title>"
+    out = [f"<!doctype html><html lang='{file_language()}'><head><meta charset='utf-8'><title>{e(prep.name)}</title>"
            f"<style>{css}</style></head><body>",
            f"<h1>{e(prep.name)}</h1>"]
     if prep.description:
         out.append(f"<p>{e(prep.description)}</p>")
     out.append("<table>")
     for k, v in [("Start", res.start.strftime("%d.%m.%Y %H:%M:%S")), ("Sfarsit", end.strftime("%d.%m.%Y %H:%M:%S")),
-                 ("Durata", _fmt_dur((end - res.start).total_seconds())), ("Rezultat", res.message)]:
+                 ("Durata", _fmt_dur((end - res.start).total_seconds())), ("Rezultat", _t(res.message))]:
         out.append(f"<tr><th>{e(_t(k))}</th><td>{e(v)}</td></tr>")
     if res.summary:
         out.append(f"<tr><th>{e(_t('Rezumat Excel'))}</th><td><a href='{_uri(res.summary)}'>{e(os.path.basename(res.summary))}"
@@ -452,13 +453,13 @@ def write_documentation(res: PrepResult, prep: Preparation) -> str:
     for n, s in enumerate(res.steps, 1):
         d = _fmt_dur(((s.end or s.start) - s.start).total_seconds())
         out.append(f"<tr><td>{n}</td><td><a href='#r{n}'>{e(s.name)}</a></td><td>{s.start:%H:%M:%S}</td><td>{d}</td>"
-                   f"<td class='{e(s.status)}'>{e(s.status)}</td><td>{e(s.message)}</td></tr>")
+                   f"<td class='{e(s.status)}'>{e(_t(s.status))}</td><td>{e(_t(s.message))}</td></tr>")
     out.append("</table>")
     for n, s in enumerate(res.steps, 1):
         out.append(f"<h2 id='r{n}'>{n}. {e(s.name)}</h2>")
         if s.routine is not None and s.routine.description:
             out.append(f"<p>{e(s.routine.description)}</p>")
-        rows = [("Fisier", e(s.path)), ("Status", f"<span class='{e(s.status)}'>{e(s.status)}</span> {e(s.message)}"),
+        rows = [("Fisier", e(s.path)), ("Status", f"<span class='{e(s.status)}'>{e(_t(s.status))}</span> {e(_t(s.message))}"),
                 ("Start", f"{s.start:%d.%m.%Y %H:%M:%S}"),
                 ("Durata", _fmt_dur(((s.end or s.start) - s.start).total_seconds())),
                 ("Pasi executati / erori", f"{s.steps} / {s.errors}")]
@@ -477,7 +478,7 @@ def write_documentation(res: PrepResult, prep: Preparation) -> str:
                     f"<tr><td>{e(k)}</td><td>{e(v)}</td></tr>" for k, v in s.routine.variables.items()) + "</table>")
             lines = []
             for depth, node in _walk(s.routine.steps):
-                text = "    " * depth + ("(dezactivat) " if not node.enabled else "") + node.title
+                text = "    " * depth + (_t("(dezactivat)") + " " if not node.enabled else "") + node.title
                 if node.comment.strip():
                     text += f"   // {node.comment}"
                 lines.append(text)
