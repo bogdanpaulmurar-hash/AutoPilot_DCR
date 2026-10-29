@@ -2,6 +2,12 @@
 
 Pornirea aplicației: **`AutoPilot_DC.pyw`** (sau scurtătura „AutoPilot DC” de pe Desktop). Numele fișierelor nu se mai schimbă de la o versiune la alta, deci scurtăturile și pornirea cu Windows rămân valabile.
 
+## 4.8.4 — 2026-10-29
+- **Reluare după o închidere neașteptată**: cât timp rulează o rutină sau o pregătire (din Studio sau programată), AutoPilot DC ține un fișier mic de stare în `Studio\in-curs`. Dacă aplicația sau PC-ul se închide în mijlocul rulării, la următoarea pornire apare întrebarea **Reiau rularea / Doar deschid / Nu, renunț**. La reluare, rândurile Excel cu OK sunt sărite, iar la o pregătire și rutinele deja terminate. Rutinele cu modificări nesalvate se refac din copia făcută la pornirea rulării. Dacă închizi tu aplicația în timpul rulării, nu se oferă reluarea.
+- **Rândul „IN LUCRU”**: înainte de pașii unui rând, coloana de status primește „IN LUCRU zz.ll hh:mm” (portocaliu), salvat imediat. La STOP în mijlocul rândului rămâne „IN LUCRU (oprit …)” (înainte era „OPRIT”). La o rulare nouă, pentru un astfel de rând se întreabă: **Refac rândul / E făcut, marchez OK / Opresc rutina** (fără interfață: refacere).
+- Instrucțiuni: capitolul 25, în RO / EN / DE.
+- Teste (Linux, Python 3.12): 100 rulate, 12 sărite; aceleași 3 eșecuri vechi. Teste noi: `test_resume` (starea rulării, detectarea, pregătire reluată, rulare fără interfață) și întrebarea pentru rândul „IN LUCRU”. Verificat și în Studio (Xvfb): reluare rutină salvată, nesalvată și pregătire.
+
 ## 4.8.3 — 2026-10-29
 - **💾 Raportul Excel se salvează din mers**, după fiecare rând / repetare (cel mult o dată la 5 s; la rulări mari mai rar), în același fișier care se completează la final. Dacă aplicația se blochează sau PC-ul se oprește, rămâne tot ce s-a făcut. Dacă fișierul e deschis în Excel la final, raportul final primește sufixul `_final`.
 - **Filmele pe rutină**: ⚙ Setări rutină → 🎥 Filmele rutinei (gol = folderul din Setări → Video); la pregătiri, filmele stau lângă rezumat (`filme`), dacă rutina nu are alt folder.

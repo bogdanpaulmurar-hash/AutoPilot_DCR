@@ -318,6 +318,33 @@ class Excel(unittest.TestCase):
         finally:
             os.remove(path)
 
+    def test_unfinished_row_asks_redo_mark_ok_or_stop(self):
+        from rpr.engine import IN_PROGRESS, UNFINISHED_BUTTONS
+        for answer, expected_runs, status_ok in ((UNFINISHED_BUTTONS[0], 3, "OK"),
+                                                 (UNFINISHED_BUTTONS[1], 2, "OK (verificat manual)"),
+                                                 (UNFINISHED_BUTTONS[2], 1, IN_PROGRESS)):
+            path = self._make_file()
+            try:
+                # prima rulare: randul 2 OK, randul 3 ramas "IN LUCRU" (aplicatia s-a inchis)
+                with ExcelTable.open(path, None, 1) as t:
+                    t.write(2, "Status", "OK")
+                    t.write(3, "Status", f"{IN_PROGRESS} 29.10 10:00")
+                    t.save()
+                engine, _, host, _ = create()
+                host.answers = [answer]
+                each = ForEachRowNode(file_path=path, key_column="Cod", status_column="Status")
+                each.body.append(SetVariableNode(name="Nr", operation=VariableOperation.Increment))
+                r = engine.run(new_routine(SetVariableNode(name="Nr", value="1"), each))
+                self.assertEqual(str(expected_runs), r.final_variables["Nr"], answer)
+                with ExcelTable.open(path, None, 1) as check:
+                    self.assertTrue(check.get_cell(3, "Status").startswith(status_ok), check.get_cell(3, "Status"))
+                    if answer != UNFINISHED_BUTTONS[2]:
+                        self.assertEqual("OK", check.get_cell(4, "Status"))
+                    else:
+                        self.assertEqual("", check.get_cell(4, "Status"))
+            finally:
+                os.remove(path)
+
     def test_locked_or_missing_file_gives_clear_message(self):
         engine, *_ = create()
         result = engine.run(new_routine(ForEachRowNode(file_path=r"C:\nu\exista.xlsx")))

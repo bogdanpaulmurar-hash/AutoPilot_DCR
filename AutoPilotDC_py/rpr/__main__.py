@@ -27,6 +27,7 @@ from .legacy import execute_legacy_step
 from .storage import RepositoryStore, RoutineStore, RprPaths, RunLogExporter
 from .drivers.base import DriverProvider
 from .model import sanitize_name
+from . import resume
 from .batch import PREP_EXT, Preparation, PreparationRunner
 
 
@@ -128,10 +129,17 @@ def run_file(path: str, variables: dict, show_frame: bool = True, announce: bool
     if mutex is None:
         notify("AutoPilot DC — rulare amanata", f"{os.path.basename(path)}: alta rutina programata ruleaza acum.", False)
         return 3
-    if path.lower().endswith(PREP_EXT):
-        code, name, msg, log = _run_preparation(path, show_frame, started)
-    else:
-        code, name, msg, log = _run_file(path, variables, show_frame, started)
+    # starea rularii: daca procesul / PC-ul se inchide brusc, aplicatia ofera reluarea la pornire
+    is_prep = path.lower().endswith(PREP_EXT)
+    state = resume.begin(resume.KIND_PREP if is_prep else resume.KIND_ROUTINE, path,
+                         os.path.splitext(os.path.basename(path))[0], variables=variables)
+    try:
+        if is_prep:
+            code, name, msg, log = _run_preparation(path, show_frame, started, state)
+        else:
+            code, name, msg, log = _run_file(path, variables, show_frame, started)
+    finally:
+        resume.end(state)
     if announce:
         try:
             from .schedule import add_history
@@ -142,7 +150,7 @@ def run_file(path: str, variables: dict, show_frame: bool = True, announce: bool
     return code
 
 
-def _run_preparation(path: str, show_frame: bool, started) -> tuple:
+def _run_preparation(path: str, show_frame: bool, started, state=None, start_index: int = 0) -> tuple:
     """Pregatire fara interfata: fiecare rutina ca la rularea programata (film, raport), plus rezumat + documentatie."""
     try:
         prep = Preparation.load(path)
@@ -155,8 +163,9 @@ def _run_preparation(path: str, show_frame: bool, started) -> tuple:
                   force_video=prep.video, log_folder=folder)
         return out.get("result"), out.get("video", "")
 
-    runner = PreparationRunner(prep, run_one, RprPaths.output())
-    res = runner.run()
+    runner = PreparationRunner(prep, run_one, RprPaths.output(),
+                               on_item_done=lambda done: resume.update(state, done))
+    res = runner.run(start_index)
     return (0 if res.success else 1), prep.name, res.message, res.summary or res.documentation
 
 

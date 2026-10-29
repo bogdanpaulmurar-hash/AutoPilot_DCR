@@ -79,6 +79,8 @@ class _RowContext:
     row: int = 0
 
 
+IN_PROGRESS = "IN LUCRU"            # statusul randului cat timp se lucreaza la el
+UNFINISHED_BUTTONS = ("Refac randul", "E facut, marchez OK", "Opresc rutina")
 VIDEO_COLUMN_KEY = "video_column"   # ForEachRowNode.extra: coloana cu linkul filmului ("" = fara); implicit "Film"
 
 _SAP_NO_STATUS_CHECK = {RprAction.SapReadStatusBar, RprAction.SapConnect, RprAction.Highlight,
@@ -624,11 +626,26 @@ class RprEngine:
                         break
                     continue
 
-                # 2. reluare: sarim randurile deja OK
+                # 2. reluare: sarim randurile deja OK; un rand ramas "IN LUCRU" (aplicatia s-a inchis / STOP
+                #    in mijlocul lui) poate fi deja partial facut in sistem -> intrebam inainte sa-l refacem
                 has_status = bool(f.status_column.strip())
-                if has_status and f.skip_completed_rows and table.get_cell(row, f.status_column).upper().startswith("OK"):
+                current = table.get_cell(row, f.status_column) if has_status else ""
+                if has_status and f.skip_completed_rows and current.upper().startswith("OK"):
                     self._result.rows_skipped += 1
                     continue
+                if has_status and current.upper().startswith(IN_PROGRESS):
+                    answer = self._host.ask(self._routine.name,
+                                            f"Randul {row} a ramas neterminat la rularea anterioara ({current}). "
+                                            "Poate fi deja partial facut in sistem.", list(UNFINISHED_BUTTONS))
+                    self._check_stop()
+                    self._log(RprLogLevel.Warning, f, f"Rand {row} neterminat anterior: {answer}")
+                    if answer == UNFINISHED_BUTTONS[1]:
+                        table.write(row, f.status_column, "OK (verificat manual)", CellColor.Green)
+                        table.save()
+                        self._result.rows_skipped += 1
+                        continue
+                    if answer == UNFINISHED_BUTTONS[2]:
+                        raise _StopSignal(f"Oprit la randul {row} (neterminat anterior).", False)
 
                 table.load_row_into(self._vars, f.row_variable, row)
                 self._log(RprLogLevel.Info, f, f"Rand {row}")
@@ -636,6 +653,13 @@ class RprEngine:
                     self._host.row_started(row, table.sheet_name)
                 except Exception:  # noqa: BLE001 — gazda (ex. video) nu are voie sa opreasca rutina
                     pass
+                if has_status:   # marcaj salvat imediat: dupa o inchidere brusca se stie ce rand era in lucru
+                    table.write(row, f.status_column, f"{IN_PROGRESS} {_dt.datetime.now():%d.%m %H:%M}", CellColor.Orange)
+                    if f.save_after_each_row:
+                        try:
+                            table.save()
+                        except RprStepException as ex:   # fisier deschis in Excel: continuam, statusul vine la final
+                            self._log(RprLogLevel.Warning, f, str(ex))
                 key = table.get_cell(row, f.key_column) if f.key_column.strip() else ""
                 film = self._video()   # filmul randului (daca se inregistreaza): cale + secunda de start
                 item = self._report_item_start(f"Rand {row}" + (f": {key}" if key else ""))
@@ -668,8 +692,9 @@ class RprEngine:
                     self._result.rows_failed += 1
                     rethrow = e
                 except Cancelled:
-                    if has_status:
-                        table.write(row, f.status_column, f"OPRIT {_dt.datetime.now():%H:%M:%S}", CellColor.Yellow)
+                    if has_status:   # oprit in mijlocul randului: ramane "IN LUCRU" (la reluare se intreaba)
+                        table.write(row, f.status_column, f"{IN_PROGRESS} (oprit {_dt.datetime.now():%H:%M:%S})",
+                                    CellColor.Yellow)
                     raise
 
                 try:

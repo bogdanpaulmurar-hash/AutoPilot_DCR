@@ -2501,6 +2501,7 @@ class MainWindow:
             if self._start_in_tray:
                 print("[tray] pornire in tray imposibila, deschid fereastra: " + self.tray.last_error)
             self.root.after(300, _bring_to_front)
+        self.root.after(1500, self._offer_resume)   # v4.8.4: rulare intrerupta de o inchidere neasteptata?
         self.root.mainloop()
 
     # ==========================================================================
@@ -5561,6 +5562,42 @@ CONTACT: {APP_AUTHOR}
                              "Iesire din meniul pictogramei il inchide.")
         return True
 
+    def _offer_resume(self):
+        """v4.8.4: daca aplicatia (sau PC-ul) s-a inchis in mijlocul unei rulari, oferim reluarea ei."""
+        try:
+            from rpr import resume
+            states = resume.pending()
+        except Exception:  # noqa: BLE001
+            return
+        if not states:
+            return
+        st = states[0]
+        for old in states[1:]:   # oferim doar ultima rulare intrerupta
+            resume.discard(old)
+        prep = st.kind == resume.KIND_PREP
+        if self._start_in_tray:
+            self._show_from_tray()
+        from studio_ui import choice_dialog
+        text = (f"AutoPilot DC s-a inchis neasteptat in timpul pregatirii \"{st.name}\" (pornita la {st.started_text})."
+                if prep else
+                f"AutoPilot DC s-a inchis neasteptat in timpul rutinei \"{st.name}\" (pornita la {st.started_text}).")
+        detail = i18n.tr("La reluare, randurile Excel terminate (OK) sunt sarite. Pentru randul ramas IN LUCRU "
+                         "esti intrebat daca il refaci, il marchezi facut sau opresti.")
+        if prep:
+            detail += "\n" + i18n.tr(f"Rutinele terminate ale pregatirii ({st.done_items}) sunt sarite.")
+        buttons = ["Reiau rularea", "Doar deschid", "Nu, renunt"]
+        ans = choice_dialog(self.root, "Reluare dupa inchidere", text, buttons, detail, C=C)
+        if ans == buttons[2]:
+            resume.discard(st)
+            return
+        self._set_mode("studio")
+        if self._studio is None:
+            return
+        if ans == buttons[0]:
+            self._studio.resume_interrupted(st)
+        else:
+            self._studio.resume_interrupted(st, run=False)
+
     def _show_from_tray(self):
         self.root.deiconify()
         self.root.lift()
@@ -5584,6 +5621,7 @@ CONTACT: {APP_AUTHOR}
         if self._studio is not None:
             if self._studio.busy:
                 self._studio.stop()
+                self._studio.forget_resume()   # inchidere ceruta de utilizator: nu e o inchidere neasteptata
             if not self._studio.confirm_discard():
                 return
             self._studio.shutdown()   # opreste inregistrarea, inchide browserul

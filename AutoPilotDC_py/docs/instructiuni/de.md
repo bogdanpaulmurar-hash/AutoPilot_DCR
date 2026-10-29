@@ -270,3 +270,14 @@ Jedes Kapitel erklärt kurz einen Ablauf, Schritt für Schritt, mit einem Beispi
 - Vor der Wiederherstellung wird der aktuelle Stand automatisch in `%APPDATA%\AutoPilotDC\backup-automat` gesichert. Gibt es den Routinenordner auf dem neuen PC nicht, landen die Routinen in `Studio\rutine\biblioteca` und der Manager zeigt dorthin.
 
 > Beispiel: Vor dem Laptopwechsel erstellst du eine Sicherung in Drive; auf dem neuen Laptop installierst du mit INSTALEAZA.bat, stellst die Sicherung wieder her und hast dieselben Routinen, Objekte und Einstellungen.
+
+## 25. Fortsetzen nach einem unerwarteten Beenden
+
+1. Solange eine Routine an einer Excel-Zeile arbeitet, zeigt die Statusspalte „IN LUCRU“ (in Arbeit, orange); am Ende wird daraus OK oder EROARE.
+2. Wird AutoPilot DC oder der PC mitten in einem Lauf beendet, erscheint beim nächsten Start die Frage **Fortsetzen nach dem Beenden**: **Lauf fortsetzen**, **Nur öffnen** oder **Nein, verwerfen**.
+3. Beim Fortsetzen werden Zeilen mit OK übersprungen. Für die Zeile mit „IN LUCRU“ wählst du: **Zeile neu ausführen**, **Ist erledigt, als OK markieren** (wenn du es im System geprüft hast) oder **Routine stoppen**.
+- Bei einer Vorbereitung werden auch die fertigen Routinen übersprungen; die unterbrochene Routine macht bei ihrer Zeile weiter.
+- Dieselbe Frage erscheint, wenn du die Routine von Hand neu startest und eine Zeile auf „IN LUCRU“ blieb (z. B. nach STOP).
+- Schritt-für-Schritt-Läufe werden nicht fortgesetzt. Beendest du die Anwendung selbst während eines Laufs, wird kein Fortsetzen angeboten.
+
+> Beispiel: Die Routine legt 200 Benutzer an und bei Zeile 120 fällt der Strom aus. Beim Neustart wählst du „Lauf fortsetzen“; die Zeilen 2–119 werden übersprungen, du prüfst den Benutzer aus Zeile 120 im System und wählst „Ist erledigt, als OK markieren“ oder „Zeile neu ausführen“.

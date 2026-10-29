@@ -268,3 +268,14 @@ Fiecare capitol explică pe scurt o procedură, pas cu pas, cu un exemplu. Alege
 - Înainte de restaurare, starea curentă se salvează automat în `%APPDATA%\AutoPilotDC\backup-automat`. Dacă folderul rutinelor nu există pe PC-ul nou, rutinele ajung în `Studio\rutine\biblioteca`, iar Managerul e mutat acolo.
 
 > Exemplu: înainte de schimbarea laptopului creezi un backup în Drive; pe laptopul nou instalezi cu INSTALEAZA.bat, apoi restaurezi backup-ul și ai aceleași rutine, obiecte și setări.
+
+## 25. Reluare după o închidere neașteptată
+
+1. Cât timp o rutină lucrează pe un rând Excel, coloana de status arată „IN LUCRU” (portocaliu); la final devine OK sau EROARE.
+2. Dacă AutoPilot DC sau PC-ul se închide în mijlocul unei rulări, la următoarea pornire apare întrebarea **Reluare după închidere**: **Reiau rularea**, **Doar deschid** sau **Nu, renunț**.
+3. La reluare, rândurile cu OK sunt sărite. Pentru rândul rămas „IN LUCRU” alegi: **Refac rândul**, **E făcut, marchez OK** (dacă ai verificat în sistem) sau **Opresc rutina**.
+- La o pregătire se sar și rutinele deja terminate; rutina întreruptă continuă de la rândul ei.
+- Aceeași întrebare apare și când pornești din nou rutina de mână, dacă un rând a rămas „IN LUCRU” (ex. după STOP).
+- Rularea pas cu pas nu se reia. Dacă închizi tu aplicația în timpul rulării, nu se oferă reluarea.
+
+> Exemplu: rutina creează 200 de useri și se oprește curentul la rândul 120. La repornire alegi „Reiau rularea”; rândurile 2–119 sunt sărite, verifici în sistem userul de pe rândul 120 și alegi „E făcut, marchez OK” sau „Refac rândul”.

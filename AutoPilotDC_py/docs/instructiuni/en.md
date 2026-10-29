@@ -270,3 +270,14 @@ Each chapter briefly explains one procedure, step by step, with an example. Pick
 - Before restoring, the current state is saved automatically in `%APPDATA%\AutoPilotDC\backup-automat`. If the routines folder does not exist on the new PC, the routines go to `Studio\rutine\biblioteca` and the Manager points there.
 
 > Example: before changing laptops you create a backup in Drive; on the new laptop you install with INSTALEAZA.bat, restore the backup and have the same routines, objects and settings.
+
+## 25. Resume after an unexpected close
+
+1. While a routine works on an Excel row, the status column shows "IN LUCRU" (in progress, orange); at the end it becomes OK or EROARE.
+2. If AutoPilot DC or the PC closes in the middle of a run, the next start shows the question **Resume after closing**: **Resume the run**, **Just open it** or **No, discard**.
+3. When resuming, rows with OK are skipped. For the row left "IN LUCRU" you choose: **Redo the row**, **It is done, mark OK** (if you checked in the system) or **Stop the routine**.
+- In a preparation the routines already finished are skipped too; the interrupted routine continues from its row.
+- The same question appears when you start the routine again by hand and a row was left "IN LUCRU" (e.g. after STOP).
+- Step-by-step runs are not resumed. If you close the application yourself during a run, no resume is offered.
+
+> Example: the routine creates 200 users and the power goes off at row 120. On restart you choose "Resume the run"; rows 2–119 are skipped, you check the user from row 120 in the system and choose "It is done, mark OK" or "Redo the row".
