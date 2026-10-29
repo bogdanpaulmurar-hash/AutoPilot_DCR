@@ -43,6 +43,7 @@ from rpr.model import (ACTIONS, ActionNode, BreakNode, CellColor, CompareOperato
                        WaitMode, WaitNode, WriteExcelNode, action_info, flatten, sanitize_name,
                        OBJECT_TYPES, CONTAINER_TYPES, SiteGroup)
 from rpr import report as rpr_report
+from rpr import resume as rpr_resume
 from rpr.storage import Examples, ExcelInfo, RepositoryStore, RoutineStore, RprPaths, RunLogExporter
 
 try:
@@ -502,6 +503,7 @@ class StudioPanel(tk.Frame):
         self._log_entries: List[RunLogEntry] = []
 
         self._prep_runner = None    # pregatirea care ruleaza (📂 Manager de rutine)
+        self._resume_state = None   # rpr/resume.py: starea rularii, pentru reluare dupa o inchidere neasteptata
 
         self._styles()
         self._build()
@@ -1762,7 +1764,7 @@ class StudioPanel(tk.Frame):
             except Exception as ex:  # noqa: BLE001
                 messagebox.showerror("Studio RPR", str(ex), parent=self)
 
-    def run(self, step_mode: bool = False):
+    def run(self, step_mode: bool = False, variables: Optional[Dict[str, str]] = None):
         if self.busy:
             if step_mode:
                 self.step_once()
@@ -1797,6 +1799,10 @@ class StudioPanel(tk.Frame):
         dnd = bool(routine.settings.do_not_disturb and safety and self._dnd_allowed())
         if dnd:
             safety.DoNotDisturb.enable(wait=False)   # cererea se inregistreaza imediat, pe firul interfetei
+        if not step_mode:   # daca aplicatia se inchide brusc, la pornire se ofera reluarea
+            unsaved = self.dirty or not self.routine_path
+            self._resume_state = rpr_resume.begin(rpr_resume.KIND_ROUTINE, self.routine_path or "", routine.name,
+                                                  routine=routine.to_dict() if unsaved else None, variables=variables)
 
         def work():
             result = None
@@ -1805,7 +1811,7 @@ class StudioPanel(tk.Frame):
                     self.post("status", "🌙 Activez \"Nu deranja\" (cateva secunde)...")
                     safety.DoNotDisturb.wait_settled(timeout=20)
                     self.post("status", safety.DoNotDisturb.last_message)
-                result = engine.run(routine)
+                result = engine.run(routine, variables) if variables else engine.run(routine)
             except Exception as ex:  # noqa: BLE001
                 from rpr.host import RunResult
                 result = RunResult(success=False, message=str(ex))
@@ -1818,6 +1824,8 @@ class StudioPanel(tk.Frame):
 
     def _run_finished(self, result):
         self.busy = False
+        rpr_resume.end(self._resume_state)
+        self._resume_state = None
         if self.video is not None:
             try:
                 self.video.run_finished()
@@ -1874,8 +1882,9 @@ class StudioPanel(tk.Frame):
         from routine_manager_ui import RoutineManagerDialog
         RoutineManagerDialog(self)
 
-    def run_preparation(self, prep):
-        """Ruleaza rutinele pregatirii una dupa alta, prin Studio: intrebari, preventie, Pauza / STOP raman active."""
+    def run_preparation(self, prep, start_index: int = 0):
+        """Ruleaza rutinele pregatirii una dupa alta, prin Studio: intrebari, preventie, Pauza / STOP raman active.
+        start_index > 0: reluare dupa o inchidere neasteptata (primele rutine erau terminate)."""
         if self.busy:
             return
         from rpr.batch import PreparationRunner
@@ -1918,8 +1927,11 @@ class StudioPanel(tk.Frame):
                         film = ""
             return result, film
 
+        state = rpr_resume.begin(rpr_resume.KIND_PREP, prep.path, prep.name)
+        self._resume_state = state
         runner = PreparationRunner(prep, run_one, RprPaths.output(), load_routine=load,
-                                   on_progress=lambda i, n, name: self.post("status", f"▶ Pregatire {i}/{n}: {name}"))
+                                   on_progress=lambda i, n, name: self.post("status", f"▶ Pregatire {i}/{n}: {name}"),
+                                   on_item_done=lambda done: rpr_resume.update(state, done))
         self._prep_runner = runner
 
         def work():
@@ -1927,7 +1939,7 @@ class StudioPanel(tk.Frame):
             try:
                 if dnd:
                     safety.DoNotDisturb.wait_settled(timeout=20)
-                res = runner.run()
+                res = runner.run(start_index)
             except Exception as ex:  # noqa: BLE001
                 self.post("status", f"Pregatirea s-a oprit: {ex}")
             finally:
@@ -1939,6 +1951,8 @@ class StudioPanel(tk.Frame):
     def _prep_finished(self, res):
         self.busy = False
         self._prep_runner = None
+        rpr_resume.end(self._resume_state)
+        self._resume_state = None
         if self._run_control:
             self._run_control.destroy()
             self._run_control = None
@@ -1957,6 +1971,56 @@ class StudioPanel(tk.Frame):
                 os.startfile(target)  # type: ignore[attr-defined]
             except Exception as ex:  # noqa: BLE001
                 self.set_status(str(ex))
+
+    def forget_resume(self):
+        """Rularea a fost oprita de utilizator (ex. inchide aplicatia): nu se mai ofera reluarea la pornire."""
+        rpr_resume.end(self._resume_state)
+        self._resume_state = None
+
+    def resume_interrupted(self, state, run: bool = True) -> bool:
+        """Reia o rulare intrerupta brusc (rpr/resume.py). Randurile Excel cu OK se sar, randul ramas
+        "IN LUCRU" e intrebat; la o pregatire se sar rutinele deja terminate.
+        run=False: doar deschide rutina / Managerul de rutine, fara sa porneasca."""
+        if self.busy:
+            return False
+        if state.kind == rpr_resume.KIND_PREP and not run:
+            rpr_resume.discard(state)
+            self.show_routine_manager()
+            return True
+        if state.kind == rpr_resume.KIND_PREP:
+            from rpr.batch import Preparation
+            try:
+                prep = Preparation.load(state.path)
+            except Exception as ex:  # noqa: BLE001
+                messagebox.showerror("Studio RPR", f"Pregatirea nu poate fi deschisa:\n{ex}", parent=self)
+                return False
+            rpr_resume.discard(state)
+            self.run_preparation(prep, start_index=int(state.done_items or 0))
+            return True
+        if state.routine:   # rutina avea modificari nesalvate: o refacem din copia salvata la pornire
+            if not self.confirm_discard():
+                return False
+            try:
+                r = Routine.from_dict(state.routine)
+            except Exception as ex:  # noqa: BLE001
+                messagebox.showerror("Studio RPR", f"Rutina nu poate fi refacuta:\n{ex}", parent=self)
+                return False
+            self.routine = r
+            if r.repository_path.strip():
+                self.load_repository(r.repository_path)
+            self.routine_path = state.path or None
+            self.dirty = True
+            self.rebuild_tree()
+            self.show_routine_settings()
+            self._update_title()
+        else:
+            self.open_routine(state.path)
+            if os.path.normcase(os.path.abspath(self.routine_path or "")) != os.path.normcase(state.path):
+                return False   # nu s-a deschis (lipseste sau utilizatorul a renuntat)
+        rpr_resume.discard(state)
+        if run:
+            self.run(variables=state.variables or None)
+        return True
 
     def test_node(self, node: RprNode):
         if self.busy:

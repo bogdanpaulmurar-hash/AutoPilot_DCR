@@ -246,12 +246,14 @@ RunOne = Callable[[Routine, PrepItem, str], Tuple[object, str]]
 class PreparationRunner:
     def __init__(self, prep: Preparation, run_one: RunOne, output_root: str,
                  load_routine: Optional[Callable[[str], Routine]] = None,
-                 on_progress: Optional[Callable[[int, int, str], None]] = None):
+                 on_progress: Optional[Callable[[int, int, str], None]] = None,
+                 on_item_done: Optional[Callable[[int], None]] = None):
         self.prep = prep
         self._run_one = run_one
         self._root = prep.output_folder.strip().strip('"') or os.path.join(output_root, "pregatiri")
         self._load = load_routine or _load_routine
         self._progress = on_progress or (lambda i, n, name: None)
+        self._item_done = on_item_done or (lambda done: None)   # cate rutine s-au terminat (pt. reluare)
         self._cancel = threading.Event()
 
     def cancel(self) -> None:
@@ -261,7 +263,8 @@ class PreparationRunner:
     def cancelled(self) -> bool:
         return self._cancel.is_set()
 
-    def run(self) -> PrepResult:
+    def run(self, start_index: int = 0) -> PrepResult:
+        """start_index > 0: reluare dupa o inchidere neasteptata; primele rutine erau deja terminate."""
         start = _dt.datetime.now()
         folder = os.path.join(self._root, f"{sanitize_name(self.prep.name) or 'Pregatire'}_{start:%Y%m%d_%H%M%S}")
         os.makedirs(folder, exist_ok=True)
@@ -272,6 +275,9 @@ class PreparationRunner:
             path = self.prep.resolve(item)
             step = PrepStepResult(item, item.name, path, _dt.datetime.now())
             res.steps.append(step)
+            if n <= start_index:
+                step.status, step.message, step.end = "OK", "Facuta in rularea anterioara.", step.start
+                continue
             if stop_reason or self._cancel.is_set():
                 step.status, step.message, step.end = "SARIT", stop_reason or "Pregatirea a fost oprita.", step.start
                 continue
@@ -323,6 +329,7 @@ class PreparationRunner:
                     step.status = "OK" if getattr(result, "success", False) else "EROARE"
             if step.status == "EROARE" and item.stop_on_error:
                 stop_reason = f"Oprit dupa eroarea rutinei \"{step.name}\"."
+            self._item_done(n)
         res.cancelled = self._cancel.is_set()
         res.end = _dt.datetime.now()
         try:
