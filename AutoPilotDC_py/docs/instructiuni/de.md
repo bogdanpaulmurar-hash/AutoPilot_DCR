@@ -244,6 +244,7 @@ Jedes Kapitel erklärt kurz einen Ablauf, Schritt für Schritt, mit einem Beispi
 - Eine Zeile pro Excel-Zeile oder Wiederholung der obersten Ebene; ohne Schleifen eine Zeile für die ganze Routine. Funktioniert auch ohne Eingabe-Excel.
 - Jede Zeile enthält Startzeit, Dauer, Status, Meldung, die angehakten Werte, das Video (mit der Zeit im Video) und den Fehler-Screenshot. Das Video erscheint, wenn es in ⚙ Einstellungen → Video aktiv ist.
 - Die Eingabe-Excel erhält weiterhin den Status und alles, was du mit **📝 In Excel schreiben** schreibst.
+- **Laufend gespeichert, und Cloud**: Der Bericht wird nach jeder Zeile / Wiederholung gespeichert (höchstens alle paar Sekunden) und bleibt erhalten, wenn die App einfriert. Berichtsordner und Videoordner (⚙ Routineneinstellungen → 🎥 Videos der Routine) sind pro Routine wählbar; **☁ OneDrive** legt den Ordner ins synchronisierte OneDrive, sodass die Dateien automatisch in die Cloud gelangen. Ein abrupt unterbrochenes Video wird beim Öffnen aus den bereits gespeicherten Bildern wiederhergestellt.
 
 > Beispiel: eine Liste eindeutiger Nummern. In der Schleife: Ist `{Rand.Data}` leer, das Datum aus dem Link lesen, formatieren und eintragen; sonst Button Y drücken. `Rand.Nr`, `DataCitita` und `Actiune` für den Bericht anhaken. Der Bericht zeigt für jede Nummer, was wann getan wurde und wo im Video.
 

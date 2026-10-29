@@ -23,6 +23,8 @@ import datetime as _dt
 import os
 import re
 import threading
+import time
+from types import SimpleNamespace
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -31,6 +33,7 @@ from .model import Routine, RprNode, sanitize_name
 REPORT_KEY = "report"
 
 STEPS_SHEET_LIMIT = 100_000   # protectie: rulari de ore cu foarte multi pasi
+CHECKPOINT_MIN_S = 5.0        # salvarea din mers: cel mult o data la 5 s
 
 
 _I18N_READY = False
@@ -78,6 +81,31 @@ class ReportSettings:
             "steps_column": self.steps_column, "steps_sheet": self.steps_sheet,
             "definition_sheet": self.definition_sheet,
         }
+
+
+VIDEO_FOLDER_KEY = "video_folder"   # routine.settings.extra: folderul filmelor rutinei (gol = Setari → Video)
+
+
+def video_folder(routine: Routine) -> str:
+    return str((routine.settings.extra or {}).get(VIDEO_FOLDER_KEY) or "").strip().strip('"')
+
+
+def set_video_folder(routine: Routine, folder: str) -> None:
+    folder = (folder or "").strip().strip('"')
+    if folder:
+        routine.settings.extra[VIDEO_FOLDER_KEY] = folder
+    else:
+        routine.settings.extra.pop(VIDEO_FOLDER_KEY, None)
+
+
+def onedrive_folder() -> str:
+    """Folderul OneDrive sincronizat (de firma, apoi personal); gol daca nu exista.
+    Fisierele puse aici ajung singure in cloud prin clientul OneDrive."""
+    for var in ("OneDriveCommercial", "OneDrive", "OneDriveConsumer"):
+        p = os.environ.get(var, "")
+        if p and os.path.isdir(p):
+            return p
+    return ""
 
 
 def toggle_variable(routine: Routine, name: str, on: bool) -> None:
@@ -163,6 +191,10 @@ class RunReport:
         self.depth = 0                     # >0 = suntem in interiorul unui element (rand / repetare)
         self.path = ""
         self.error = ""
+        self._fixed_path = ""          # aceeasi cale pentru salvarile din mers si pentru final
+        self._last_cp = 0.0
+        self._cp_cost = 0.0            # cat a durat ultima salvare (rulari mari = salvari mai rare)
+        self.checkpoint_error = ""
         self._cur: Optional[_Item] = None
         self._lock = threading.Lock()
         self._steps_dropped = 0
@@ -242,18 +274,50 @@ class RunReport:
                 self.items.append(it)
         try:
             self.path = self._write(result, end, video)
+        except PermissionError:
+            # fisierul salvat din mers e deschis in Excel: raportul final primeste alt nume
+            try:
+                self._fixed_path = ""
+                self._fixed_path = self._target_path(suffix="_final")
+                self.path = self._write(result, end, video)
+            except Exception as ex:  # noqa: BLE001
+                self.error = f"Raportul nu a putut fi scris: {ex}"
+                self.path = ""
         except Exception as ex:  # noqa: BLE001 — raportul nu are voie sa opreasca rutina
             self.error = f"Raportul nu a putut fi scris: {ex}"
             self.path = ""
         return self.path
 
-    def _target_path(self) -> str:
+    def checkpoint(self, result, force: bool = False) -> bool:
+        """Salvare din mers (dupa fiecare element): daca aplicatia ingheata sau PC-ul se opreste, raportul
+        ramane cu tot ce s-a facut pana atunci. Cel mult o data la cateva secunde; la rulari mari mai rar."""
+        now = time.monotonic()
+        if not force and now - self._last_cp < max(CHECKPOINT_MIN_S, 3 * self._cp_cost):
+            return False
+        partial = SimpleNamespace(message=_t("Rulare in curs — salvare automata"),
+                                  steps_executed=getattr(result, "steps_executed", 0),
+                                  errors=getattr(result, "errors", 0))
+        try:
+            self.path = self._write(partial, _dt.datetime.now(), ("", 0.0))
+            self.checkpoint_error = ""
+        except Exception as ex:  # noqa: BLE001 — ex. fisierul e deschis in Excel: incercam la urmatorul element
+            self.checkpoint_error = str(ex)
+            return False
+        finally:
+            self._last_cp = time.monotonic()
+            self._cp_cost = self._last_cp - now
+        return True
+
+    def _target_path(self, suffix: str = "") -> str:
+        if self._fixed_path:
+            return self._fixed_path
         os.makedirs(self.folder, exist_ok=True)
         name = sanitize_name(self.routine.name) or "Rutina"
-        base = os.path.join(self.folder, f"Raport_{name}_{self.start:%Y%m%d_%H%M%S}")
+        base = os.path.join(self.folder, f"Raport_{name}_{self.start:%Y%m%d_%H%M%S}{suffix}")
         path, n = base + ".xlsx", 2
         while os.path.exists(path):   # aceeasi rutina de doua ori in aceeasi secunda (pregatiri)
             path, n = f"{base}_{n}.xlsx", n + 1
+        self._fixed_path = path
         return path
 
     def _write(self, result, end: _dt.datetime, video: Tuple[str, float]) -> str:

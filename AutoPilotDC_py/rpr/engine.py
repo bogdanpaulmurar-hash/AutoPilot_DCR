@@ -791,6 +791,7 @@ class RprEngine:
             if status == "OK" and cur is not None and self._result.errors > cur.errors_at_start:
                 status = f"OK: {self._result.errors - cur.errors_at_start} erori continuate"
             self._report.item_finished(status, self._report.evaluate_values(self._vars.resolve), self._video())
+            self._report.checkpoint(self._result)   # 💾 salvare din mers (aplicatie blocata, PC oprit...)
         except Exception:  # noqa: BLE001
             pass
 

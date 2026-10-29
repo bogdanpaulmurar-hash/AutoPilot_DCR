@@ -244,6 +244,7 @@ Each chapter briefly explains one procedure, step by step, with an example. Pick
 - One row for each Excel row or top-level repetition; without loops, one row for the whole routine. Works without an input Excel too.
 - Every row has the start time, duration, status, message, ticked values, the video (with the time in the video) and the error screenshot. The video appears when it is on in ⚙ Settings → Video.
 - The input Excel still gets the status and whatever you write with **📝 Write to Excel**.
+- **Saved as it goes, and cloud**: the report is saved after every row / repetition (at most once every few seconds), so it survives if the app freezes. The report folder and the videos folder (⚙ Routine settings → 🎥 Routine videos) can be chosen per routine; **☁ OneDrive** puts the folder in the synced OneDrive, so the files reach the cloud by themselves. A video interrupted abruptly is rebuilt automatically when opened, from the frames already saved.
 
 > Example: a list of unique numbers. In the loop: if `{Rand.Data}` is empty, read the date from the link, format it and type it; otherwise press button Y. Tick `Rand.Nr`, `DataCitita` and `Actiune` for the report. The report shows, for every number, what was done, when, and where in the video.
 

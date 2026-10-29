@@ -1790,7 +1790,7 @@ class StudioPanel(tk.Frame):
         engine, routine = self.engine, self.routine
         if self.video is not None and not step_mode:
             try:
-                self.video.run_started(routine.name)   # 🎥 daca e activ in Setari → Video
+                self.video.run_started(routine.name, folder=rpr_report.video_folder(routine))   # 🎥 daca e activ in Setari → Video
             except Exception as ex:  # noqa: BLE001
                 self.set_status(f"🎥 {ex}")
         # "Nu deranja": setarea rutinei SI setarea generala a aplicatiei (Setari) trebuie sa fie pornite
@@ -1903,7 +1903,8 @@ class StudioPanel(tk.Frame):
             filmed = False
             if self.video is not None and prep.video:
                 try:
-                    filmed = bool(self.call_ui(lambda: self.video.run_started(routine.name, force=True)))
+                    filmed = bool(self.call_ui(lambda: self.video.run_started(routine.name, force=True,
+                                                                         folder=rpr_report.video_folder(routine))))
                 except Exception:  # noqa: BLE001 — filmul nu are voie sa opreasca pregatirea
                     filmed = False
             try:
@@ -2495,6 +2496,34 @@ class PropertyEditor:
         self._hint("Variabile speciale mereu disponibile: {Azi}, {Acum}, {Acum:yyyyMMdd_HHmm}, {NewLine}.", host=card)
 
         self._build_report_card(r)
+        self._build_video_folder_card(r)
+
+    # ── 🎥 folderul filmelor rutinei ──
+    def _build_video_folder_card(self, r: Routine):
+        card = self._card(title="🎥 Filmele rutinei")
+        self.text(None, "Folderul filmelor (gol = cel din ⚙ Setari → Video)", lambda: rpr_report.video_folder(r),
+                  lambda v: rpr_report.set_video_folder(r, v), vars_=False, host=card)
+
+        def pick():
+            d = filedialog.askdirectory(parent=self.p, title="Folderul filmelor")
+            if d:
+                rpr_report.set_video_folder(r, os.path.normpath(d))
+                self._changed(None, structural=True)
+
+        def onedrive():
+            od = rpr_report.onedrive_folder()
+            if not od:
+                self.p.set_status("OneDrive nu e sincronizat pe acest PC (lipseste folderul OneDrive).")
+                return
+            rpr_report.set_video_folder(r, os.path.join(od, "AutoPilotDC", "filme", sanitize_name(r.name) or "Rutina"))
+            self._changed(None, structural=True)
+        row = tk.Frame(card, bg=card["bg"])
+        row.pack(fill="x", padx=8, pady=2)
+        self.p._btn(row, "📁 Alege folderul", pick).pack(side="left", padx=2)
+        self.p._btn(row, "☁ OneDrive", onedrive, tip="Folder in OneDrive: filmele ajung singure si in cloud").pack(
+            side="left", padx=2)
+        self._hint("Filmul porneste cand e bifat in ⚙ Setari → Video (\"la fiecare rulare\") sau la pregatiri. "
+                   "Fisierele se scriu din mers, deci si un film intrerupt ramane.", host=card)
 
     # ── 📊 raportul Excel al rularii (rpr/report.py) ──
     def _report_check(self, node, get_name):
@@ -2541,10 +2570,23 @@ class PropertyEditor:
                 os.startfile(folder)  # type: ignore[attr-defined]
             except Exception as ex:  # noqa: BLE001
                 self.p.set_status(str(ex))
+        def onedrive():
+            od = rpr_report.onedrive_folder()
+            if not od:
+                self.p.set_status("OneDrive nu e sincronizat pe acest PC (lipseste folderul OneDrive).")
+                return
+            s = rpr_report.ReportSettings.of(r)
+            s.folder = os.path.join(od, "AutoPilotDC", "rapoarte", sanitize_name(r.name) or "Rutina")
+            s.save_to(r)
+            self._changed(None, structural=True)
         row = tk.Frame(card, bg=card["bg"])
         row.pack(fill="x", padx=8, pady=2)
         self.p._btn(row, "📁 Alege folderul", pick).pack(side="left", padx=2)
+        self.p._btn(row, "☁ OneDrive", onedrive,
+                    tip="Folder in OneDrive: raportul ajunge singur si in cloud").pack(side="left", padx=2)
         self.p._btn(row, "Deschide folderul", open_folder).pack(side="left", padx=2)
+        self._hint("Raportul se salveaza din mers, dupa fiecare rand / repetare: daca aplicatia se blocheaza sau "
+                   "PC-ul se opreste, ramane tot ce s-a facut pana atunci.", host=card)
 
         self._caption("Coloane cu valori (bifeaza ce vrei sa apara in raport)", card)
         names = [v for v in self.p.known_variables(None) if v not in ("Azi", "Acum", "Acum:yyyyMMdd_HHmm", "NewLine")]

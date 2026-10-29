@@ -112,7 +112,7 @@ class VideoController:
             return 0
 
     # ── rulari ──
-    def run_started(self, routine_name: str, force: bool = False) -> bool:
+    def run_started(self, routine_name: str, force: bool = False, folder: str = "") -> bool:
         """Apelat la pornirea unei rutine. Porneste filmul daca e activ in Setari (si nu inregistram deja).
         force=True: pregatirile cu "film pentru fiecare rutina" filmeaza oricum."""
         s = self.settings
@@ -124,9 +124,9 @@ class VideoController:
         self.rec = sr.ScreenRecorder(s)
         if s.area == "window":   # doar fereastra in care lucreaza rutina (fara AutoPilot si alte aplicatii)
             self.rec.ignore_hwnds = {self._app_hwnd()}
-            self.rec.start(routine_name, follow=True)
+            self.rec.start(routine_name, folder=folder, follow=True)
         else:
-            self.rec.start(routine_name)
+            self.rec.start(routine_name, folder=folder)
         self._show_bar()
         return True
 

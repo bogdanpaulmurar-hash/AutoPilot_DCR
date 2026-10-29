@@ -51,7 +51,7 @@ def _safety():
         return None
 
 
-def _start_video(name: str, host, writer, force: bool = False):
+def _start_video(name: str, host, writer, force: bool = False, folder: str = ""):
     """Film al rularii programate (Setari → Video: "la fiecare rulare" + "si la rularile programate").
     force=True: pregatirile cu "film pentru fiecare rutina" filmeaza oricum."""
     try:
@@ -61,7 +61,7 @@ def _start_video(name: str, host, writer, force: bool = False):
         if not force and not (vs.record_on_run and vs.on_schedule):
             return None
         rec = sr.ScreenRecorder(vs)
-        rec.start(name)
+        rec.start(name, folder=folder)
         host.video_recorder = rec   # linkurile din raportul Excel al rularii
 
         def row_started(row, sheet):
@@ -188,7 +188,8 @@ def _run_file(path: str, variables: dict, show_frame: bool, started, routine=Non
             writer.write(safety.DoNotDisturb.last_message + "\n")
 
         result_box = {}
-        rec = _start_video(routine.name, host, writer, force_video)   # 🎥 daca e activ in Setari → Video
+        from .report import video_folder
+        rec = _start_video(routine.name, host, writer, force_video, video_folder(routine))   # 🎥 daca e activ in Setari → Video
 
         def work():
             result_box["r"] = engine.run(routine, variables)
