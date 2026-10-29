@@ -270,8 +270,9 @@ class RunLogExporter:
         from openpyxl.styles import Font, PatternFill
         wb = openpyxl.Workbook()
         ws = wb.active
-        ws.title = "Log"
-        headers = ["Ora", "Nivel", "Rand Excel", "Pas", "Mesaj", "Durata (ms)", "Captura"]
+        from .lang import ft   # v4.8.5: in limba fisierelor
+        ws.title = ft("Log")
+        headers = [ft(h) for h in ["Ora", "Nivel", "Rand Excel", "Pas", "Mesaj", "Durata (ms)", "Captura"]]
         for c, h in enumerate(headers, 1):
             cell = ws.cell(row=1, column=c, value=h)
             cell.font = Font(bold=True, color="FFFFFF")
@@ -279,8 +280,8 @@ class RunLogExporter:
         fills = {RprLogLevel.Error: "FFC7CE", RprLogLevel.Warning: "FFEB9C"}
         r = 2
         for e in entries:
-            vals = [e.time.strftime("%Y-%m-%d %H:%M:%S"), str(e.level), e.excel_row or None, e.node_title,
-                    e.message, round(e.duration_ms) if e.duration_ms > 0 else None, e.screenshot]
+            vals = [e.time.strftime("%Y-%m-%d %H:%M:%S"), ft(str(e.level)), e.excel_row or None, e.node_title,
+                    ft(e.message), round(e.duration_ms) if e.duration_ms > 0 else None, e.screenshot]
             for c, v in enumerate(vals, 1):
                 ws.cell(row=r, column=c, value=v)
             color = fills.get(e.level)

@@ -196,6 +196,7 @@ Fiecare capitol explică pe scurt o procedură, pas cu pas, cu un exemplu. Alege
 ## 18. Setări
 
 - **⚙ Setări** (aplicație): delay și viteză la redare, countdown, înregistrarea mișcărilor, siguranța la rulare, shortcut-uri, **pornire cu Windows** (opțional direct în tray), butonul ✕ ascunde în tray, scurtătură pe Desktop, **limba** (Română / English / Deutsch) și tema. Limba și tema se aplică după repornire.
+- **Limba fișierelor** (⚙ Setări → 🌐 Limba): în ce limbă se scriu Excel-ul rutinei (coloana de status: OK / EROARE / IN LUCRU), raportul rulării, rezumatul și documentația pregătirilor și logurile. Implicit „Ca interfața”; poți ține interfața în română și fișierele în engleză (sau invers). Se aplică de la următoarea rulare, fără repornire. La reluare, statusurile sunt recunoscute în orice limbă (ex. „IN PROGRESS” = „IN LUCRU”).
 - **🌐 Setări Studio**: browserul pentru pașii Web (Edge recomandat, Chrome), fără fereastră (doar pentru programări), minimizare la rulare, închide browserul, șterge profilul browserului (logout).
 - **⚙ Setări rutină**: politica la eroare, marcarea obiectelor, timeout implicit, pauză între pași, reîncercări, capturi, Nu deranja, prevenție, variabile.
 

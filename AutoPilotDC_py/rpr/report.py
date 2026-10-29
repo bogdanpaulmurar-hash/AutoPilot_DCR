@@ -28,6 +28,7 @@ from types import SimpleNamespace
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Tuple
 
+from .lang import ft
 from .model import Routine, RprNode, sanitize_name
 
 REPORT_KEY = "report"
@@ -36,22 +37,14 @@ STEPS_SHEET_LIMIT = 100_000   # protectie: rulari de ore cu foarte multi pasi
 CHECKPOINT_MIN_S = 5.0        # salvarea din mers: cel mult o data la 5 s
 
 
-_I18N_READY = False
-
-
 def _t(text: str) -> str:
-    """Textele din raport / documentatie in limba aleasa in Setari (i18n.py al aplicatiei, daca exista)."""
-    global _I18N_READY
-    try:
-        import i18n
-        if not _I18N_READY:
-            _I18N_READY = True
-            lang = i18n.saved_language()
-            if lang != i18n.LANG:
-                i18n.load(lang)
-        return i18n.tr(text)
-    except Exception:  # noqa: BLE001 — fara i18n: romana
-        return text
+    """Textele din raport / documentatie in limba fisierelor (⚙ Setari → 🌐 Limba fisierelor)."""
+    return ft(text)
+
+
+def _status_key(status: str) -> str:
+    """Cuvantul romanesc de la inceputul statusului (OK / EROARE / SARIT / OPRIT), pentru culoare."""
+    return (status or "").upper().split(":")[0].split()[0] if (status or "").strip() else ""
 
 
 @dataclass
@@ -364,7 +357,7 @@ class RunReport:
         for it in self.items:
             dur = ((it.end or end) - it.start).total_seconds()
             row = [it.no, it.label, it.start.strftime("%d.%m.%Y %H:%M:%S"),
-                   (it.end or end).strftime("%d.%m.%Y %H:%M:%S"), _fmt_dur(dur), it.status, it.message]
+                   (it.end or end).strftime("%d.%m.%Y %H:%M:%S"), _fmt_dur(dur), _t(it.status), _t(it.message)]
             row += [it.values.get(v, "") for v in self.s.variables]
             if self.s.steps_column:
                 steps = it.steps if len(it.steps) <= 200 else it.steps[:200] + [f"... (+{len(it.steps) - 200})"]
@@ -372,7 +365,7 @@ class RunReport:
             row += ["", _fmt_at(it.video_at) if it.video else "", ""]
             ws.append(row)
             r = ws.max_row
-            color = fills.get(it.status.upper().split()[0] if it.status else "", None)
+            color = fills.get(_status_key(it.status), None)
             if color:
                 ws.cell(row=r, column=6).fill = PatternFill("solid", fgColor=color)
             n = len(cols)
@@ -389,12 +382,12 @@ class RunReport:
                                         "Mesaj", "Captura"]], [10, 9, 60, 22, 9, 11, 40, 30])
             for st in sorted(self.steps, key=lambda x: x.start):
                 ps.append([st.start.strftime("%H:%M:%S"), st.item or "", "    " * st.depth + st.title, st.kind,
-                           "OK" if st.ok else "EROARE", int(st.ms), st.message, ""])
+                           _t("OK" if st.ok else "EROARE"), int(st.ms), _t(st.message), ""])
                 if not st.ok:
                     ps.cell(row=ps.max_row, column=5).fill = PatternFill("solid", fgColor=fills["EROARE"])
                 link(ps.cell(row=ps.max_row, column=8), st.screenshot)
             if self._steps_dropped:
-                ps.append(["", "", f"... inca {self._steps_dropped} pasi nescrisi (limita {STEPS_SHEET_LIMIT})"])
+                ps.append(["", "", _t(f"... inca {self._steps_dropped} pasi nescrisi (limita {STEPS_SHEET_LIMIT})")])
             ps.auto_filter.ref = ps.dimensions
 
         # 3. Rutina: rezumat + definitie
@@ -408,8 +401,8 @@ class RunReport:
             ("Start", self.start.strftime("%d.%m.%Y %H:%M:%S")),
             ("Sfarsit", end.strftime("%d.%m.%Y %H:%M:%S")),
             ("Durata", _fmt_dur((end - self.start).total_seconds())),
-            ("Rezultat", result.message),
-            ("Elemente", f"{len(self.items)} (OK: {ok}, altele: {len(self.items) - ok})"),
+            ("Rezultat", _t(result.message)),
+            ("Elemente", _t(f"{len(self.items)} (OK: {ok}, altele: {len(self.items) - ok})")),
             ("Pasi executati", str(result.steps_executed)),
             ("Erori", str(result.errors)),
             ("Utilizator / PC", f"{os.environ.get('USERNAME') or os.environ.get('USER') or ''} / "
@@ -433,7 +426,7 @@ class RunReport:
             rs.append([_t("Definitia rutinei")])
             rs.cell(row=rs.max_row, column=1).font = bold
             for depth, node in _walk(self.routine.steps):
-                prefix = "" if node.enabled else "(dezactivat) "
+                prefix = "" if node.enabled else _t("(dezactivat)") + " "
                 rs.append([_t(node.KIND_LABEL), "    " * depth + prefix + node.title +
                            (f"   // {node.comment}" if node.comment.strip() else "")])
 

@@ -23,6 +23,7 @@ import threading
 
 from .engine import RprEngine
 from .host import HeadlessRunHost
+from .lang import ft
 from .legacy import execute_legacy_step
 from .storage import RepositoryStore, RoutineStore, RprPaths, RunLogExporter
 from .drivers.base import DriverProvider
@@ -69,13 +70,13 @@ def _start_video(name: str, host, writer, force: bool = False, folder: str = "")
             if vs.per_row:
                 old = rec.split(f"{name}_rand{row}")
                 if old:
-                    writer.write(f"Film: {old}\n")
+                    writer.write(ft(f"Film: {old}") + "\n")
             rec.marker(f"Rand {row}")
         host.row_started = row_started
         host.row_finished = lambda row, status: rec.marker(f"Rand {row}: {status[:60]}")
         return rec
     except Exception as ex:  # noqa: BLE001 — filmul nu are voie sa opreasca rutina
-        writer.write(f"Filmul nu a putut porni: {ex}\n")
+        writer.write(ft(f"Filmul nu a putut porni: {ex}") + "\n")
         return None
 
 
@@ -182,7 +183,7 @@ def _run_file(path: str, variables: dict, show_frame: bool, started, routine=Non
             if routine.repository_path.strip():
                 repo = RepositoryStore.load(routine.repository_path)
         except Exception as ex:  # noqa: BLE001
-            writer.write(f"EROARE la citirea rutinei: {ex}\n")
+            writer.write(ft(f"EROARE la citirea rutinei: {ex}\n"))
             return 2, os.path.basename(path), f"Rutina nu poate fi citita: {ex}", text_log
 
         host = HeadlessRunHost(lambda line: writer.write(line + "\n"))
@@ -194,7 +195,7 @@ def _run_file(path: str, variables: dict, show_frame: bool, started, routine=Non
         dnd = bool(routine.settings.do_not_disturb and safety)
         if dnd:
             safety.DoNotDisturb.enable()
-            writer.write(safety.DoNotDisturb.last_message + "\n")
+            writer.write(ft(safety.DoNotDisturb.last_message) + "\n")
 
         result_box = {}
         from .report import video_folder
@@ -228,14 +229,14 @@ def _run_file(path: str, variables: dict, show_frame: bool, started, routine=Non
         finally:
             if rec is not None:
                 film = rec.stop()
-                writer.write(f"Film: {film}\n")
+                writer.write(ft(f"Film: {film}") + "\n")
                 if out is not None:
                     out["video"] = film
             drivers.close()
             if dnd:
                 # procesul se inchide imediat dupa: asteptam ca notificarile sa revina efectiv
                 safety.DoNotDisturb.restore(wait=True)
-                writer.write(safety.DoNotDisturb.last_message + "\n")
+                writer.write(ft(safety.DoNotDisturb.last_message) + "\n")
 
         result = result_box.get("r")
         if out is not None:
@@ -244,7 +245,7 @@ def _run_file(path: str, variables: dict, show_frame: bool, started, routine=Non
         try:
             RunLogExporter.export_xlsx(host.entries, xlsx)
         except Exception as ex:  # noqa: BLE001
-            writer.write(f"Exportul logului in Excel a esuat: {ex}\n")
+            writer.write(ft(f"Exportul logului in Excel a esuat: {ex}\n"))
             xlsx = text_log
         ok = result is not None and result.success
         msg = result.message if result is not None else "Rutina nu s-a terminat."

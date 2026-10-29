@@ -2,6 +2,13 @@
 
 Pornirea aplicației: **`AutoPilot_DC.pyw`** (sau scurtătura „AutoPilot DC” de pe Desktop). Numele fișierelor nu se mai schimbă de la o versiune la alta, deci scurtăturile și pornirea cu Windows rămân valabile.
 
+## 4.8.5 — 2026-10-29
+- **🌐 Limba fișierelor** (⚙ Setări → 🌐 Limba): o setare separată de limba interfeței pentru tot ce se scrie în fișiere: coloana de status din Excel-ul rutinei (OK / EROARE / SARIT / OPRIT / IN LUCRU), raportul Excel al rulării, rezumatul și `Documentatie.html` ale pregătirilor, logul exportat în Excel și logurile text ale rulărilor programate. Implicit „Ca interfața” (deci română, ca până acum); se poate alege English sau Deutsch fără să schimbi interfața. Se aplică de la următoarea rulare, fără repornire. Setarea stă în `limba.json` (cheia `fisiere`) și intră în backup.
+- **Reluarea recunoaște statusurile în orice limbă**: un Excel început în română și reluat în engleză (sau invers) sare rândurile OK și întreabă la rândul „IN LUCRU” / „IN PROGRESS” / „IN BEARBEITUNG”.
+- În cod, statusurile rămân în română și se traduc doar la scriere (`rpr/lang.py`); culorile din raport se aleg după statusul intern (reparat: „EROARE: …” nu primea culoarea roșie în raport).
+- Instrucțiuni: capitolul 18 (Setări), în RO / EN / DE.
+- Teste (Linux, Python 3.12): 96 rulate, 5 sărite; aceleași 3 eșecuri vechi (`test_windows`, `test_schedule.test_weekdays`, tutorialul `06_biblioteca`). Test nou: `test_file_language` (setarea, traducerea independentă de interfață, statusuri scrise în engleză / germană, reluare cu statusuri în altă limbă). Interfața de Setări nu a fost pornită (doar compilată).
+
 ## 4.8.4 — 2026-10-29
 - **Reluare după o închidere neașteptată**: cât timp rulează o rutină sau o pregătire (din Studio sau programată), AutoPilot DC ține un fișier mic de stare în `Studio\in-curs`. Dacă aplicația sau PC-ul se închide în mijlocul rulării, la următoarea pornire apare întrebarea **Reiau rularea / Doar deschid / Nu, renunț**. La reluare, rândurile Excel cu OK sunt sărite, iar la o pregătire și rutinele deja terminate. Rutinele cu modificări nesalvate se refac din copia făcută la pornirea rulării. Dacă închizi tu aplicația în timpul rulării, nu se oferă reluarea.
 - **Rândul „IN LUCRU”**: înainte de pașii unui rând, coloana de status primește „IN LUCRU zz.ll hh:mm” (portocaliu), salvat imediat. La STOP în mijlocul rândului rămâne „IN LUCRU (oprit …)” (înainte era „OPRIT”). La o rulare nouă, pentru un astfel de rând se întreabă: **Refac rândul / E făcut, marchez OK / Opresc rutina** (fără interfață: refacere).

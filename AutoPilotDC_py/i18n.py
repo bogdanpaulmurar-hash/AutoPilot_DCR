@@ -24,29 +24,147 @@ _DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "i18n")
 _SETTINGS = os.path.join(os.environ.get("APPDATA") or os.path.expanduser("~"), "AutoPilotDC", "limba.json")
 
 LANG = "ro"
-_exact: Dict[str, str] = {}
-_templates: List[Tuple["re.Pattern", str, str]] = []   # (regex, sablon tradus, prefix literal)
-_by_prefix: Dict[str, List[int]] = {}
 _lock = threading.Lock()
 _installed = False
+
+# Limba fisierelor (Excel, rapoarte, loguri text): "" = ca interfata. v4.8.5
+FILE_LANGUAGES = [("", "Ca interfata"), ("ro", "Română"), ("en", "English"), ("de", "Deutsch")]
+
+
+class _Table:
+    """Traducerile unei limbi: texte exacte + sabloane cu valori ("{0}")."""
+
+    def __init__(self, lang: str):
+        self.lang = lang
+        self.exact: Dict[str, str] = {}
+        self.templates: List[Tuple["re.Pattern", str, str]] = []   # (regex, sablon tradus, prefix literal)
+        self.by_prefix: Dict[str, List[int]] = {}
+        self.reverse: Dict[str, str] = {}                         # traducere -> textul romanesc (texte exacte)
+        if lang == "ro":
+            return
+        try:
+            with open(os.path.join(_DIR, lang + ".json"), encoding="utf-8") as f:
+                data = json.load(f)
+        except (OSError, ValueError):
+            return
+        for src, dst in data.items():
+            if not dst:
+                continue
+            rx = _compile(src) if re.search(r"\{\d+\}", src) else None
+            if rx is None:
+                self.exact[src] = dst
+                self.reverse.setdefault(dst, src)
+            else:
+                first = next(iter(string.Formatter().parse(src)))[0]
+                prefix = _literal(first)[:4]
+                self.by_prefix.setdefault(prefix, []).append(len(self.templates))
+                self.templates.append((rx, dst, prefix))
+
+    def tr(self, text):
+        if self.lang == "ro" or not isinstance(text, str) or not text:
+            return text
+        hit = self.exact.get(text)
+        if hit is not None:
+            return hit
+        stripped = text.strip()
+        if stripped != text and stripped in self.exact:   # spatii in plus in jur
+            lead = text[:len(text) - len(text.lstrip())]
+            trail = text[len(text.rstrip()):]
+            return lead + self.exact[stripped] + trail
+        if len(text) > 4000:
+            return text
+        cands: List[int] = []
+        for k in range(5):   # sabloanele sunt indexate dupa primele 0..4 caractere fixe
+            cands.extend(self.by_prefix.get(text[:k], ()))
+        for i in cands:
+            rx, dst, _ = self.templates[i]
+            m = rx.match(text)
+            if m:
+                vals = {k[1:]: self.tr_value(v) for k, v in m.groupdict().items()}
+                try:
+                    return dst.format(*[vals.get(str(j), "") for j in range(len(vals))])
+                except (IndexError, KeyError, ValueError):
+                    return text
+        return text
+
+    def tr_value(self, v: str) -> str:
+        if " " not in v.strip() or len(v) > 400:
+            return v
+        return self.tr(v)
+
+
+_tables: Dict[str, _Table] = {}
+_current = _Table("ro")
+
+
+def _table(lang: str) -> _Table:
+    lang = lang if lang in dict(LANGUAGES) else "ro"
+    with _lock:
+        t = _tables.get(lang)
+        if t is None:
+            t = _tables[lang] = _Table(lang)
+        return t
 
 
 # ─────────────────────────────────────────────────────────────
 # Setare limba
 # ─────────────────────────────────────────────────────────────
-def saved_language() -> str:
+_settings_cache: Tuple[Optional[Tuple[str, float]], dict] = (None, {})
+
+
+def _read_settings() -> dict:
+    """limba.json (recitit doar cand fisierul s-a schimbat: tr_file() se apeleaza des)."""
+    global _settings_cache
+    try:
+        key = (_SETTINGS, os.stat(_SETTINGS).st_mtime)
+    except OSError:
+        return {}
+    if _settings_cache[0] == key:
+        return dict(_settings_cache[1])
     try:
         with open(_SETTINGS, encoding="utf-8") as f:
-            lang = str(json.load(f).get("limba", "ro"))
-        return lang if lang in dict(LANGUAGES) else "ro"
+            d = json.load(f)
+        d = d if isinstance(d, dict) else {}
     except (OSError, ValueError):
-        return "ro"
+        return {}
+    _settings_cache = (key, d)
+    return dict(d)
+
+
+def _write_settings(d: dict) -> None:
+    global _settings_cache
+    os.makedirs(os.path.dirname(_SETTINGS), exist_ok=True)
+    with open(_SETTINGS, "w", encoding="utf-8") as f:
+        json.dump(d, f)
+    _settings_cache = (None, {})
+
+
+def saved_language() -> str:
+    lang = str(_read_settings().get("limba", "ro"))
+    return lang if lang in dict(LANGUAGES) else "ro"
 
 
 def save_language(lang: str) -> None:
-    os.makedirs(os.path.dirname(_SETTINGS), exist_ok=True)
-    with open(_SETTINGS, "w", encoding="utf-8") as f:
-        json.dump({"limba": lang}, f)
+    d = _read_settings()
+    d["limba"] = lang
+    _write_settings(d)
+
+
+def saved_file_language() -> str:
+    """Limba aleasa pentru fisiere: "" = ca interfata, altfel ro / en / de."""
+    lang = str(_read_settings().get("fisiere", ""))
+    return lang if lang in dict(LANGUAGES) else ""
+
+
+def save_file_language(lang: str) -> None:
+    d = _read_settings()
+    d["fisiere"] = lang if lang in dict(LANGUAGES) else ""
+    _write_settings(d)
+
+
+def file_language() -> str:
+    """Limba efectiva in care se scriu Excel-ul, rapoartele si logurile text."""
+    return saved_file_language() or saved_language()
 
 
 # ─────────────────────────────────────────────────────────────
@@ -76,67 +194,42 @@ def _compile(src: str) -> Optional["re.Pattern"]:
 
 
 def load(lang: str) -> None:
-    global LANG
-    with _lock:
-        LANG = lang if lang in dict(LANGUAGES) else "ro"
-        _exact.clear()
-        _templates.clear()
-        _by_prefix.clear()
-        if LANG == "ro":
-            return
-        try:
-            with open(os.path.join(_DIR, LANG + ".json"), encoding="utf-8") as f:
-                data = json.load(f)
-        except (OSError, ValueError):
-            return
-        for src, dst in data.items():
-            if not dst:
-                continue
-            rx = _compile(src) if re.search(r"\{\d+\}", src) else None
-            if rx is None:
-                _exact[src] = dst
-            else:
-                first = next(iter(string.Formatter().parse(src)))[0]
-                prefix = _literal(first)[:4]
-                _by_prefix.setdefault(prefix, []).append(len(_templates))
-                _templates.append((rx, dst, prefix))
+    global LANG, _current
+    _current = _table(lang)
+    LANG = _current.lang
 
 
 def tr(text):
-    """Traducerea unui text (sau textul neschimbat daca nu exista traducere)."""
-    if LANG == "ro" or not isinstance(text, str) or not text:
-        return text
-    hit = _exact.get(text)
-    if hit is not None:
-        return hit
-    stripped = text.strip()
-    if stripped != text and stripped in _exact:   # spatii in plus in jur
-        lead = text[:len(text) - len(text.lstrip())]
-        trail = text[len(text.rstrip()):]
-        return lead + _exact[stripped] + trail
-    if len(text) > 4000:
-        return text
-    cands: List[int] = []
-    for k in range(5):   # sabloanele sunt indexate dupa primele 0..4 caractere fixe
-        cands.extend(_by_prefix.get(text[:k], ()))
-    for i in cands:
-        rx, dst, _ = _templates[i]
-        m = rx.match(text)
-        if m:
-            vals = {k[1:]: tr_value(v) for k, v in m.groupdict().items()}
-            try:
-                return dst.format(*[vals.get(str(j), "") for j in range(len(vals))])
-            except (IndexError, KeyError, ValueError):
-                return text
-    return text
+    """Traducerea unui text in limba interfetei (sau textul neschimbat daca nu exista traducere)."""
+    return _current.tr(text)
 
 
 def tr_value(v: str) -> str:
     """Valorile din interiorul unui mesaj se traduc doar daca sunt fraze cunoscute (ex. descrierea unei conditii).
     Un singur cuvant (nume de variabila, obiect, fisier) ramane neschimbat."""
-    if " " not in v.strip() or len(v) > 400:
-        return v
-    return tr(v)
+    return _current.tr_value(v)
+
+
+def tr_to(lang: str, text):
+    """Traducerea unui text intr-o limba anume (ex. limba fisierelor), independent de interfata."""
+    return _table(lang).tr(text)
+
+
+def tr_file(text):
+    """Textul in limba fisierelor (Excel, rapoarte, loguri text). Setarea se citeste la fiecare apel."""
+    return _table(file_language()).tr(text)
+
+
+def to_romanian(text: str) -> str:
+    """Textul romanesc pentru o traducere exacta cunoscuta (ex. "IN PROGRESS" -> "IN LUCRU"), altfel neschimbat."""
+    if not isinstance(text, str):
+        return text
+    for code, _ in LANGUAGES:
+        if code != "ro":
+            src = _table(code).reverse.get(text)
+            if src is not None:
+                return src
+    return text
 
 
 # ─────────────────────────────────────────────────────────────
