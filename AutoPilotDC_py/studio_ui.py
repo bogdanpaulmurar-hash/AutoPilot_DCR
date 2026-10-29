@@ -35,6 +35,7 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 from rpr.drivers.base import DriverProvider
 from rpr.engine import RprEngine
 from rpr.host import AlertDecision, ErrorDecision, RunAlert, RunGuard, RunHost, RunLogEntry
+from rpr.lang import level_label
 from rpr.legacy import execute_legacy_step
 from rpr.model import (ACTIONS, ActionNode, BreakNode, CellColor, CompareOperator, Condition, ConditionKind,
                        ErrorPolicy, ForEachRowNode, GroupNode, IfNode, LegacyStepNode, Locator, LocatorKind,
@@ -1725,7 +1726,7 @@ class StudioPanel(tk.Frame):
 
     def _add_log(self, e: RunLogEntry):
         self._log_entries.append(e)
-        iid = self.log.insert("", "end", values=(e.time.strftime("%H:%M:%S"), str(e.level),
+        iid = self.log.insert("", "end", values=(e.time.strftime("%H:%M:%S"), level_label(e.level),
                                                  e.excel_row or "", e.node_title[:60], e.message.replace("\n", " ")),
                               tags=(str(e.level),))
         kids = self.log.get_children()

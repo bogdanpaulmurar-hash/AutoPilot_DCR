@@ -1,10 +1,9 @@
 # -*- coding: utf-8 -*-
 # ============================================================
-# AutoPilot DC — limba fisierelor scrise de motor (v4.8.5)
+# AutoPilot DC — limba fisierelor scrise de motor (v4.8.5, o singura limba din v4.8.6)
 #
 # Excel-ul de intrare (coloana de status), raportul rularii, rezumatul si documentatia
-# pregatirilor si logurile text se scriu in limba aleasa in ⚙ Setari → 🌐 Limba fisierelor
-# ("ca interfata" implicit). In cod, statusurile raman in romana (OK / EROARE / IN LUCRU ...):
+# pregatirilor si logurile se scriu in limba aplicatiei (⚙ Setari → 🌐 Limba), ca interfata. In cod, statusurile raman in romana (OK / EROARE / IN LUCRU ...):
 # se traduc doar cand ajung in fisier, iar la citire (reluare) se recunosc in orice limba.
 # ============================================================
 
@@ -74,3 +73,11 @@ def is_ok(status: str) -> bool:
     """Rand terminat cu bine (OK in toate limbile)."""
     s = (status or "").strip().upper()
     return any(s.startswith(w.upper()) for w in _all_translations("OK"))
+
+
+_LEVEL_LABELS = {"Info": "Info", "Warning": "Avertisment", "Error": "Eroare"}
+
+
+def level_label(level) -> str:
+    """Nivelul din log (Info / Warning / Error) in limba aplicatiei: Info / Avertisment / Eroare in romana."""
+    return ft(_LEVEL_LABELS.get(str(level), str(level)))

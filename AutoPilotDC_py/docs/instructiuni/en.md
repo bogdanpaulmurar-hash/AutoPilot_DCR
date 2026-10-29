@@ -198,7 +198,7 @@ Each chapter briefly explains one procedure, step by step, with an example. Pick
 ## 18. Settings
 
 - **⚙ Settings** (application): playback delay and speed, countdown, recording mouse movements, run safety, shortcuts, **start with Windows** (optionally straight into the tray), the ✕ button hides into the tray, desktop shortcut, **language** (Română / English / Deutsch) and theme. Language and theme apply after a restart.
-- **File language** (⚙ Settings → 🌐 Language): the language of the routine's Excel (status column: OK / ERROR / IN PROGRESS), the run report, the preparation summary and documentation, and the logs. Default "Same as interface"; you can keep the interface in Romanian and the files in English (or the other way round). It applies from the next run, without a restart. When resuming, statuses are recognised in any language (e.g. "IN LUCRU" = "IN PROGRESS").
+- **One language** for the whole application (⚙ Settings → 🌐 Language): besides the interface, the logs, the status column in the routine's Excel (OK / ERROR / IN PROGRESS), the run report and the preparation summary and documentation are written in the same language. When resuming, statuses are recognised in any language (e.g. "IN LUCRU" = "IN PROGRESS"), so an Excel started in Romanian can be resumed after switching to English.
 - **🌐 Studio settings**: the browser for Web steps (Edge recommended, Chrome), without a window (only for schedules), minimize when running, close the browser, delete the browser profile (logout).
 - **⚙ Routine settings**: error policy, highlighting objects, default timeout, pause between steps, retries, screenshots, do not disturb, prevention, variables.
 
