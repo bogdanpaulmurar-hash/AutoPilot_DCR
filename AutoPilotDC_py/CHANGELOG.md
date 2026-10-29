@@ -2,6 +2,14 @@
 
 Pornirea aplicației: **`AutoPilot_DC.pyw`** (sau scurtătura „AutoPilot DC” de pe Desktop). Numele fișierelor nu se mai schimbă de la o versiune la alta, deci scurtăturile și pornirea cu Windows rămân valabile.
 
+## 4.8.0 — 2026-10-29
+- **📊 Raport Excel al rulării** („dovada muncii”), cu sau fără Excel de intrare: ⚙ Setări rutină → 📊 Raport. Un fișier la fiecare rulare, cu un rând pentru fiecare rând Excel / repetare de pe primul nivel (sau unul pentru toată rutina): ora de start, durata, statusul, mesajul, **valorile bifate**, pașii parcurși, filmul (cu minutul în film) și captura erorii. Foaia „Pași” are fiecare pas executat (definiția / regula, ora, rezultatul), iar foaia „Rutina” rezumatul și definiția completă. Bifa **📊 Pune valoarea în raport** apare și pe pașii care salvează o valoare. Setările stau în `settings.report` din `.rpr.json` (C# le ignoră).
+- **📂 Manager de rutine** (bara Studio): rutinele din folderul setat, citite la pornirea aplicației; deschide / rulează / adaugă în pregătire; folderul se schimbă din manager.
+- **Pregătiri**: o listă de rutine rulate una după alta (ordine, rulează / omite, oprește sau continuă la eroare), salvată ca `Nume.pregatire.json` lângă rutine. Fiecare rutină are filmul și raportul ei; la final, un folder `rezultate\pregatiri\Nume_data_ora` cu `Pregatire_Nume.xlsx` (rezumat + definiții) și `Documentatie.html` (tot ce s-a făcut, în detaliu). Întrebările, Pauza / STOP și sistemul de prevenție rămân active. Se poate rula și fără interfață / programa: `py -m rpr run "Nume.pregatire.json"`.
+- **🎥 Video** (inclus din commit-ul anterior, acum în versiune): înregistrarea ecranului manual sau la fiecare rulare, film pe rând Excel, editor, export GIF / MP4, tutoriale în Instrucțiuni.
+- Instrucțiuni: capitolele 22 (Raportul Excel) și 23 (Manager de rutine și pregătiri), în RO / EN / DE.
+- Teste (Linux, Python 3.12): 83 rulate, 12 sărite; 3 cad independent de această versiune: `test_windows` (cere Windows), `test_schedule.test_weekdays` (calea Python pe Linux nu e `pythonw.exe`), `test_video.test_all_tutorials_present_and_trilingual` (tutorialul `06_biblioteca` are un singur cadru). Testele noi `test_report` și `test_batch` trec.
+
 ## 4.7.0 — 2026-10-16
 - **Limbi: Română / English / Deutsch** pentru toată interfața — Recorder, Studio, Bibliotecă, Programare, Setări, mesaje, log-ul rulării, meniul din tray și mesajele rulărilor programate. Limba se alege în **⚙ Setări → 🌐 Limba** și se aplică după repornire (aplicația se repornește singură după confirmare).
 - Traducerile sunt în `i18n/en.json` și `i18n/de.json` (cheia = textul românesc). Logica nu se schimbă cu limba: numele obiectelor, variabilele (`{Rand.…}`, `{Azi}`) și fișierele rutinelor rămân aceleași, deci rutinele merg la toți colegii, indiferent de limbă.

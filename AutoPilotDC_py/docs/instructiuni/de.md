@@ -232,3 +232,27 @@ Jedes Kapitel erklärt kurz einen Ablauf, Schritt für Schritt, mit einem Beispi
 - MP4 benötigt das Paket `opencv-python` (optional); GIF funktioniert immer.
 
 > Beispiel: Einstellungen → Video → „Video bei jeder Ausführung“ und „ein Video pro Excel-Zeile“ ankreuzen; Routine 03 ausführen — im Ordner entsteht pro Zeile ein Video mit Kapiteln für jeden Schritt.
+
+## 22. Der Excel-Bericht des Laufs (Arbeitsnachweis)
+
+1. **⚙ Routineneinstellungen → 📊 Excel-Bericht des Laufs**: „Bei jedem Lauf einen Excel-Bericht erstellen“ anhaken.
+2. Die **Wertspalten** anhaken (Variablen, Spalten der Eingabe-Excel, gelesene Werte). Das geht auch direkt am Schritt: **📊 Wert in den Excel-Bericht des Laufs übernehmen** (bei Schritten, die einen Wert speichern, und bei „Variable setzen“).
+3. Ordner wählen (leer = `rezultate\rapoarte`) und was in den Bericht kommt: Spalte „Ausgeführte Schritte“, Blatt „Schritte“ (jeder Schritt mit Uhrzeit, Ergebnis und Regel), Routinendefinition.
+4. Ausführen. Am Ende zeigt das Log `📊 Bericht: ...`.
+- Eine Zeile pro Excel-Zeile oder Wiederholung der obersten Ebene; ohne Schleifen eine Zeile für die ganze Routine. Funktioniert auch ohne Eingabe-Excel.
+- Jede Zeile enthält Startzeit, Dauer, Status, Meldung, die angehakten Werte, das Video (mit der Zeit im Video) und den Fehler-Screenshot. Das Video erscheint, wenn es in ⚙ Einstellungen → Video aktiv ist.
+- Die Eingabe-Excel erhält weiterhin den Status und alles, was du mit **📝 In Excel schreiben** schreibst.
+
+> Beispiel: eine Liste eindeutiger Nummern. In der Schleife: Ist `{Rand.Data}` leer, das Datum aus dem Link lesen, formatieren und eintragen; sonst Button Y drücken. `Rand.Nr`, `DataCitita` und `Actiune` für den Bericht anhaken. Der Bericht zeigt für jede Nummer, was wann getan wurde und wo im Video.
+
+## 23. Routinen-Manager und Vorbereitungen
+
+1. **📂 Routinen-Manager** (Studio-Leiste): die Routinen im gewählten Ordner, beim Start der App gelesen. **Ordner ändern** wählt einen anderen Ordner (z. B. in Drive).
+2. Aus der Liste: **In Studio öffnen**, **▶ Ausführen** oder **➕ Zur Vorbereitung hinzufügen**.
+3. Eine **Vorbereitung** ist eine Liste von Routinen, die nacheinander laufen: Reihenfolge mit ▲ ▼, „Ausführen / Auslassen“ und was bei einem Fehler passiert (stoppen oder mit der nächsten fortfahren).
+4. **🎥 Video für jede Routine** und **📊 Excel-Bericht für jede Routine** anhaken, dann **💾 Speichern** (Datei `Name.pregatire.json` im Routinenordner).
+5. **▶ Vorbereitung ausführen**. Pause / STOP über die schwebende Leiste (Strg+F11 / Strg+F12); Rückfragen und Präventionssystem bleiben aktiv.
+- Am Ende: ein Ordner `rezultate\pregatiri\Name_Datum_Uhrzeit` mit `Pregatire_Name.xlsx` (Zusammenfassung und Definitionen), `Documentatie.html` (alles, was getan wurde, im Detail), den Berichten und Links zu den Videos.
+- Eine Vorbereitung lässt sich wie eine Routine planen: `py -m rpr run "Sandbox.pregatire.json"`.
+
+> Beispiel: ein Test-Sandbox mit `01_Benutzer`, `02_Rollen`, `03_Objekte`. Du startest die Vorbereitung abends; morgens öffnest du die Dokumentation und siehst für jede Routine, wie lange sie dauerte, was sie angelegt hat und ihr Video.

@@ -86,6 +86,15 @@ class RunHost:
     def row_finished(self, row: int, status: str) -> None:
         """Sfarsitul unui rand Excel, cu statusul scris in fisier (OK / EROARE / SARIT)."""
 
+    # Filmul rularii (daca se inregistreaza): (cale fisier, secunda curenta). Folosit de raportul Excel.
+    video_recorder = None
+
+    def video_position(self) -> Tuple[str, float]:
+        rec = self.video_recorder
+        if rec is not None and getattr(rec, "active", False):
+            return rec.path, rec.elapsed()
+        return "", 0.0
+
     def ask(self, title: str, text: str, buttons: List[str]) -> str:
         """Intrebare cu butoane personalizate. Fara utilizator: primul buton."""
         return buttons[0] if buttons else ""
@@ -130,3 +139,4 @@ class RunResult:
     rows_skipped: int = 0
     duration: _dt.timedelta = _dt.timedelta(0)
     final_variables: Dict[str, str] = field(default_factory=dict)
+    report_path: str = ""          # raportul Excel al rularii (gol = fara raport)
