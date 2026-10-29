@@ -4,6 +4,7 @@
 # Rulare fara interfata (programari Windows / linie de comanda):
 #
 #   python -m rpr run "C:\...\rutina.rpr.json" [--var Nume=Valoare ...] [--fara-chenar]
+#   python -m rpr run "C:\...\Sandbox.pregatire.json"   (o pregatire: mai multe rutine una dupa alta)
 #
 #   --anunta: la final apare un mesaj scurt cu rezultatul (programari) + istoric
 # Cod de iesire: 0 = succes, 1 = rutina a esuat, 2 = fisier invalid, 3 = alta rutina programata ruleaza deja.
@@ -26,6 +27,7 @@ from .legacy import execute_legacy_step
 from .storage import RepositoryStore, RoutineStore, RprPaths, RunLogExporter
 from .drivers.base import DriverProvider
 from .model import sanitize_name
+from .batch import PREP_EXT, Preparation, PreparationRunner
 
 
 def build_drivers() -> DriverProvider:
@@ -49,16 +51,18 @@ def _safety():
         return None
 
 
-def _start_video(name: str, host, writer):
-    """Film al rularii programate (Setari → Video: "la fiecare rulare" + "si la rularile programate")."""
+def _start_video(name: str, host, writer, force: bool = False):
+    """Film al rularii programate (Setari → Video: "la fiecare rulare" + "si la rularile programate").
+    force=True: pregatirile cu "film pentru fiecare rutina" filmeaza oricum."""
     try:
         sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
         import screen_recorder as sr
         vs = sr.VideoSettings.load()
-        if not (vs.record_on_run and vs.on_schedule):
+        if not force and not (vs.record_on_run and vs.on_schedule):
             return None
         rec = sr.ScreenRecorder(vs)
         rec.start(name)
+        host.video_recorder = rec   # linkurile din raportul Excel al rularii
 
         def row_started(row, sheet):
             if vs.per_row:
@@ -124,7 +128,10 @@ def run_file(path: str, variables: dict, show_frame: bool = True, announce: bool
     if mutex is None:
         notify("AutoPilot DC — rulare amanata", f"{os.path.basename(path)}: alta rutina programata ruleaza acum.", False)
         return 3
-    code, name, msg, log = _run_file(path, variables, show_frame, started)
+    if path.lower().endswith(PREP_EXT):
+        code, name, msg, log = _run_preparation(path, show_frame, started)
+    else:
+        code, name, msg, log = _run_file(path, variables, show_frame, started)
     if announce:
         try:
             from .schedule import add_history
@@ -135,13 +142,34 @@ def run_file(path: str, variables: dict, show_frame: bool = True, announce: bool
     return code
 
 
-def _run_file(path: str, variables: dict, show_frame: bool, started) -> tuple:
+def _run_preparation(path: str, show_frame: bool, started) -> tuple:
+    """Pregatire fara interfata: fiecare rutina ca la rularea programata (film, raport), plus rezumat + documentatie."""
+    try:
+        prep = Preparation.load(path)
+    except Exception as ex:  # noqa: BLE001
+        return 2, os.path.basename(path), f"Pregatirea nu poate fi citita: {ex}", ""
+
+    def run_one(routine, item, folder):
+        out = {}
+        _run_file(prep.resolve(item), {}, show_frame, _dt.datetime.now(), routine=routine, out=out,
+                  force_video=prep.video, log_folder=folder)
+        return out.get("result"), out.get("video", "")
+
+    runner = PreparationRunner(prep, run_one, RprPaths.output())
+    res = runner.run()
+    return (0 if res.success else 1), prep.name, res.message, res.summary or res.documentation
+
+
+def _run_file(path: str, variables: dict, show_frame: bool, started, routine=None, out=None,
+              force_video: bool = False, log_folder: str = "") -> tuple:
     stamp = started.strftime("%Y%m%d_%H%M%S")
-    text_log = os.path.join(RprPaths.output(), f"Log_programat_{stamp}.txt")
+    log_folder = log_folder or RprPaths.output()
+    text_log = os.path.join(log_folder, f"Log_programat_{stamp}.txt")
     with open(text_log, "w", encoding="utf-8", buffering=1) as writer:
         try:
             repo = RepositoryStore.load(None)
-            routine = RoutineStore.load(path, repo)
+            if routine is None:
+                routine = RoutineStore.load(path, repo)
             if routine.repository_path.strip():
                 repo = RepositoryStore.load(routine.repository_path)
         except Exception as ex:  # noqa: BLE001
@@ -160,7 +188,7 @@ def _run_file(path: str, variables: dict, show_frame: bool, started) -> tuple:
             writer.write(safety.DoNotDisturb.last_message + "\n")
 
         result_box = {}
-        rec = _start_video(routine.name, host, writer)   # 🎥 daca e activ in Setari → Video (si la programari)
+        rec = _start_video(routine.name, host, writer, force_video)   # 🎥 daca e activ in Setari → Video
 
         def work():
             result_box["r"] = engine.run(routine, variables)
@@ -189,7 +217,10 @@ def _run_file(path: str, variables: dict, show_frame: bool, started) -> tuple:
             t.join()
         finally:
             if rec is not None:
-                writer.write(f"Film: {rec.stop()}\n")
+                film = rec.stop()
+                writer.write(f"Film: {film}\n")
+                if out is not None:
+                    out["video"] = film
             drivers.close()
             if dnd:
                 # procesul se inchide imediat dupa: asteptam ca notificarile sa revina efectiv
@@ -197,7 +228,9 @@ def _run_file(path: str, variables: dict, show_frame: bool, started) -> tuple:
                 writer.write(safety.DoNotDisturb.last_message + "\n")
 
         result = result_box.get("r")
-        xlsx = os.path.join(RprPaths.output(), f"Log_programat_{sanitize_name(routine.name)}_{stamp}.xlsx")
+        if out is not None:
+            out["result"] = result
+        xlsx = os.path.join(log_folder, f"Log_programat_{sanitize_name(routine.name)}_{stamp}.xlsx")
         try:
             RunLogExporter.export_xlsx(host.entries, xlsx)
         except Exception as ex:  # noqa: BLE001
@@ -211,7 +244,7 @@ def _run_file(path: str, variables: dict, show_frame: bool, started) -> tuple:
 def main(argv=None) -> int:
     p = argparse.ArgumentParser(prog="python -m rpr", description="AutoPilot DC — rulare rutine RPR fara interfata")
     sub = p.add_subparsers(dest="cmd", required=True)
-    r = sub.add_parser("run", help="ruleaza o rutina .rpr.json")
+    r = sub.add_parser("run", help="ruleaza o rutina .rpr.json sau o pregatire .pregatire.json")
     r.add_argument("file")
     r.add_argument("--var", action="append", default=[], metavar="NUME=VALOARE", help="suprascrie o variabila")
     r.add_argument("--fara-chenar", action="store_true", help="fara chenarul RUN pe ecran")

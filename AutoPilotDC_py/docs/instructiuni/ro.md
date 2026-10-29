@@ -230,3 +230,27 @@ Fiecare capitol explică pe scurt o procedură, pas cu pas, cu un exemplu. Alege
 - MP4 are nevoie de pachetul `opencv-python` (opțional); GIF merge mereu.
 
 > Exemplu: Setări → Video → bifează „film la fiecare rulare” și „câte un film pe rând Excel”; rulează rutina 03 — în folder apare câte un film pentru fiecare rând, cu capitole pentru fiecare pas.
+
+## 22. Raportul Excel al rulării (dovada muncii)
+
+1. **⚙ Setări rutină → 📊 Raport Excel al rulării**: bifează „Creează un raport Excel la fiecare rulare”.
+2. Bifează **coloanele cu valori** (variabile, coloane din Excel-ul de intrare, valorile citite). Același lucru îl faci direct pe pas: **📊 Pune valoarea în raportul Excel al rulării** (la pașii care salvează o valoare și la „Setează variabila”).
+3. Alege folderul (gol = `rezultate\rapoarte`) și ce intră în raport: coloana „Pași parcurși”, foaia „Pași” (fiecare pas, cu ora, rezultatul și regula), definiția rutinei.
+4. Rulează. La final, în log apare `📊 Raport: ...`.
+- Un rând pentru fiecare rând Excel sau repetare de pe primul nivel; fără bucle, un rând pentru toată rutina. Merge și fără un Excel de intrare.
+- Fiecare rând are ora de start, durata, statusul, mesajul, valorile bifate, filmul (cu minutul în film) și captura erorii. Filmul apare când e pornit în ⚙ Setări → Video.
+- Excel-ul de intrare primește în continuare statusul și ce scrii cu **📝 Scrie în Excel**.
+
+> Exemplu: listă cu numere unice. În buclă: dacă `{Rand.Data}` e gol, citești data din link, o formatezi și o scrii; altfel apeși butonul Y. Bifează `Rand.Nr`, `DataCitita` și `Actiune` pentru raport. Raportul arată, pentru fiecare număr, ce s-a făcut, când și unde în film.
+
+## 23. Manager de rutine și pregătiri
+
+1. **📂 Manager rutine** (bara Studio): rutinele din folderul setat, citite la pornirea aplicației. **Schimbă folderul** alege alt folder (ex. un folder din Drive).
+2. Din listă: **Deschide în Studio**, **▶ Rulează** sau **➕ Adaugă în pregătire**.
+3. O **pregătire** e o listă de rutine rulate una după alta: ordinea cu ▲ ▼, „Rulează / Omite” și ce se întâmplă la eroare (oprește sau continuă cu următoarea).
+4. Bifează **🎥 Film pentru fiecare rutină** și **📊 Raport Excel pentru fiecare rutină**, apoi **💾 Salvează** (fișierul `Nume.pregatire.json` din folderul rutinelor).
+5. **▶ Rulează pregătirea**. Pauză / STOP din bara plutitoare (Ctrl+F11 / Ctrl+F12); întrebările și sistemul de prevenție rămân active.
+- La final: un folder `rezultate\pregatiri\Nume_data_ora` cu `Pregatire_Nume.xlsx` (rezumat și definiții), `Documentatie.html` (tot ce s-a făcut, în detaliu), rapoartele și linkurile spre filme.
+- O pregătire se poate programa ca o rutină: `py -m rpr run "Sandbox.pregatire.json"`.
+
+> Exemplu: sandbox de test cu `01_Useri`, `02_Roluri`, `03_Obiecte`. Rulezi pregătirea seara; dimineața deschizi documentația și vezi pentru fiecare rutină cât a durat, ce a creat și filmul ei.

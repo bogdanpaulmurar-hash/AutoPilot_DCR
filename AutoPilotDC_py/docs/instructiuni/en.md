@@ -232,3 +232,27 @@ Each chapter briefly explains one procedure, step by step, with an example. Pick
 - MP4 needs the `opencv-python` package (optional); GIF always works.
 
 > Example: Settings → Video → check "video on every run" and "one video per Excel row"; run routine 03 — the folder gets one video per row, with chapters for every step.
+
+## 22. The run's Excel report (proof of work)
+
+1. **⚙ Routine settings → 📊 Excel report of the run**: tick "Create an Excel report on every run".
+2. Tick the **value columns** (variables, columns of the input Excel, values read). You can do the same directly on a step: **📊 Put the value in the run's Excel report** (on steps that save a value and on "Set variable").
+3. Choose the folder (empty = `rezultate\rapoarte`) and what goes into the report: the "Steps taken" column, the "Steps" sheet (every step with time, result and rule), the routine definition.
+4. Run. At the end the log shows `📊 Report: ...`.
+- One row for each Excel row or top-level repetition; without loops, one row for the whole routine. Works without an input Excel too.
+- Every row has the start time, duration, status, message, ticked values, the video (with the time in the video) and the error screenshot. The video appears when it is on in ⚙ Settings → Video.
+- The input Excel still gets the status and whatever you write with **📝 Write to Excel**.
+
+> Example: a list of unique numbers. In the loop: if `{Rand.Data}` is empty, read the date from the link, format it and type it; otherwise press button Y. Tick `Rand.Nr`, `DataCitita` and `Actiune` for the report. The report shows, for every number, what was done, when, and where in the video.
+
+## 23. Routine manager and preparations
+
+1. **📂 Routine manager** (Studio bar): the routines in the chosen folder, read when the app starts. **Change folder** picks another folder (e.g. a Drive folder).
+2. From the list: **Open in Studio**, **▶ Run** or **➕ Add to preparation**.
+3. A **preparation** is a list of routines run one after another: order with ▲ ▼, "Run / Skip" and what happens on error (stop, or continue with the next one).
+4. Tick **🎥 Video for each routine** and **📊 Excel report for each routine**, then **💾 Save** (the file `Name.pregatire.json` in the routines folder).
+5. **▶ Run preparation**. Pause / STOP from the floating bar (Ctrl+F11 / Ctrl+F12); the questions and the prevention system stay active.
+- At the end: a folder `rezultate\pregatiri\Name_date_time` with `Pregatire_Name.xlsx` (summary and definitions), `Documentatie.html` (everything that was done, in detail), the reports and links to the videos.
+- A preparation can be scheduled like a routine: `py -m rpr run "Sandbox.pregatire.json"`.
+
+> Example: a test sandbox with `01_Users`, `02_Roles`, `03_Objects`. You run the preparation in the evening; in the morning you open the documentation and see for every routine how long it took, what it created and its video.

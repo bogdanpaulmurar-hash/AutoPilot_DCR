@@ -19,6 +19,7 @@ class StudioSettings:
         self.headless = False
         self.minimize_on_run = True
         self.last_routine_path = ""
+        self.routines_folder = ""          # 📂 Managerul de rutine: folderul citit la pornire (gol = rutine\\)
 
     @staticmethod
     def path() -> str:
@@ -35,18 +36,29 @@ class StudioSettings:
             s.headless = bool(d.get("headless", s.headless))
             s.minimize_on_run = bool(d.get("minimize_on_run", s.minimize_on_run))
             s.last_routine_path = str(d.get("last_routine_path", ""))
+            s.routines_folder = str(d.get("routines_folder", ""))
         except (OSError, ValueError):
             pass
         return s
 
     def save(self) -> None:
+        try:   # campurile necunoscute (ex. scrise de alta versiune) raman in fisier
+            with open(self.path(), encoding="utf-8-sig") as f:
+                d = json.load(f)
+            if not isinstance(d, dict):
+                d = {}
+        except (OSError, ValueError):
+            d = {}
+        d.update({"browser": self.browser, "headless": self.headless, "minimize_on_run": self.minimize_on_run,
+                  "last_routine_path": self.last_routine_path, "routines_folder": self.routines_folder})
         try:
             with open(self.path(), "w", encoding="utf-8") as f:
-                json.dump({"browser": self.browser, "headless": self.headless,
-                           "minimize_on_run": self.minimize_on_run, "last_routine_path": self.last_routine_path},
-                          f, ensure_ascii=False, indent=2)
+                json.dump(d, f, ensure_ascii=False, indent=2)
         except OSError:
             pass
+
+    def effective_routines_folder(self) -> str:
+        return self.routines_folder.strip().strip('"') or RprPaths.routines()
 
 
 def register_all(provider: DriverProvider, settings: Optional[StudioSettings] = None) -> None:

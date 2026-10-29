@@ -32,6 +32,7 @@ from typing import Dict, List, Optional
 from .conditions import ConditionEvaluator, try_number
 from .drivers.base import ActionRequest, DriverProvider, RprStepException
 from .excel import ExcelTable
+from .report import RunReport
 from .host import AlertDecision, ErrorDecision, RunAlert, RunGuard, RunHost, RunLogEntry, RunResult
 from .model import (ActionNode, BreakNode, CellColor, ErrorPolicy, ForEachRowNode, GroupNode, IfNode,
                     LegacyStepNode, LogNode, LoopMode, LoopNode, ObjectRepository, QuestionNode, Routine,
@@ -121,6 +122,8 @@ class RprEngine:
         self.step_mode = False           # pas cu pas: se opreste inainte de fiecare pas
         self.last_variables: Dict[str, str] = {}
         self._conditions: Optional[ConditionEvaluator] = None
+        self._report: Optional[RunReport] = None
+        self._depth = 0                  # adancimea pasului curent (pentru raport)
 
     # =========================================================
     # Control: pauza / reluare / pas / stop (de pe orice fir)
@@ -178,6 +181,12 @@ class RprEngine:
             self.guard.begin_run()
         self._vars = VariableStore()
         self._conditions = ConditionEvaluator(self._repo, self._drivers, self._vars, self._stop)
+        self._depth = 0
+        self._report = None
+        try:
+            self._report = RunReport.create(routine, self._output)   # 📊 raportul Excel al rularii (daca e pornit)
+        except Exception as ex:  # noqa: BLE001 — raportul nu are voie sa opreasca rutina
+            self._log(RprLogLevel.Warning, None, f"Raportul nu poate fi pregatit: {ex}")
         t0 = time.monotonic()
 
         try:
@@ -238,6 +247,7 @@ class RprEngine:
             self._result.duration = _dt.timedelta(seconds=time.monotonic() - t0)
             self._result.final_variables = dict(self._vars.all)
             self.last_variables = self._result.final_variables
+            self._finish_report()
             r = self._result
             rows = (f", randuri OK: {r.rows_ok}, esuate: {r.rows_failed}, sarite: {r.rows_skipped}"
                     if r.rows_ok + r.rows_failed + r.rows_skipped > 0 else "")
@@ -287,15 +297,21 @@ class RprEngine:
         attempt = 0
         while True:
             t0 = time.monotonic()
+            started = _dt.datetime.now()
             try:
                 self._host.node_started(node)
                 self._sleep_ms(node.delay_before_ms)
-                self._execute_core(node)
+                self._depth += 1
+                try:
+                    self._execute_core(node)
+                finally:
+                    self._depth -= 1
                 self._sleep_ms(node.delay_after_ms)
                 if not is_container:
                     self._sleep_ms(self._routine.settings.step_delay_ms)
                 self._result.steps_executed += 1
                 self._host.node_finished(node, True)
+                self._report_step(node, True, started, t0)
                 return
             except (_ControlSignal, Cancelled):
                 raise
@@ -315,6 +331,7 @@ class RprEngine:
                 shot = self._error_screenshot(node)
                 self._log(RprLogLevel.Error, node, message, (time.monotonic() - t0) * 1000, shot)
                 self._host.node_finished(node, False)
+                self._report_step(node, False, started, t0, message, shot)
 
                 # 3. Politica de eroare
                 policy = node.on_error
@@ -566,11 +583,18 @@ class RprEngine:
                 return
             if l.counter_variable.strip():
                 self._vars.set(l.counter_variable, str(it))
+            item = self._report_item_start(f"Repetarea {it}")
+            status = "OK"
             try:
                 self._execute_list(l.body)
             except _LoopSignal as s:
                 if not s.next:
+                    self._report_item_end(item, status)
                     return
+            except _ControlSignal as e:
+                self._report_item_end(item, f"EROARE: {e}")
+                raise
+            self._report_item_end(item, status)
             if l.mode == LoopMode.Until and self._conditions.evaluate(l.condition):
                 return
 
@@ -610,6 +634,8 @@ class RprEngine:
                     self._host.row_started(row, table.sheet_name)
                 except Exception:  # noqa: BLE001 — gazda (ex. video) nu are voie sa opreasca rutina
                     pass
+                key = table.get_cell(row, f.key_column) if f.key_column.strip() else ""
+                item = self._report_item_start(f"Rand {row}" + (f": {key}" if key else ""))
 
                 # 3. pasii pentru rand
                 stop_loop, rethrow = False, None
@@ -647,6 +673,7 @@ class RprEngine:
                     self._host.row_finished(row, status)
                 except Exception:  # noqa: BLE001
                     pass
+                self._report_item_end(item, status)
 
                 # 4. status + culoare + salvare
                 if has_status:
@@ -716,6 +743,63 @@ class RprEngine:
         if not ok:
             raise RprStepException(err or "Pasul vechi a esuat.")
         self._log(RprLogLevel.Info, ls, "OK")
+
+    # =========================================================
+    # Raportul Excel al rularii (rpr/report.py)
+    # =========================================================
+    def _video(self):
+        try:
+            return self._host.video_position()
+        except Exception:  # noqa: BLE001
+            return "", 0.0
+
+    def _report_step(self, node: RprNode, ok: bool, started, t0: float, message: str = "", shot: str = "") -> None:
+        if self._report is None:
+            return
+        try:
+            self._report.step(node, ok, started, (time.monotonic() - t0) * 1000, message, shot, self._depth)
+        except Exception:  # noqa: BLE001
+            pass
+
+    def _report_item_start(self, label: str) -> bool:
+        """Un element nou in raport doar pe primul nivel (randurile / repetarile din interior nu se numara)."""
+        if self._report is None or self._report.depth > 0:
+            if self._report is not None:
+                self._report.depth += 1
+            return False
+        try:
+            self._report.item_started(label, self._result.errors, self._video())
+        except Exception:  # noqa: BLE001
+            return False
+        return True
+
+    def _report_item_end(self, is_item: bool, status: str) -> None:
+        if self._report is None:
+            return
+        if not is_item:
+            self._report.depth = max(0, self._report.depth - 1)
+            return
+        try:
+            cur = self._report._cur
+            if status == "OK" and cur is not None and self._result.errors > cur.errors_at_start:
+                status = f"OK: {self._result.errors - cur.errors_at_start} erori continuate"
+            self._report.item_finished(status, self._report.evaluate_values(self._vars.resolve), self._video())
+        except Exception:  # noqa: BLE001
+            pass
+
+    def _finish_report(self) -> None:
+        rep, self._report = self._report, None
+        if rep is None:
+            return
+        try:
+            path = rep.finish(self._result, rep.evaluate_values(self._vars.resolve), self._video())
+        except Exception as ex:  # noqa: BLE001
+            path, rep.error = "", str(ex)
+        self._result.report_path = path
+        if path:
+            self._log(RprLogLevel.Info, None, f"📊 Raport: {path}")
+        else:
+            self._log(RprLogLevel.Warning, None, rep.error or "Raportul nu a putut fi scris.")
 
     # =========================================================
     # Utilitare

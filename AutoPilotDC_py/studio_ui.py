@@ -42,6 +42,7 @@ from rpr.model import (ACTIONS, ActionNode, BreakNode, CellColor, CompareOperato
                        RprNode, SetVariableNode, StopNode, TryNode, UiObject, UiTechnology, VariableOperation,
                        WaitMode, WaitNode, WriteExcelNode, action_info, flatten, sanitize_name,
                        OBJECT_TYPES, CONTAINER_TYPES, SiteGroup)
+from rpr import report as rpr_report
 from rpr.storage import Examples, ExcelInfo, RepositoryStore, RoutineStore, RprPaths, RunLogExporter
 
 try:
@@ -385,6 +386,11 @@ class StudioRunHost(RunHost):
         if self._p.video is not None:
             self._p.video.row_finished(row, status)
 
+    @property
+    def video_recorder(self):
+        v = self._p.video   # filmul curent, pentru linkurile din raportul Excel
+        return v.rec if v is not None and v.mode == "run" else None
+
     def node_finished(self, node, success):
         self._p.post("finished", (node, success))
 
@@ -495,11 +501,17 @@ class StudioPanel(tk.Frame):
         self._running_iid: Optional[str] = None
         self._log_entries: List[RunLogEntry] = []
 
+        self._prep_runner = None    # pregatirea care ruleaza (📂 Manager de rutine)
+
         self._styles()
         self._build()
         self.load_repository(RprPaths.default_repository())
         self.new_routine(ask=False)
         self.after(50, self._poll)
+        # 📂 rutinele din folderul setat se citesc in fundal (Managerul de rutine le are gata)
+        from rpr.batch import preload, shared_library
+        if shared_library().scanned_at is None:
+            preload(self.studio_settings.effective_routines_folder())
 
     # ── drivere (se completeaza in etapele 2-3) ─────────────────────────────
     def _build_drivers(self) -> DriverProvider:
@@ -1706,6 +1718,8 @@ class StudioPanel(tk.Frame):
                     ev.set()
             elif kind == "done":
                 self._run_finished(*p)
+            elif kind == "prep_done":
+                self._prep_finished(p)
 
     def _add_log(self, e: RunLogEntry):
         self._log_entries.append(e)
@@ -1821,7 +1835,8 @@ class StudioPanel(tk.Frame):
         for k, v in sorted((self.engine.last_variables if self.engine else {}).items(), key=lambda kv: kv[0].lower()):
             self.vars.insert("", "end", values=(k, v))
         mark = "✔ " if result.success else "⏹ " if result.cancelled else "✖ "
-        self.set_status(mark + result.message)
+        report = getattr(result, "report_path", "")
+        self.set_status(mark + result.message + (f"  📊 {report}" if report else ""))
         self.winfo_toplevel().deiconify()
         if not result.success and not result.cancelled:
             choice_dialog(self, "Rutina oprita", result.message, ["OK"],
@@ -1849,8 +1864,98 @@ class StudioPanel(tk.Frame):
             self.engine.step_once()
 
     def stop(self):
+        if self._prep_runner is not None:
+            self._prep_runner.cancel()   # si rutinele urmatoare din pregatire
         if self.engine:
             self.engine.stop()
+
+    # ── 📂 Manager de rutine + pregatiri (rpr/batch.py) ──
+    def show_routine_manager(self):
+        from routine_manager_ui import RoutineManagerDialog
+        RoutineManagerDialog(self)
+
+    def run_preparation(self, prep):
+        """Ruleaza rutinele pregatirii una dupa alta, prin Studio: intrebari, preventie, Pauza / STOP raman active."""
+        if self.busy:
+            return
+        from rpr.batch import PreparationRunner
+        self.busy = True
+        self.clear_log()
+        self._run_control = RunControlWindow(self)
+        if self._run_frame:
+            self._run_frame.show("run")
+        if self.studio_settings.minimize_on_run:
+            self.winfo_toplevel().iconify()
+        dnd = bool(safety and self._dnd_allowed())
+        if dnd:
+            safety.DoNotDisturb.enable(wait=False)
+
+        def load(path):
+            return RoutineStore.load(path, self.repo)
+
+        def run_one(routine, item, folder):
+            repo = RepositoryStore.load(routine.repository_path) if routine.repository_path.strip() else self.repo
+            engine = RprEngine(repo, self.drivers, StudioRunHost(self), RprPaths.output())
+            engine.guard = StudioGuard() if safety else None
+            self.engine = engine
+            if self._prep_runner is not None and self._prep_runner.cancelled:
+                return None, ""
+            filmed = False
+            if self.video is not None and prep.video:
+                try:
+                    filmed = bool(self.call_ui(lambda: self.video.run_started(routine.name, force=True)))
+                except Exception:  # noqa: BLE001 — filmul nu are voie sa opreasca pregatirea
+                    filmed = False
+            try:
+                result = engine.run(routine)
+            finally:
+                film = ""
+                if filmed:
+                    try:
+                        film = self.call_ui(self.video.run_finished) or ""
+                    except Exception:  # noqa: BLE001
+                        film = ""
+            return result, film
+
+        runner = PreparationRunner(prep, run_one, RprPaths.output(), load_routine=load,
+                                   on_progress=lambda i, n, name: self.post("status", f"▶ Pregatire {i}/{n}: {name}"))
+        self._prep_runner = runner
+
+        def work():
+            res = None
+            try:
+                if dnd:
+                    safety.DoNotDisturb.wait_settled(timeout=20)
+                res = runner.run()
+            except Exception as ex:  # noqa: BLE001
+                self.post("status", f"Pregatirea s-a oprit: {ex}")
+            finally:
+                if dnd:
+                    safety.DoNotDisturb.restore()
+                self.post("prep_done", res)
+        threading.Thread(target=work, daemon=True, name="Pregatire").start()
+
+    def _prep_finished(self, res):
+        self.busy = False
+        self._prep_runner = None
+        if self._run_control:
+            self._run_control.destroy()
+            self._run_control = None
+        if self._run_frame:
+            self._run_frame.hide()
+        self.winfo_toplevel().deiconify()
+        if res is None:
+            return
+        self.set_status(("✔ " if res.success else "✖ ") + res.message)
+        ans = choice_dialog(self, "Pregatire terminata", res.message,
+                            ["Deschide documentatia", "Deschide folderul", "OK"],
+                            f"Rezultatele: {res.folder}", C=self.C)
+        target = res.documentation if ans == "Deschide documentatia" else res.folder if ans == "Deschide folderul" else ""
+        if target:
+            try:
+                os.startfile(target)  # type: ignore[attr-defined]
+            except Exception as ex:  # noqa: BLE001
+                self.set_status(str(ex))
 
     def test_node(self, node: RprNode):
         if self.busy:
@@ -2098,6 +2203,7 @@ class PropertyEditor:
                            lambda: node.fail_on_timeout, lambda v: setattr(node, "fail_on_timeout", v))
         elif isinstance(node, SetVariableNode):
             self.text(node, "Numele variabilei", lambda: node.name, lambda v: setattr(node, "name", v.strip("{} ")), vars_=False)
+            self._report_check(node, lambda: node.name)
             self.combo(node, "Operatie", VARIABLE_OPS, lambda: node.operation, lambda v: setattr(node, "operation", v), structural=True)
             op = node.operation
             if op == VariableOperation.Replace:
@@ -2233,6 +2339,7 @@ class PropertyEditor:
             self.text(a, "Salveaza rezultatul in variabila", lambda: a.output_variable,
                       lambda v: setattr(a, "output_variable", v), vars_=False)
             self._hint("Ex: Status. Apoi folosesti {Status} in pasii urmatori, in conditii sau in Excel.")
+            self._report_check(a, lambda: a.output_variable)
             self.text(a, "Valoarea asteptata (optional)", lambda: a.expected_value, lambda v: setattr(a, "expected_value", v))
             self._hint("Daca valoarea citita e diferita, rutina se opreste si te intreaba. * = orice text. "
                        "Ex: S:*  (orice mesaj de succes SAP),  {Rand.Status},  Salvat*")
@@ -2382,6 +2489,76 @@ class PropertyEditor:
             refill()
         self.p._btn(card, "＋ Variabila noua", add_var).pack(anchor="w", padx=8, pady=6)
         self._hint("Variabile speciale mereu disponibile: {Azi}, {Acum}, {Acum:yyyyMMdd_HHmm}, {NewLine}.", host=card)
+
+        self._build_report_card(r)
+
+    # ── 📊 raportul Excel al rularii (rpr/report.py) ──
+    def _report_check(self, node, get_name):
+        """Bifa de pe pas: valoarea variabilei apare ca o coloana in raportul Excel al rularii."""
+        r = self.p.routine
+        self.check(node, "📊 Pune valoarea in raportul Excel al rularii",
+                   lambda: rpr_report.has_variable(r, get_name()),
+                   lambda v: rpr_report.toggle_variable(r, get_name(), v))
+
+    def _build_report_card(self, r: Routine):
+        card = self._card(title="📊 Raport Excel al rularii (dovada muncii)")
+        rs = rpr_report.ReportSettings.of(r)
+
+        def upd(fn):
+            def setter(v):
+                s = rpr_report.ReportSettings.of(r)
+                fn(s, v)
+                s.save_to(r)
+            return setter
+
+        self.check(None, "Creeaza un raport Excel la fiecare rulare", lambda: rs.enabled,
+                   upd(lambda s, v: setattr(s, "enabled", v)), host=card, structural=True)
+        self._hint("Un fisier nou la fiecare rulare: un rand pentru fiecare rand Excel / repetare (sau unul pentru "
+                   "toata rutina), cu ora de start, durata, statusul, valorile bifate, pasii parcursi, filmul si "
+                   "captura erorii. Merge si fara un Excel de intrare.", host=card)
+        if not rs.enabled:
+            return
+        self.text(None, "Folderul rapoartelor (gol = rezultate\\rapoarte)", lambda: rs.folder,
+                  upd(lambda s, v: setattr(s, "folder", v.strip().strip('"'))), vars_=False, host=card)
+
+        def pick():
+            d = filedialog.askdirectory(parent=self.p, title="Folderul rapoartelor")
+            if d:
+                s = rpr_report.ReportSettings.of(r)
+                s.folder = os.path.normpath(d)
+                s.save_to(r)
+                self._changed(None, structural=True)
+
+        def open_folder():
+            s = rpr_report.ReportSettings.of(r)
+            folder = s.folder or os.path.join(RprPaths.output(), "rapoarte")
+            os.makedirs(folder, exist_ok=True)
+            try:
+                os.startfile(folder)  # type: ignore[attr-defined]
+            except Exception as ex:  # noqa: BLE001
+                self.p.set_status(str(ex))
+        row = tk.Frame(card, bg=card["bg"])
+        row.pack(fill="x", padx=8, pady=2)
+        self.p._btn(row, "📁 Alege folderul", pick).pack(side="left", padx=2)
+        self.p._btn(row, "Deschide folderul", open_folder).pack(side="left", padx=2)
+
+        self._caption("Coloane cu valori (bifeaza ce vrei sa apara in raport)", card)
+        names = [v for v in self.p.known_variables(None) if v not in ("Azi", "Acum", "Acum:yyyyMMdd_HHmm", "NewLine")]
+        names += [v for v in rs.variables if v.strip("{}").lower() not in {n.lower() for n in names}]
+        if not names:
+            self._hint("Nu exista inca variabile. Pasii care citesc valori (Citeste text...) si coloanele Excel apar aici.",
+                       host=card)
+        for name in names:
+            self.check(None, name, lambda n=name: rpr_report.has_variable(r, n),
+                       lambda v, n=name: rpr_report.toggle_variable(r, n, v), host=card)
+        self.check(None, "Coloana \"Pasi parcursi\" (definitia fiecarui pas, pe element)", lambda: rs.steps_column,
+                   upd(lambda s, v: setattr(s, "steps_column", v)), host=card)
+        self.check(None, "Foaia \"Pasi\": fiecare pas executat, cu ora, rezultat si regula", lambda: rs.steps_sheet,
+                   upd(lambda s, v: setattr(s, "steps_sheet", v)), host=card)
+        self.check(None, "Definitia completa a rutinei in foaia \"Rutina\"", lambda: rs.definition_sheet,
+                   upd(lambda s, v: setattr(s, "definition_sheet", v)), host=card)
+        self._hint("Filmul apare in raport cand e pornit in ⚙ Setari → Video (\"la fiecare rulare\"). "
+                   "Bifa 📊 exista si pe pasii care salveaza o valoare.", host=card)
 
 
 # ==============================================================================

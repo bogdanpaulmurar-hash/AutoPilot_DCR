@@ -2393,6 +2393,12 @@ class MainWindow:
         self._tray_hint_shown = False
         # v4.8: 🎥 filme (manual sau la rularea rutinelor)
         self.video = video_ui.VideoController(self.root, C, on_status=lambda m: self._status_var.set(m))
+        try:   # 📂 rutinele din folderul setat se citesc in fundal la pornire (Managerul de rutine le are gata)
+            from rpr.batch import preload
+            from rpr.drivers.registry import StudioSettings
+            preload(StudioSettings.load().effective_routines_folder())
+        except Exception:  # noqa: BLE001 — nu oprim pornirea aplicatiei
+            pass
         self.tray = app_shell.Tray(
             ui_call=lambda fn: self.root.after(0, fn),
             items=[("🎬 Recorder", lambda: (self._show_from_tray(), self._set_mode("recorder")), False),
@@ -2683,6 +2689,9 @@ class MainWindow:
         abtn(r, "💾 Salveaza", st("save_routine"), C["primary"], "Salveaza rutina")
         abtn(r, "Salveaza ca…", st("save_routine", True), None, "Salveaza intr-un fisier nou")
         abtn(r, "📚 Exemple", st("show_examples"), None, "Rutinele exemplu (incepe cu 01 Invatare)")
+        abtn(r, "📂 Manager rutine", st("show_routine_manager"), None,
+             "Rutinele din folderul setat (citite la pornire) si pregatirile: mai multe rutine rulate una dupa alta, "
+             "cu film, raport Excel si documentatie")
         r = group("studio", "RULARE")
         abtn(r, "▶ Ruleaza", st("run"), C["success"], "Ruleaza rutina", "F7")
         abtn(r, "⏭ Pas cu pas", st("run", True), None, "Fiecare apasare executa un singur pas")

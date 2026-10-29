@@ -112,10 +112,11 @@ class VideoController:
             return 0
 
     # ── rulari ──
-    def run_started(self, routine_name: str) -> bool:
-        """Apelat la pornirea unei rutine. Porneste filmul daca e activ in Setari (si nu inregistram deja)."""
+    def run_started(self, routine_name: str, force: bool = False) -> bool:
+        """Apelat la pornirea unei rutine. Porneste filmul daca e activ in Setari (si nu inregistram deja).
+        force=True: pregatirile cu "film pentru fiecare rutina" filmeaza oricum."""
         s = self.settings
-        if not s.record_on_run or self.active:
+        if (not s.record_on_run and not force) or self.active:
             return False
         self.mode = "run"
         self._run_name = routine_name
@@ -145,13 +146,16 @@ class VideoController:
     def row_finished(self, row: int, status: str):
         self.marker(f"{tr('Rand')} {row}: {status[:60]}")
 
-    def run_finished(self):
+    def run_finished(self) -> str:
+        """Opreste filmul rularii; intoarce primul fisier (la film pe rand: primul rand)."""
         if self.mode == "run" and self.active:
             path = self.stop(open_editor=False)
             files = self._run_files + ([path] if path else [])
             if files:
                 self.on_status(tr("🎥 Filmul rularii a fost salvat: ") + os.path.basename(files[-1]) +
                                (f" (+{len(files) - 1})" if len(files) > 1 else ""))
+                return files[0]
+        return ""
 
     def stop(self, open_editor: bool = True) -> str:
         if self.rec is None:

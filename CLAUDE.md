@@ -13,17 +13,17 @@ Tool RPA + Data Cleansing: recorder/player de pași desktop și browser, plus **
 ## Care variantă
 - **Python (`AutoPilotDC_py/`) e varianta principală.** Are tot ce avea C#, inclusiv Studio RPR, drivere Web (Playwright), SAP GUI și Desktop, biblioteca de obiecte, programarea, limbile RO/EN/DE.
 - **C# (`AutoPilotDC_C#/`)** urmează să fie abandonat după testare. Nu adăuga funcții noi acolo fără cerere explicită.
-- Fișierele `.rpr.json` și `obiecte.json` sunt identice între variante. Nu le schimba formatul într-o singură parte.
+- Fișierele `.rpr.json` și `obiecte.json` sunt identice între variante. Nu le schimba formatul într-o singură parte. Setările noi doar în Python stau în câmpuri pe care C# le ignoră (ex. `settings.report`); `.pregatire.json` există doar în Python.
 
 ## Comenzi (Python)
 - Instalare pe un PC: `AutoPilotDC_py\INSTALEAZA.bat`; verificare: `python verifica_instalare.py`
 - Pornire: `AutoPilot_DC.pyw` (fără consolă); erorile în `loguri/autopilot_console.log`
 - Teste: `cd AutoPilotDC_py && python -m unittest discover -s tests` (unele teste cer Windows; pe Linux unele cad)
-- Rulare rutină fără interfață: `py -m rpr run "rutina.rpr.json"`
+- Rulare rutină fără interfață: `py -m rpr run "rutina.rpr.json"` (sau o pregătire: `"Nume.pregatire.json"`)
 - Versiune: `AutoPilotDC_py/version.py` (sursă unică) + intrare în `AutoPilotDC_py/CHANGELOG.md`
 
 ## Hartă (Python)
-`AutoPilot_DC_app.py` (recorder/player, customtkinter) · `studio_ui.py` (Studio RPR) · `rpr/` (motorul: pași, condiții, bucle, variabile, Excel, drivere) · `autopilot_safety.py` (Nu deranja, chenar RUN/REC, prevenție) · `app_shell.py` (icon, tray, pornire cu Windows) · `i18n/` + `i18n.py` · `instructions_ui.py` (tab Instrucțiuni) · `docs/`
+`AutoPilot_DC_app.py` (recorder/player, customtkinter) · `studio_ui.py` (Studio RPR) · `rpr/` (motorul: pași, condiții, bucle, variabile, Excel, drivere; `report.py` raportul Excel al rulării, `batch.py` managerul de rutine și pregătirile) · `routine_manager_ui.py` (📂 Manager rutine) · `autopilot_safety.py` (Nu deranja, chenar RUN/REC, prevenție) · `app_shell.py` (icon, tray, pornire cu Windows) · `i18n/` + `i18n.py` · `instructions_ui.py` (tab Instrucțiuni) · `docs/`
 Fișiere vechi păstrate doar ca referință: `AutoPilot_DCv3.9_RedCursor.py`, `apply_patches_v4.py`, `autopilot_dc_setup_refactoration.py`, `0. Prompt_*`.
 
 ## Reguli
