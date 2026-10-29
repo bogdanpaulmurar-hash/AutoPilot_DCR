@@ -191,6 +191,14 @@ class ExcelTable:
         if color != CellColor.None_:
             cell.fill = PatternFill(fill_type="solid", start_color=_FILLS[color], end_color=_FILLS[color])
 
+    def write_link(self, row: int, column: str, text: str, target: str) -> None:
+        """Text cu link spre un fisier (ex. filmul randului)."""
+        col = self.get_or_create_column(column)
+        cell = self._ws.cell(row=row, column=col, value=text)
+        cell.hyperlink = "file:///" + os.path.abspath(target).replace("\\", "/")
+        cell.font = Font(color="0563C1", underline="single")
+        self._written[(row, col)] = text
+
     def color_row(self, row: int, color: CellColor) -> None:
         last = max([self._last_col_in_row(row), 1] + list(self.headers.values()))
         color = CellColor.parse(color)

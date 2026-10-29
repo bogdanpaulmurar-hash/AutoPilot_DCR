@@ -231,6 +231,7 @@ Jedes Kapitel erklärt kurz einen Ablauf, Schritt für Schritt, mit einem Beispi
 - **⚙ Einstellungen → 🎥 Video**: Videoordner, **automatisches Video bei jeder Ausführung** (Studio und Recorder), **ein Video pro Excel-Zeile**, auch bei geplanten Ausführungen, Aufnahmen pro Sekunde, Größe und Qualität.
 - Videos bestehen aus **Screenshots, die nur bei Bildschirmänderungen gespeichert werden** (kleine `.apvid`-Dateien). Cursor und Klicks werden bei der Wiedergabe gezeichnet. **🎬** in der oberen Leiste öffnet ein gespeichertes Video.
 - MP4 benötigt das Paket `opencv-python` (optional); GIF funktioniert immer.
+- In der Excel-Schleife erhält bei aktivem Video jede Zeile in der Spalte **Film** den Link zum Video und die Minute, in der die Zeile beginnt (Spalte in den Eigenschaften der Schleife ändern oder abschalten). Derselbe Link steht im Laufbericht. Doppelklick auf eine `.apvid`-Datei (oder Klick auf den Link in Excel) öffnet sie im Player, ohne die App zu starten.
 
 > Beispiel: Einstellungen → Video → „Video bei jeder Ausführung“ und „ein Video pro Excel-Zeile“ ankreuzen; Routine 03 ausführen — im Ordner entsteht pro Zeile ein Video mit Kapiteln für jeden Schritt.
 

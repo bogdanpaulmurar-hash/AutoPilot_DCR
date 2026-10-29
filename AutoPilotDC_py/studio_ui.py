@@ -2373,6 +2373,10 @@ class PropertyEditor:
                   vars_=False)
         self.editable_choice(f, "Coloana de status (gol = nu scrie status)", info.headers + ["Status"],
                              lambda: f.status_column, lambda v: setattr(f, "status_column", v))
+        self.text(f, "Coloana cu linkul filmului (gol = fara)", lambda: f.extra.get("video_column", "Film"),
+                  lambda v: f.extra.__setitem__("video_column", v.strip()), vars_=False)
+        self._hint("Cand filmul e pornit (⚙ Setari → Video), fiecare rand primeste linkul spre film si minutul la "
+                   "care incepe randul. Cu \"cate un film pe rand Excel\", fiecare rand are filmul lui.")
         self.check(f, "Coloreaza randurile (verde OK, rosu eroare)", lambda: f.color_rows, lambda v: setattr(f, "color_rows", v))
         self.check(f, "Salveaza Excel dupa fiecare rand (sigur la intreruperi)", lambda: f.save_after_each_row,
                    lambda v: setattr(f, "save_after_each_row", v))

@@ -2393,6 +2393,10 @@ class MainWindow:
         self._tray_hint_shown = False
         # v4.8: 🎥 filme (manual sau la rularea rutinelor)
         self.video = video_ui.VideoController(self.root, C, on_status=lambda m: self._status_var.set(m))
+        try:   # 🎬 dublu-click pe un film .apvid (sau linkul din Excel) il deschide in player
+            video_ui.register_file_type()
+        except Exception:  # noqa: BLE001
+            pass
         try:   # 📂 rutinele din folderul setat se citesc in fundal la pornire (Managerul de rutine le are gata)
             from rpr.batch import preload
             from rpr.drivers.registry import StudioSettings

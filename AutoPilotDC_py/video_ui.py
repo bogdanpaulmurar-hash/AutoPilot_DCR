@@ -762,3 +762,90 @@ def build_settings_section(parent: tk.Frame, C: Dict[str, str]) -> Callable[[], 
         n.area = next((k for k, name in areas if name == vars_["area"].get()), "window")
         n.save()
     return save
+
+
+# ─────────────────────────────────────────────────────────────
+# Player separat: dublu-click pe un .apvid (sau linkul din Excel / raport)
+#   pythonw video_ui.py "film.apvid" [--t SECUNDE]
+# Ruleaza in procesul lui, deci nu deranjeaza aplicatia deschisa.
+# ─────────────────────────────────────────────────────────────
+PROG_ID = "AutoPilotDC.Video"
+
+
+def register_file_type() -> bool:
+    """Asociaza .apvid cu acest player (doar pentru utilizatorul curent, fara administrator)."""
+    if os.name != "nt":
+        return False
+    try:
+        import sys
+        import winreg
+        exe = sys.executable
+        if os.path.basename(exe).lower() == "python.exe":
+            w = os.path.join(os.path.dirname(exe), "pythonw.exe")
+            exe = w if os.path.isfile(w) else exe
+        cmd = f'"{exe}" "{os.path.abspath(__file__)}" "%1"'
+        base = r"Software\Classes"
+        try:
+            with winreg.OpenKey(winreg.HKEY_CURRENT_USER, base + "\\" + PROG_ID + r"\shell\open\command") as k:
+                if winreg.QueryValueEx(k, "")[0] == cmd:
+                    return True        # deja asociat cu aceasta instalare
+        except OSError:
+            pass
+        with winreg.CreateKey(winreg.HKEY_CURRENT_USER, base + r"\.apvid") as k:
+            winreg.SetValueEx(k, "", 0, winreg.REG_SZ, PROG_ID)
+        with winreg.CreateKey(winreg.HKEY_CURRENT_USER, base + "\\" + PROG_ID) as k:
+            winreg.SetValueEx(k, "", 0, winreg.REG_SZ, "Film AutoPilot DC")
+        icon = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets", "autopilot.ico")
+        if os.path.isfile(icon):
+            with winreg.CreateKey(winreg.HKEY_CURRENT_USER, base + "\\" + PROG_ID + r"\DefaultIcon") as k:
+                winreg.SetValueEx(k, "", 0, winreg.REG_SZ, icon)
+        with winreg.CreateKey(winreg.HKEY_CURRENT_USER, base + "\\" + PROG_ID + r"\shell\open\command") as k:
+            winreg.SetValueEx(k, "", 0, winreg.REG_SZ, cmd)
+        try:   # Explorer afla imediat de asociere
+            ctypes.windll.shell32.SHChangeNotify(0x08000000, 0, None, None)
+        except Exception:
+            pass
+        return True
+    except Exception:  # noqa: BLE001
+        return False
+
+
+_PLAYER_COLORS = {"bg_main": "#1E1E2E", "bg_panel": "#252535", "bg_card": "#2A2A3E", "bg_input": "#32324A",
+                  "border": "#444466", "primary": "#009999", "accent": "#00B3B3", "text": "#E8E8F0",
+                  "text_dim": "#A0A0B8", "text_muted": "#6C6C88", "success": "#2E9E5B", "warning": "#C98A00",
+                  "danger": "#C0392B", "separator": "#444466"}
+
+
+def open_player(path: str, start_s: float = 0.0) -> None:
+    root = tk.Tk()
+    root.withdraw()
+    try:
+        import i18n
+        i18n.install()
+    except Exception:  # noqa: BLE001
+        pass
+    from collections import defaultdict
+    C = defaultdict(lambda: "#336699", _PLAYER_COLORS)
+    ed = VideoEditor(root, C, path)
+    if not ed.winfo_exists():
+        root.destroy()
+        return
+    if start_s > 0:
+        ed.after(300, lambda: ed._seek(ed.v.out_at(start_s)))
+    ed.bind("<Destroy>", lambda e: root.after(50, root.destroy) if e.widget is ed else None)
+    root.mainloop()
+
+
+if __name__ == "__main__":
+    import sys
+    args = sys.argv[1:]
+    t = 0.0
+    if "--t" in args:
+        i = args.index("--t")
+        try:
+            t = float(args[i + 1])
+        except (IndexError, ValueError):
+            pass
+        del args[i:i + 2]
+    if args:
+        open_player(args[0], t)

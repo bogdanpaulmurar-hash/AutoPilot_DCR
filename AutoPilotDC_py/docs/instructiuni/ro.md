@@ -229,6 +229,7 @@ Fiecare capitol explică pe scurt o procedură, pas cu pas, cu un exemplu. Alege
 - **⚙ Setări → 🎥 Video**: folderul filmelor, **film automat la fiecare rulare** (Studio și Recorder), **câte un film pentru fiecare rând Excel**, și la rulările programate, capturi pe secundă, mărimea și calitatea.
 - Filmele se fac din **capturi de ecran salvate doar când ecranul se schimbă** (fișiere `.apvid` mici). Cursorul și click-urile se desenează la redare. **🎬** din bara de sus deschide un film salvat.
 - MP4 are nevoie de pachetul `opencv-python` (opțional); GIF merge mereu.
+- În bucla Excel, cu filmul pornit, fiecare rând primește în coloana **Film** linkul spre film și minutul la care începe rândul (coloana se schimbă sau se oprește din proprietățile buclei). Același link apare și în raportul rulării. Dublu-click pe un fișier `.apvid` (sau click pe link în Excel) îl deschide în player, fără să pornească aplicația.
 
 > Exemplu: Setări → Video → bifează „film la fiecare rulare” și „câte un film pe rând Excel”; rulează rutina 03 — în folder apare câte un film pentru fiecare rând, cu capitole pentru fiecare pas.
 

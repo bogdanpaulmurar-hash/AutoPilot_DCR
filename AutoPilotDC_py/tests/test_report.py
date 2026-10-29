@@ -145,5 +145,42 @@ class ReportRunTests(unittest.TestCase):
         self.assertEqual("nou", src[2][src[0].index("Nota")])
 
 
+class InputExcelFilmLinkTests(unittest.TestCase):
+    def _xl(self, d):
+        xl = os.path.join(d, "date.xlsx")
+        wb = openpyxl.Workbook()
+        wb.active.append(["ID"])
+        wb.active.append(["A1"])
+        wb.active.append(["A2"])
+        wb.save(xl)
+        return xl
+
+    def test_rows_get_film_link_when_recording(self):
+        d = tempfile.mkdtemp(prefix="apdc_film_")
+        xl = self._xl(d)
+        r = _routine()
+        r.steps.append(ForEachRowNode(file_path=xl, key_column="ID", body=[LogNode(message="{Rand.ID}")]))
+        res = RprEngine(ObjectRepository(), DriverProvider(), _VideoHost(), d).run(r)
+        self.assertTrue(res.success, res.message)
+        ws = openpyxl.load_workbook(xl).active
+        head = [c.value for c in ws[1]]
+        col = head.index("Film") + 1
+        cell = ws.cell(row=2, column=col)
+        self.assertEqual("film_test.apvid @ 01:15", cell.value)
+        self.assertTrue(cell.hyperlink.target.endswith("film_test.apvid"))
+
+    def test_no_link_without_video_or_when_disabled(self):
+        d = tempfile.mkdtemp(prefix="apdc_film_")
+        xl = self._xl(d)
+        r = _routine()
+        r.steps.append(ForEachRowNode(file_path=xl, key_column="ID", body=[LogNode(message="x")]))
+        RprEngine(ObjectRepository(), DriverProvider(), RunHost(), d).run(r)          # fara film
+        self.assertNotIn("Film", [c.value for c in openpyxl.load_workbook(xl).active[1]])
+        r.steps[0].extra["video_column"] = ""                                          # dezactivat
+        r.steps[0].skip_completed_rows = False
+        RprEngine(ObjectRepository(), DriverProvider(), _VideoHost(), d).run(r)
+        self.assertNotIn("Film", [c.value for c in openpyxl.load_workbook(xl).active[1]])
+
+
 if __name__ == "__main__":
     unittest.main()
