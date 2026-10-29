@@ -2,6 +2,12 @@
 
 Pornirea aplicației: **`AutoPilot_DC.pyw`** (sau scurtătura „AutoPilot DC” de pe Desktop). Numele fișierelor nu se mai schimbă de la o versiune la alta, deci scurtăturile și pornirea cu Windows rămân valabile.
 
+## 4.8.2 — 2026-10-29
+- **🎥 Filmul direct din listă**: în bucla „Pentru fiecare rând Excel”, cu filmul pornit, fiecare rând primește în Excel-ul de intrare coloana **Film**, cu linkul spre film și minutul la care începe rândul (din proprietățile buclei se schimbă coloana sau se oprește). Un rând marcat greșit se verifică dintr-un click.
+- **Player separat pentru `.apvid`**: dublu-click pe film sau click pe link în Excel / raport îl deschide în player (proces separat, fără aplicația principală). Asocierea se face la pornirea aplicației, doar pentru utilizatorul curent, fără drepturi de administrator. Manual: `pythonw video_ui.py "film.apvid" --t 75`.
+- Instrucțiuni (capitolul 21) în RO / EN / DE.
+- Teste (Linux, Python 3.12): 89 rulate, 12 sărite; aceleași 3 eșecuri vechi. Teste noi pentru linkul filmului în Excel.
+
 ## 4.8.1 — 2026-10-29
 - **💾 Backup și restaurare** (⚙ Setări): un `.zip` salvat unde alegi, cu setările, rutinele Recorder și Studio, biblioteca de obiecte, programările, notițele, limba, setările video și folderul rutinelor din 📂 Manager (fără profilul browserului și fără filme; rezultatele doar la cerere). La restaurare, starea curentă se salvează întâi automat în `backup-automat`; căile care nu există pe PC-ul nou sunt adaptate.
 - **„Nu deranja”**: repornirea serviciului de notificări raportează acum când Windows o refuză (acces interzis), iar mesajul spune de ce setarea poate să nu se aplice. Nou: **⚙ Setări → 🔍 Verifică Nu deranja** (și `python autopilot_safety.py dnd --test`): versiunea Windows, setarea găsită, serviciul, opțional un test real; raportul se salvează în `loguri\nu_deranja_diagnostic.txt`. Cauza exactă pe laptopul tău rămâne de confirmat cu acest raport.

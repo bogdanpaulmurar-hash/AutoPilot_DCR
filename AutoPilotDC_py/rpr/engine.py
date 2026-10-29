@@ -79,6 +79,8 @@ class _RowContext:
     row: int = 0
 
 
+VIDEO_COLUMN_KEY = "video_column"   # ForEachRowNode.extra: coloana cu linkul filmului ("" = fara); implicit "Film"
+
 _SAP_NO_STATUS_CHECK = {RprAction.SapReadStatusBar, RprAction.SapConnect, RprAction.Highlight,
                         RprAction.ReadText, RprAction.ReadValue, RprAction.ReadAttribute,
                         RprAction.SapGridReadCell, RprAction.SapGridRowCount}
@@ -635,6 +637,7 @@ class RprEngine:
                 except Exception:  # noqa: BLE001 — gazda (ex. video) nu are voie sa opreasca rutina
                     pass
                 key = table.get_cell(row, f.key_column) if f.key_column.strip() else ""
+                film = self._video()   # filmul randului (daca se inregistreaza): cale + secunda de start
                 item = self._report_item_start(f"Rand {row}" + (f": {key}" if key else ""))
 
                 # 3. pasii pentru rand
@@ -675,9 +678,13 @@ class RprEngine:
                     pass
                 self._report_item_end(item, status)
 
-                # 4. status + culoare + salvare
+                # 4. status + culoare + link spre film + salvare
                 if has_status:
                     table.write(row, f.status_column, _shorten(status, 250), color)
+                video_col = str(f.extra.get(VIDEO_COLUMN_KEY, "Film") or "").strip()
+                if film[0] and video_col:
+                    m, sec = divmod(int(film[1]), 60)
+                    table.write_link(row, video_col, f"{os.path.basename(film[0])} @ {m:02d}:{sec:02d}", film[0])
                 if f.color_rows and color == CellColor.Red:
                     table.color_row(row, CellColor.Red)
                 if f.save_after_each_row:

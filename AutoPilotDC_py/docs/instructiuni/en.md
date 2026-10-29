@@ -231,6 +231,7 @@ Each chapter briefly explains one procedure, step by step, with an example. Pick
 - **⚙ Settings → 🎥 Video**: the video folder, **automatic video on every run** (Studio and Recorder), **one video per Excel row**, also for scheduled runs, captures per second, size and quality.
 - Videos are made of **screenshots saved only when the screen changes** (small `.apvid` files). The cursor and clicks are drawn during playback. **🎬** in the top bar opens a saved video.
 - MP4 needs the `opencv-python` package (optional); GIF always works.
+- In the Excel loop, with video on, every row gets the link to the video and the minute where the row starts in the **Film** column (change or turn off the column in the loop's properties). The same link appears in the run report. Double-clicking an `.apvid` file (or clicking the link in Excel) opens it in the player without starting the app.
 
 > Example: Settings → Video → check "video on every run" and "one video per Excel row"; run routine 03 — the folder gets one video per row, with chapters for every step.
 
