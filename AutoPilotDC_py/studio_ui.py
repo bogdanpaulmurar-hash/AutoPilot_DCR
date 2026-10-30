@@ -1638,6 +1638,8 @@ class StudioPanel(tk.Frame):
         iid = self.objects.identify_row(e.y)
         if iid and iid.startswith("folder:"):
             return self._folder_menu(e, iid)
+        if iid and iid.startswith(("page:", "site:")):
+            return self._group_menu(e, iid)
         if not iid or not iid.startswith("obj:"):
             return
         self.objects.selection_set(iid)
@@ -1677,6 +1679,46 @@ class StudioPanel(tk.Frame):
             m.add_command(label="🩺 Verifica obiectele folderului", command=lambda: self.check_saved(
                 [o for o in self._folder_objects(iid) if rpr_scan.is_web(o)]))
         m.tk_popup(e.x_root, e.y_root)
+
+    def _group_objects(self, iid: str) -> List[UiObject]:
+        """Obiectele de sub un rand de site / pagina din tree."""
+        if iid.startswith("site:"):
+            site = iid[len("site:"):]
+            return [o for o in self.repo.objects if self._site_of(o) == site]
+        site, page = iid[len("page:"):].split("|", 1)
+        return [o for o in self.repo.objects if self._site_of(o) == site and (o.page or "(fara pagina)") == page]
+
+    def _group_menu(self, e, iid: str):
+        self.objects.selection_set(iid)
+        C = self.C
+        m = tk.Menu(self, tearoff=0, bg=C["bg_card"], fg=C["text"], activebackground=C["primary"])
+        what = "site-ul" if iid.startswith("site:") else "pagina"
+        m.add_command(label=f"✎ Redenumeste {what}...", command=lambda: self.rename_group(iid))
+        web = [o for o in self._group_objects(iid) if rpr_scan.is_web(o)]
+        if web:
+            m.add_command(label="🩺 Verifica obiectele de aici", command=lambda: self.check_saved(web))
+        m.tk_popup(e.x_root, e.y_root)
+
+    def rename_group(self, iid: str):
+        """Redenumeste o pagina (sau un site) pentru toate obiectele de sub ea."""
+        objs = self._group_objects(iid)
+        is_site = iid.startswith("site:")
+        old = iid[len("site:"):] if is_site else iid.split("|", 1)[1]
+        if old.startswith("("):
+            old = ""
+        new = input_dialog(self, "Redenumeste site-ul" if is_site else "Redenumeste pagina",
+                           f"Nume nou pentru {'site-ul' if is_site else 'pagina'} \"{old or '-'}\" "
+                           f"({len(objs)} obiecte):", old, C=self.C)
+        if new is None or not new.strip() or new.strip() == old:
+            return
+        new = new.strip()
+        if is_site:
+            n = rpr_scan.rename_site(self.repo, objs, old, new)
+        else:
+            n = rpr_scan.rename_page(objs, new)
+        self.save_repository()
+        self.refresh_objects()
+        self.set_status(f"Redenumit: {n} obiecte.")
 
     def rename_folder(self, iid: str):
         objs = self._folder_objects(iid)

@@ -314,6 +314,7 @@ Unele aplicații web își schimbă „folderele” (meniul, arborele din stâng
 2. În bibliotecă arborele devine **Site · Pagină · 📁 Folder · buton**.
 3. Pentru un obiect existent: click dreapta → **📁 Muta in folder...** sau câmpul **Folder** din **Editeaza**.
 4. Click dreapta pe un folder: **✎ Redenumeste folderul...** (schimbă și subfolderele) și **🩺 Verifica obiectele folderului**.
+- **Redenumire pagină / site**: click dreapta pe 📄 pagină (sau 🌐 site) → **✎ Redenumeste pagina...**; se schimbă pentru toate obiectele de sub ea. Dacă noul nume există deja, paginile se unesc.
 - Folderul doar grupează. Nu schimbă unde se caută elementul pe pagină (asta face **Containerul**). Rutinele nu se schimbă: pașii folosesc tot numele obiectului.
 - Ferestrele (obiect, scanare, verificare, programare) se derulează cu roata mouse-ului, iar butoanele **Salveaza / Adauga / Inchide** rămân fixe jos, deci nu mai trebuie să le măreșți.
 
