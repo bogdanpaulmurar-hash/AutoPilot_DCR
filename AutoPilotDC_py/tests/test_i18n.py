@@ -54,6 +54,26 @@ class TranslationFileTests(unittest.TestCase):
             i18n.load("ro")
         self.assertEqual("Salveaza", i18n.tr("Salveaza"))
 
+    def test_step_titles_follow_language(self):
+        """v4.16: titlurile pasilor se compun din bucati traduse (nu raman cuvinte romanesti in engleza)."""
+        from rpr.model import (ActionNode, Condition, ConditionKind, IfNode, RprAction, RuleNode, TryNode,
+                               WaitMode, WaitNode)
+        vis = Condition(kind=ConditionKind.ElementVisible, target="Mesaj")
+        try:
+            i18n.load("en")
+            self.assertEqual("If it appears: [Mesaj] is visible", IfNode(optional=True, condition=vis).title)
+            self.assertEqual("Wait until [Mesaj] is visible (max 15 s)",
+                             WaitNode(mode=WaitMode.UntilTrue, condition=vis, timeout_ms=15000).title)
+            self.assertEqual("Try (error → {Eroare})", TryNode().title)
+            self.assertEqual('Type text (replace) [Camp] = "x"',
+                             ActionNode(action=RprAction.TypeText, target="Camp", value="x").title)
+            self.assertEqual('Rule: the error contains "x"', RuleNode(error_contains="x").title)
+            i18n.load("de")
+            self.assertEqual("Falls erscheint: [Mesaj] ist sichtbar", IfNode(optional=True, condition=vis).title)
+        finally:
+            i18n.load("ro")
+        self.assertEqual("Daca apare [Mesaj] e vizibil", IfNode(optional=True, condition=vis).title)
+
     def test_saved_language_roundtrip(self):
         import tempfile
         old = i18n._SETTINGS

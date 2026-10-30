@@ -40,6 +40,7 @@ class _Table:
         self.templates: List[Tuple["re.Pattern", str, str]] = []   # (regex, sablon tradus, prefix literal)
         self.by_prefix: Dict[str, List[int]] = {}
         self.reverse: Dict[str, str] = {}                         # traducere -> textul romanesc (texte exacte)
+        self.raw: Dict[str, str] = {}                             # cheia exacta -> traducere (si sabloanele)
         if lang == "ro":
             return
         try:
@@ -50,6 +51,7 @@ class _Table:
         for src, dst in data.items():
             if not dst:
                 continue
+            self.raw[src] = dst
             rx = _compile(src) if re.search(r"\{\d+\}", src) else None
             if rx is None:
                 self.exact[src] = dst
@@ -191,6 +193,12 @@ def load(lang: str) -> None:
 def tr(text):
     """Traducerea unui text in limba interfetei (sau textul neschimbat daca nu exista traducere)."""
     return _current.tr(text)
+
+
+def tr_template(src: str) -> str:
+    """Traducerea unui sablon cautat exact dupa cheie (ex. "Daca apare {0}"), ca sa fie completat cu .format().
+    tr() ar potrivi sablonul cu altul mai general ("Daca {0}")."""
+    return _current.raw.get(src, src) if isinstance(src, str) else src
 
 
 def tr_value(v: str) -> str:

@@ -54,10 +54,11 @@ import ui_theme   # v4.14: contrast automat, texte care se rup dupa latime
 import studio_views   # v4.15: bara de activitati, tab-uri, cronologie, ecranul Excel, fluxul
 
 try:
-    from i18n import tr   # limba interfetei (listele de mai jos se traduc doar la afisare)
+    from i18n import tr, tr_template   # limba interfetei (listele de mai jos se traduc doar la afisare)
 except ImportError:       # pragma: no cover
     def tr(text):
         return text
+    tr_template = tr
 
 try:
     import autopilot_safety as safety
@@ -1488,7 +1489,7 @@ class StudioPanel(tk.Frame):
             for name, lst in br:
                 par = iid
                 if len(br) > 1:
-                    par = tv.insert(iid, "end", text=f"▸ {name}", open=True, tags=("branch",))
+                    par = tv.insert(iid, "end", text=f"▸ {tr(name)}", open=True, tags=("branch",))
                 for ch in lst:
                     add(ch, par)
         for n in sub.steps:
@@ -2260,7 +2261,7 @@ class StudioPanel(tk.Frame):
         if len(branches) > 1:
             for name, lst in branches:
                 biid = f"{iid}#{name}"
-                self.tree.insert(iid, "end", iid=biid, text=f"▸ {name}", open=biid not in collapsed, tags=("branch",))
+                self.tree.insert(iid, "end", iid=biid, text=f"▸ {tr(name)}", open=biid not in collapsed, tags=("branch",))
                 self._items[biid] = ("branch", None, lst)
                 for ch in lst:
                     self._add_tree_node(ch, lst, biid, collapsed)
@@ -2268,7 +2269,7 @@ class StudioPanel(tk.Frame):
             name, lst = branches[0]
             if not lst:  # ramura goala ramane selectabila
                 biid = f"{iid}#{name}"
-                self.tree.insert(iid, "end", iid=biid, text=f"▸ {name} (gol)", tags=("branch",))
+                self.tree.insert(iid, "end", iid=biid, text=f"▸ {tr(name)} " + tr("(gol)"), tags=("branch",))
                 self._items[biid] = ("branch", None, lst)
             for ch in lst:
                 self._add_tree_node(ch, lst, iid, collapsed)
@@ -2501,11 +2502,11 @@ class StudioPanel(tk.Frame):
         for site in sorted(tree, key=str.lower):
             sid = "site:" + site
             n = sum(len(v) for v in tree[site].values())
-            self.objects.insert("", "end", iid=sid, text=f"🌐 {site}", values=(f"{n} ob.",), open=open_state.get(sid, True),
+            self.objects.insert("", "end", iid=sid, text=f"🌐 {tr(site)}", values=(f"{n} ob.",), open=open_state.get(sid, True),
                                 tags=("site",))
             for page in sorted(tree[site], key=str.lower):
                 pid = f"page:{site}|{page}"
-                self.objects.insert(sid, "end", iid=pid, text=f"📄 {page}", open=open_state.get(pid, True), tags=("page",))
+                self.objects.insert(sid, "end", iid=pid, text=f"📄 {tr(page)}", open=open_state.get(pid, True), tags=("page",))
                 add_group(pid, tree[site][page], 0, site, page)
         for iid in sel:
             if self.objects.exists(iid):
@@ -3087,7 +3088,7 @@ class StudioPanel(tk.Frame):
         pg = page("🌐 Browser")
         from rpr.drivers.web import BROWSERS
         caption(pg, "Browser pentru pasii Web")
-        browser = ttk.Combobox(pg, values=[l for _, l in BROWSERS], state="readonly", width=40,
+        browser = ttk.Combobox(pg, values=[tr(l) for _, l in BROWSERS], state="readonly", width=40,
                                style="Studio.TCombobox")
         browser.current(next((i for i, (v, _) in enumerate(BROWSERS) if v.lower() == st.browser.lower()), 0))
         browser.pack(anchor="w", padx=12, pady=(0, 8))
@@ -3956,7 +3957,7 @@ class PropertyEditor:
 
     # ── pas ──
     def _build_node(self, node: RprNode):
-        self._title(f"{icon_for(node)}  {node.KIND_LABEL}")
+        self._title(f"{icon_for(node)}  {tr(node.KIND_LABEL)}")
         if isinstance(node, ActionNode):
             self._build_action(node)
         elif isinstance(node, WaitNode):
@@ -4081,7 +4082,7 @@ class PropertyEditor:
         for ai in ACTIONS:
             grp = "Pe obiect" if len(ai.technologies) == 4 else "SAP" if UiTechnology.Sap in ai.technologies else \
                 "Desktop" if UiTechnology.Desktop in ai.technologies else "Browser"
-            options.append((ai.action, f"{grp}  ·  {ai.label}"))
+            options.append((ai.action, f"{tr(grp)}  ·  {tr(ai.label)}"))
 
         def set_action(v):
             a.action = v
@@ -4172,8 +4173,8 @@ class PropertyEditor:
         if info.error:
             self._hint(info.error, color=self.C["warning"])
         elif info.headers:
-            self._hint(f"Coloane gasite ({info.data_rows} randuri cu date): " +
-                       ", ".join("{" + f.row_variable + "." + h + "}" for h in info.headers))
+            self._hint(tr_template("Coloane gasite ({0} randuri cu date): {1}").format(info.data_rows,
+                       ", ".join("{" + f.row_variable + "." + h + "}" for h in info.headers)))
 
     # ── conditie (recursiv pentru SI / SAU) ──
     def condition(self, c: Condition, node: RprNode, host=None, depth=0):
@@ -4461,7 +4462,7 @@ class ObjectDialog(DialogBase):
         self.name = tk.StringVar(value=obj.name)
         tk.Entry(self.body, textvariable=self.name, **es).pack(fill="x", padx=14, ipady=3)
         cap("Tehnologie")
-        self.tech = ttk.Combobox(self.body, values=[l for _, l in TECHNOLOGIES], state="readonly")
+        self.tech = ttk.Combobox(self.body, values=[tr(l) for _, l in TECHNOLOGIES], state="readonly")
         self.tech.current(next((i for i, (v, _) in enumerate(TECHNOLOGIES) if v == obj.technology), 0))
         self.tech.pack(fill="x", padx=14)
         cap("Context (Web: link-ul paginii · Desktop: proces:nume.exe sau titlu · SAP: wnd[0])")
