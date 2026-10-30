@@ -391,6 +391,7 @@ The format (keywords in English or Romanian, upper or lower case):
 - Header: `ROUTINE: <name>`, `DESCRIPTION: <text>`, `VARIABLE: Name = value`.
 - Steps: `OPEN BROWSER <url>`, `GO TO <url>`, `CLICK <object>`, `TYPE <object> = <text>`, `SELECT <object> = <option>`, `CHECK <object>`, `PRESS Enter`, `READ <object> -> {Var}`, `WAIT 2` or `WAIT <object> MAX 15`, `LOG "text"`, `ASK "text"`, `MANUAL "what the person does"`, `SAP TRANSACTION /nVA03`, `START APP notepad.exe`.
 - Blocks: `IF <condition>` … `ELSE` … `END`, `REPEAT 3` … `END`, `FOR EACH ROW {File} SHEET Data` … `END` (values: `{Rand.Column}`, writing: `WRITE EXCEL Result = OK`), `TRY` … `ON ERROR` … `END`.
+- `IF` … `ELSE` … `END` has **a single** `END`, after the `ELSE` branch. An `IF` (or `IF APPEARS`) inside another `IF` is closed with its own `END`. Several cases: `ELSE IF <condition>`, still with a single `END` at the end. `IF APPEARS <object>` accepts `ELSE` too. The error “ELSE after END” gives the row of the `END` to delete.
 - Objects: `button "Save"`, `field "User"`, `link "..."`, `list "Country"`, `checkbox "..."`, `text "..."`, `css "#id"`, `sap "wnd[0]/usr/..."`, `desktop "Name"` or `[Name]` from the library.
 - Conditions: `{Var} = "x"`, `{Var} contains "x"`, `visible button "OK"`, `exists [Name]`, combined with `AND` / `OR`.
 - A complete `.rpr.json` routine is accepted too. What cannot be automated becomes `MANUAL`: the routine stops and waits for Continue.

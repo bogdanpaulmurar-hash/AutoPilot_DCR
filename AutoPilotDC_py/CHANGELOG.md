@@ -2,6 +2,16 @@
 
 Pornirea aplicației: **`AutoPilot_DC.pyw`** (sau scurtătura „AutoPilot DC” de pe Desktop). Numele fișierelor nu se mai schimbă de la o versiune la alta, deci scurtăturile și pornirea cu Windows rămân valabile.
 
+## 4.16.1 — 2026-10-30
+- **📥 Import AI: butonul ✅ Creează rutina nu se vedea** pe ecranele mai mici (sau cu scalare 125–150 %): bara de jos era așezată ultima și rămânea în afara ferestrei. Acum e așezată prima, jos, iar textul și lista de pași se micșorează în locul ei. Nou: **Ctrl + Enter** creează rutina.
+- **DACA / ALTFEL în textul de la AI**:
+  - `DACA APARE <obiect>` … `ALTFEL` … `SFARSIT` era respins cu „ALTFEL fără DACA deschis”, deși motorul știa să ruleze ramura. Acum e acceptat.
+  - `ALTFEL DACA <condiție>` (și `ALTFEL DACA APARE`) e înțeles: un DACA nou în ramura Altfel, închis de același `SFARSIT`. Înainte, textul de după ALTFEL era ignorat fără niciun mesaj.
+  - Mesaje mai clare: „ALTFEL după SFARSIT: SFARSIT-ul de pe rândul N a închis deja DACA” (șterge acel SFARSIT), „Al doilea ALTFEL în același DACA”, „După ALTFEL nu urmează nimic pe același rând”.
+  - Promptul pentru AI spune acum explicit: un singur SFARSIT după ALTFEL, DACA în DACA cu propriul SFARSIT, ALTFEL DACA pentru mai multe variante, indentare cu 2 spații.
+- Instrucțiuni: capitolul 33, în RO / EN / DE.
+- Teste (Linux, Python 3.12, Xvfb): 177 rulate, 8 sărite; aceleași eșecuri vechi ca pe 4.16.0 (2 pentru Windows, programarea pe zile, filmele scurte). Teste noi în `test_importer` (2): DACA în DACA, DACA APARE cu ALTFEL, lanț ALTFEL DACA, mesajele pentru ALTFEL greșit (RO / EN). Verificat în Xvfb la 1366 × 768 și 1280 × 600: butonul ✅ Creează rutina rămâne vizibil. Netestat pe Windows (scalarea reală a ecranului).
+
 ## 4.16.0 — 2026-10-30
 - **Traduceri**: pe interfața în engleză / germană mai rămâneau texte în română: titlurile pașilor din arbore („Daca…”, „Pentru fiecare rand…”, „Asteapta…”), ramurile, listele (acțiuni, browsere, tehnologii), numele și descrierile exemplelor, mesaje de stare. Titlurile pașilor se compun acum din bucăți traduse; toate textele noi din această versiune au EN / DE.
 - **Recorder-ul intră în Studio**: tab-urile vechi (Recorder, Rutine, Log, Excel, Setări, Instrucțiuni) au dispărut; fereastra e doar Studio, cu bara de sus pe un rând. Ce era util s-a mutat:
