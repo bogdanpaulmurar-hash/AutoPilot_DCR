@@ -2,6 +2,10 @@
 
 Pornirea aplicației: **`AutoPilot_DC.pyw`** (sau scurtătura „AutoPilot DC” de pe Desktop). Numele fișierelor nu se mai schimbă de la o versiune la alta, deci scurtăturile și pornirea cu Windows rămân valabile.
 
+## 4.12.1 — 2026-10-30
+- **Pașii rutinei se văd înainte s-o adaugi**: în 📋 Rutine, sub listă, apare arborele de pași al rutinei alese (cu structura Dacă / bucle, doar citire); același arbore în editorul pasului „Ruleaza rutina”.
+- Teste (Linux, Python 3.12): fără schimbări de logică, doar interfață. Verificat în Studio (Xvfb): arborele din editorul pasului. Previzualizarea din tab folosește aceeași funcție, dar nu am văzut-o pe ecran; netestat pe Windows.
+
 ## 4.12.0 — 2026-10-30
 - **📋 Rutine salvate ca pas.** Pas nou **📋 Ruleaza rutina** (Organizare): rulează o rutină salvată în locul pasului, cu **aceleași variabile, același Excel și aceeași bibliotecă**; setările rutinei principale se aplică și ei, iar pașii calupului apar în log cu numele lui. Înainte de start se verifică fișierul, buclele, adâncimea (maxim 8) și obiectele lipsă. Fișierul se urmărește: o schimbi o dată și merge peste tot.
 - **Tab nou 📋 Rutine** lângă 📚 Biblioteca (folderul din 📂 Manager rutine, căutare, subfoldere): **➕ Ca pas** (dublu-click) adaugă pasul care apelează rutina, **📥 Ca pasi** copiază pașii în rutina curentă (cu variabilele lor), **📂 Deschide**. La pasul existent: **📥 Inlocuieste cu pasii ei**.
