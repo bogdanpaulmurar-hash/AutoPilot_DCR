@@ -162,6 +162,9 @@ Each chapter briefly explains one procedure, step by step, with an example. Pick
 2. Put the steps **inside** the block; use `{Rand.ColumnName}`.
 3. **📝 Write to Excel** (inside the loop) writes a result into the current row (the column is created if missing) and can color the cell.
 4. The **status column** receives OK / the error and rows are colored green / red. With "Save after every row" and "skip rows already OK" you can resume an interrupted run.
+5. **📤 Export Excel template** (in the block's panel): a new file with the key column (empty = `Id`) formatted as text, so leading zeros and long Ids stay as you type them, then the columns from the **Write to Excel** steps (green) and the status (grey). It has an *Instructions* sheet and warns about a duplicate Id. After saving you can use the template as the loop's file.
+6. **Key column under another name**: if the routine asks for `Id` and the file has `ID`, `UEID`, `Code`/`Cod` or `No`/`Nr`, the column is found and `{Rand.Id}` holds its value. Spaces, `_` and capital letters do not matter. These names are not used when writing: a "Cod" read from SAP never lands on the Id column.
+7. **Check before the first click**: rows with data but no Id (the list stops at the first one) and duplicate Ids appear in a question: **Continue** or **Stop the routine**. A scheduled run continues and writes it to the log.
 - Formulas in the file stay intact.
 
 > Example: a file with the column `IBase`; in the loop: Type text `{Rand.IBase}` into the search field, Click Search, Read the status → Write to Excel in the column `Result`.

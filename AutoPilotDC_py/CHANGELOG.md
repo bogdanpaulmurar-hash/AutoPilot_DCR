@@ -2,6 +2,14 @@
 
 Pornirea aplicației: **`AutoPilot_DC.pyw`** (sau scurtătura „AutoPilot DC” de pe Desktop). Numele fișierelor nu se mai schimbă de la o versiune la alta, deci scurtăturile și pornirea cu Windows rămân valabile.
 
+## 4.22.0 — 2026-10-30
+- **📤 Exportă șablon Excel** (nou, în panoul „Pentru fiecare rând Excel”): fișier nou cu coloana cheie (gol = `Id`) formatată ca text (zerourile din față și Id-urile lungi rămân cum le scrii), coloanele din pașii „Scrie în Excel” ai buclei (verzi) și statusul (gri). Comentarii pe titluri, avertisment Excel la Id repetat, foaia *Instrucțiuni* și foaia ascunsă `_autopilot` (rutina, versiunea, coloanele). După salvare, la o buclă fără fișier, întreabă dacă îl folosește ca fișier al buclei. Motor: `rpr/template.py`.
+- **Coloana cheie sub alt nume**: rutina cere `Id`, fișierul are `ID` / `UEID` / `Cod` / `Nr` → coloana e găsită și `{Rand.Id}` are valoarea ei. Doar pentru cheie: la scriere numele acestea nu se folosesc (un „Cod” citit nu ajunge peste Id). Titlurile se potrivesc și fără spații / `_` / litere mari („Pret nou” = „pret_nou”).
+- **Verificarea Id-urilor înainte de primul click**: rânduri cu date fără Id (lista s-ar opri la primul) și Id-uri repetate → întrebare **Continui** / **Opresc rutina**; la rularea fără utilizator se continuă și se notează în log.
+- Instrucțiuni: capitolul 14, pașii 5–7, în RO / EN / DE; textele noi în EN / DE.
+- Teste (Linux, Python 3.12, Xvfb): `test_template` nou (8: coloanele șablonului și formatul text, cheie dată ca literă / rând de titluri 3 / erori clare, șablonul exportat rulează cu `00123` și un Id de 18 cifre, `Id` găsește `UEID` doar la cheie, rutina cu `{Rand.Id}` pe fișier cu `UEID`, Id lipsă + duplicat → întrebare cu Continui / Opresc, fișier curat nu întreabă, butonul din Studio real). Suita: 237 rulate, 20 sărite; aceleași 4 eșecuri vechi ca pe main. Netestat pe Windows: deschiderea șablonului în Excel (formatul text, avertismentul la Id repetat).
+- De știut (neschimbat): un titlu de 1–3 litere care nu există în fișier (ex. „Cod”) e luat drept literă de coloană la „Scrie în Excel”; folosește titluri mai lungi (ex. „Cod_SAP”).
+
 ## 4.21.0 — 2026-10-30
 - **🔀 Flux → 🗗 Fereastră separată**: fluxul în fereastra lui, pentru al doilea monitor (**⛶ Ecran complet** / F11, Esc = ieși). Urmărește rularea pe culori (galben = rulează, verde = reușit, roșu = eroare) și rămâne pe flux și când Studio trece singur pe 📊 Excel la o rutină cu buclă Excel. Se reface la fiecare modificare a rutinei sau la schimbarea tab-ului; zoom-ul, harta și restrângerea merg la fel ca în centru.
 - Instrucțiuni: capitolul 32, în RO / EN / DE; textele noi în EN / DE.

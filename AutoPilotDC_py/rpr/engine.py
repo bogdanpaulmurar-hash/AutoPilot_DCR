@@ -82,6 +82,7 @@ class _RowContext:
 
 
 UNFINISHED_BUTTONS = ("Refac randul", "E facut, marchez OK", "Opresc rutina")
+KEY_CHECK_BUTTONS = ("Continui", "Opresc rutina")   # v4.22: Id lipsa / duplicat inainte de primul click
 VIDEO_COLUMN_KEY = "video_column"   # ForEachRowNode.extra: coloana cu linkul filmului ("" = fara); implicit "Film"
 
 _SAP_NO_STATUS_CHECK = {RprAction.SapReadStatusBar, RprAction.SapConnect, RprAction.Highlight,
@@ -683,6 +684,37 @@ class RprEngine:
             self._log(RprLogLevel.Warning, l, f"S-a atins limita de {maximum} repetari (protectie bucla infinita).")
 
     # ── Pentru fiecare rand Excel ──────────────────────────────
+    def _check_keys(self, f: ForEachRowNode, table: ExcelTable, first: int) -> None:
+        """v4.22: inainte de primul click, coloana cheie (Id) se verifica pe tot fisierul:
+        randuri cu date dar fara Id (fara "Ultimul rand", lista se opreste la primul) si Id-uri repetate."""
+        if not f.key_column.strip() or table.header_row <= 0:
+            return
+        if table.resolve_column(f.key_column, key=True) is None:
+            self._log(RprLogLevel.Warning, f, f"Coloana cheie \"{f.key_column}\" nu exista in fisier; "
+                                              "sfarsitul listei = primul rand complet gol.")
+            return
+        last = f.end_row if f.end_row > 0 else table.max_row
+        missing, dup = table.key_problems(f.key_column, first, last)
+        if not missing and not dup:
+            return
+        lines = []
+        if missing:
+            more = " ..." if len(missing) > 10 else ""
+            lines.append(f"Randuri fara {f.key_column}: {', '.join(map(str, missing[:10]))}{more}")
+            if f.end_row <= 0:
+                lines.append(f"Lista se opreste la randul {missing[0]}: de acolo in jos nu se ruleaza nimic.")
+        for k, rows in list(dup.items())[:10]:
+            lines.append(f"{f.key_column} repetat \"{k}\": randurile {', '.join(map(str, rows))}")
+        if len(dup) > 10:
+            lines.append(f"... inca {len(dup) - 10} {f.key_column} repetate")
+        text = "\n".join(lines)
+        self._log(RprLogLevel.Warning, f, text.replace("\n", " | "))
+        answer = self._host.ask(self._routine.name, "Verificarea coloanei cheie inainte de rulare:\n" + text,
+                                list(KEY_CHECK_BUTTONS))
+        self._check_stop()
+        if answer == KEY_CHECK_BUTTONS[1]:
+            raise _StopSignal("Oprit la verificarea coloanei cheie.", False)
+
     def _execute_for_each_row(self, f: ForEachRowNode) -> None:
         path = self._vars.resolve(f.file_path).strip().strip('"')
         table = ExcelTable.open(path, self._vars.resolve(f.sheet), f.header_row)
@@ -692,6 +724,7 @@ class RprEngine:
             first = table.first_data_row(f.start_row)
             last = f.end_row if f.end_row > 0 else table.last_data_row(f.key_column)
             self._log(RprLogLevel.Info, f, f"Excel {os.path.basename(path)} / {table.sheet_name}: randurile {first}-{last}")
+            self._check_keys(f, table, first)
 
             rows_run = 0
             for row in range(first, last + 1):
@@ -729,7 +762,7 @@ class RprEngine:
                     self._log(RprLogLevel.Info, f, f"Oprit dupa {rows_run} rand(uri), cum s-a cerut.")
                     break
                 rows_run += 1
-                table.load_row_into(self._vars, f.row_variable, row)
+                table.load_row_into(self._vars, f.row_variable, row, f.key_column)
                 self._log(RprLogLevel.Info, f, f"Rand {row}")
                 try:
                     self._host.row_started(row, table.sheet_name)
@@ -742,7 +775,7 @@ class RprEngine:
                             table.save()
                         except RprStepException as ex:   # fisier deschis in Excel: continuam, statusul vine la final
                             self._log(RprLogLevel.Warning, f, str(ex))
-                key = table.get_cell(row, f.key_column) if f.key_column.strip() else ""
+                key = table.get_key(row, f.key_column) if f.key_column.strip() else ""
                 film = self._video()   # filmul randului (daca se inregistreaza): cale + secunda de start
                 item = self._report_item_start(f"Rand {row}" + (f": {key}" if key else ""))
 

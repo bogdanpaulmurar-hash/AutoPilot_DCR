@@ -162,6 +162,9 @@ Jedes Kapitel erklärt kurz einen Ablauf, Schritt für Schritt, mit einem Beispi
 2. Die Schritte **in** den Block setzen; `{Rand.Spaltenname}` verwenden.
 3. **📝 In Excel schreiben** (in der Schleife) schreibt ein Ergebnis in die aktuelle Zeile (die Spalte wird bei Bedarf angelegt) und kann die Zelle einfärben.
 4. Die **Statusspalte** erhält OK / den Fehler, die Zeilen werden grün / rot eingefärbt. Mit „Nach jeder Zeile speichern“ und „bereits OK markierte Zeilen überspringen“ lässt sich eine unterbrochene Ausführung fortsetzen.
+5. **📤 Excel-Vorlage exportieren** (im Bereich des Blocks): neue Datei mit der Schlüsselspalte (leer = `Id`) als Text formatiert, damit führende Nullen und lange Ids so bleiben, wie du sie eingibst, danach die Spalten aus den Schritten **In Excel schreiben** (grün) und der Status (grau). Sie hat ein Blatt *Anleitung* und warnt bei einer doppelten Id. Nach dem Speichern kann die Vorlage als Datei der Schleife verwendet werden.
+6. **Schlüsselspalte unter anderem Namen**: verlangt die Routine `Id` und die Datei hat `ID`, `UEID`, `Code`/`Cod` oder `Nr`, wird die Spalte gefunden und `{Rand.Id}` enthält ihren Wert. Leerzeichen, `_` und Großbuchstaben spielen keine Rolle. Beim Schreiben werden diese Namen nicht verwendet: ein aus SAP gelesener „Cod“ landet nie in der Id-Spalte.
+7. **Prüfung vor dem ersten Klick**: Zeilen mit Daten, aber ohne Id (die Liste endet bei der ersten) und doppelte Ids erscheinen in einer Frage: **Weiter** oder **Routine stoppen**. Eine geplante Ausführung läuft weiter und schreibt es ins Log.
 - Formeln in der Datei bleiben erhalten.
 
 > Beispiel: Datei mit der Spalte `IBase`; in der Schleife: Text `{Rand.IBase}` ins Suchfeld schreiben, Suchen klicken, Status lesen → In Excel schreiben in die Spalte `Ergebnis`.
