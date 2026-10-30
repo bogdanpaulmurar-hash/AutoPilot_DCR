@@ -219,3 +219,51 @@ def apply_recapture(old: UiObject, new: UiObject) -> None:
     for f in ("locators", "frame_path", "element_type", "captured_text", "screenshot", "attributes",
               "context", "captured_at"):
         setattr(old, f, getattr(new, f))
+
+
+# ============================================================
+# v4.11 — foldere in biblioteca (Site · Pagina · Folder · obiect)
+#   Un folder doar grupeaza obiectele (ca meniurile aplicatiei: "Comenzi/Export");
+#   spre deosebire de container, nu schimba locul unde se cauta elementul pe pagina.
+# ============================================================
+
+def normalize_folder(folder: str) -> str:
+    """"Comenzi \\ Export/" -> "Comenzi/Export"."""
+    return "/".join(p.strip() for p in (folder or "").replace("\\", "/").split("/") if p.strip())
+
+
+def folder_parts(obj_or_folder) -> List[str]:
+    f = obj_or_folder if isinstance(obj_or_folder, str) else getattr(obj_or_folder, "folder", "")
+    return normalize_folder(f).split("/") if normalize_folder(f) else []
+
+
+def all_folders(repo: ObjectRepository) -> List[str]:
+    """Toate folderele din biblioteca, cu parintii lor (pentru liste de alegere)."""
+    out = set()
+    for o in repo.objects:
+        parts = folder_parts(o)
+        for i in range(1, len(parts) + 1):
+            out.add("/".join(parts[:i]))
+    return sorted(out, key=str.lower)
+
+
+def in_folder(obj: UiObject, path: str) -> bool:
+    """Obiectul e in folderul dat sau intr-un subfolder al lui."""
+    f, p = normalize_folder(obj.folder).lower(), normalize_folder(path).lower()
+    return bool(p) and (f == p or f.startswith(p + "/"))
+
+
+def rename_folder(objs: Iterable[UiObject], old_path: str, new_last: str) -> int:
+    """Redenumeste ultimul segment al folderului (si al subfolderelor lui) pe obiectele date."""
+    old = folder_parts(old_path)
+    new_last = normalize_folder(new_last).replace("/", " ").strip()
+    if not old or not new_last:
+        return 0
+    new = old[:-1] + [new_last]
+    n = 0
+    for o in objs:
+        parts = folder_parts(o)
+        if [x.lower() for x in parts[:len(old)]] == [x.lower() for x in old]:
+            o.folder = "/".join(new + parts[len(old):])
+            n += 1
+    return n
