@@ -1,0 +1,164 @@
+# -*- coding: utf-8 -*-
+# ============================================================
+# AutoPilot DC — Teste: scanarea site-ului si biblioteca pe aplicatie (v4.9)
+#   Rulare:  py -m unittest tests.test_scan
+# ============================================================
+
+import os
+import sys
+import tempfile
+import time
+import unittest
+from unittest import mock
+
+APP = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, APP)
+
+from rpr import scan  # noqa: E402
+from rpr.model import Locator, LocatorKind, ObjectRepository, Routine, UiObject, UiTechnology  # noqa: E402
+from rpr.storage import RepositoryStore, RoutineStore  # noqa: E402
+
+PAGE = """<!doctype html><html><body>
+<h1>Formular</h1>
+<label for="nume">Nume client</label><input id="nume">
+<input type="hidden" name="secret" value="x">
+<button data-testid="salveaza"><span>Salveaza</span></button>
+<button style="display:none">Ascuns</button>
+<a href="#ajutor">Ajutor</a>
+<select id="tara"><option>Romania</option></select>
+<label><input type="checkbox" id="accept"> Accept termenii</label>
+<iframe id="cadru" srcdoc="<input id='in_cadru' placeholder='in iframe'>"></iframe>
+</body></html>"""
+
+
+def _obj(name, site="app.local", kind=LocatorKind.Id, value="x", frame=None):
+    return UiObject(name=name, technology=UiTechnology.Web, site=site, context=f"https://{site}/pagina",
+                    locators=[Locator(kind, value, 90)], frame_path=frame or [])
+
+
+class LibraryPathTests(unittest.TestCase):
+    def test_app_name_from_url(self):
+        self.assertEqual("app.local", scan.app_name_from_url("https://www.app.local/x/y?z=1"))
+        self.assertEqual("intranet", scan.app_name_from_url("http://intranet:8080/"))
+        self.assertEqual("Aplicatie", scan.app_name_from_url("nu e adresa"))
+
+    def test_suggest_path_in_onedrive(self):
+        od = tempfile.mkdtemp(prefix="od_")
+        with mock.patch.dict(os.environ, {"OneDriveCommercial": od, "OneDrive": "", "OneDriveConsumer": ""}):
+            p = scan.suggest_library_path("app.local")
+        self.assertEqual(os.path.join(od, "AutoPilotDC", "obiecte", "app.local", "obiecte.json"), p)
+
+    def test_resolve_path_from_other_laptop(self):
+        od = tempfile.mkdtemp(prefix="od_")
+        real = os.path.join(od, "AutoPilotDC", "obiecte", "app", "obiecte.json")
+        os.makedirs(os.path.dirname(real))
+        RepositoryStore.save(ObjectRepository(objects=[_obj("Buton_OK")]), real)
+        other = r"C:\Users\alt_utilizator\OneDrive - Firma\AutoPilotDC\obiecte\app\obiecte.json"
+        with mock.patch.dict(os.environ, {"OneDriveCommercial": od}):
+            self.assertEqual(real, scan.resolve_library_path(other))
+            self.assertEqual(["Buton_OK"], [o.name for o in RepositoryStore.load(other).objects])
+        self.assertEqual("", scan.resolve_library_path(""))
+
+    def test_routine_keeps_library_path(self):
+        d = tempfile.mkdtemp()
+        r = Routine(name="R")
+        r.repository_path = os.path.join(d, "obiecte.json")
+        p = os.path.join(d, "r.rpr.json")
+        RoutineStore.save(r, p)
+        self.assertEqual(r.repository_path, RoutineStore.load(p).repository_path)
+
+
+class NewObjectsTests(unittest.TestCase):
+    def test_skips_existing_and_duplicates(self):
+        repo = ObjectRepository(objects=[_obj("Buton_OK", value="ok")])
+        scanned = [_obj("Buton_OK", value="ok"), _obj("Camp_Nume", value="nume"), _obj("Camp_Nume", value="nume"),
+                   _obj("Alt_site", site="alt.local", value="ok"), _obj("In_cadru", value="ok", frame=["#cadru"])]
+        fresh, existing = scan.new_objects(repo, scanned)
+        self.assertEqual(1, existing)
+        self.assertEqual(["Camp_Nume", "Alt_site", "In_cadru"], [o.name for o in fresh])
+        self.assertEqual(3, scan.add_objects(repo, fresh))
+        self.assertEqual(4, len(repo.objects))
+
+    def test_object_without_locator_is_ignored(self):
+        o = _obj("Gol")
+        o.locators[0].enabled = False
+        self.assertEqual(([], 0), scan.new_objects(ObjectRepository(), [o]))
+
+
+def _available():
+    try:
+        import playwright  # noqa: F401
+        return True
+    except ImportError:
+        return False
+
+
+@unittest.skipUnless(_available(), "playwright nu e instalat")
+class WebScanTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        from rpr.drivers.web import PlaywrightDriver, WebSettings
+        cls.tmp = tempfile.mkdtemp(prefix="apdc_scan_")
+        path = os.path.join(cls.tmp, "test.html")
+        with open(path, "w", encoding="utf-8") as f:
+            f.write(PAGE)
+        cls.driver = PlaywrightDriver(WebSettings(browser=os.environ.get("APDC_TEST_BROWSER", "Edge"), headless=True))
+        try:
+            cls.driver.open("file:///" + path.replace("\\", "/"))
+        except Exception as ex:  # noqa: BLE001
+            raise unittest.SkipTest(f"browserul nu porneste: {ex}")
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.driver.close()
+
+    def test_scan_finds_visible_fields_and_buttons(self):
+        objs = self.driver.scan_page()
+        names = [o.name for o in objs]
+        best = {o.name: next(l for l in o.locators if l.enabled) for o in objs}
+        self.assertIn("Camp_Nume_client", names)
+        self.assertIn("Buton_Salveaza", names)
+        self.assertIn("Link_Ajutor", names)
+        self.assertTrue(any(n.startswith("Lista") for n in names))
+        self.assertTrue(any(n.startswith("Bifa") for n in names))
+        self.assertNotIn("Buton_Ascuns", names)                      # ascuns: nu
+        self.assertFalse(any("secret" in n for n in names))          # hidden: nu
+        self.assertEqual(LocatorKind.TestId, best["Buton_Salveaza"].kind)
+        cadru = [o for o in objs if o.frame_path]
+        self.assertEqual(["#cadru"], cadru[0].frame_path)             # si din iframe
+        self.assertEqual(1, names.count("Buton_Salveaza"))            # span-ul din buton nu e dublura
+
+    def test_scan_limit(self):
+        self.assertEqual(2, len(self.driver.scan_page(max_items=2)))
+
+    def test_hover_capture_after_three_seconds(self):
+        got = []
+        self.driver.start_hover_capture(got.append)
+        try:
+            box = self.driver._call(lambda: self.driver._page.locator("#nume").bounding_box())
+            x, y = box["x"] + 5, box["y"] + 5
+            self.driver._call(lambda: self.driver._page.mouse.move(x, y))
+            self.driver._call(lambda: self.driver._page.mouse.move(x + 2, y + 1))
+            time.sleep(1.5)
+            self.assertEqual([], got)                                   # inca nu: abia 1,5 s
+            end = time.monotonic() + 6
+            while not got and time.monotonic() < end:
+                time.sleep(0.1)
+            self.assertEqual(1, len(got))
+            self.assertEqual("Camp_Nume_client", got[0].name)
+            # cursorul ramane pe acelasi element: nu se captureaza din nou
+            time.sleep(3.5)
+            self.assertEqual(1, len(got))
+            # Esc in browser = gata (on_object(None))
+            self.driver._call(lambda: self.driver._page.keyboard.press("Escape"))
+            end = time.monotonic() + 3
+            while (len(got) < 2) and time.monotonic() < end:
+                time.sleep(0.1)
+            self.assertIsNone(got[-1])
+            self.assertFalse(self.driver.is_hover_capturing)
+        finally:
+            self.driver.stop_hover_capture()
+
+
+if __name__ == "__main__":
+    unittest.main()

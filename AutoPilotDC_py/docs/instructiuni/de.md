@@ -282,3 +282,16 @@ Jedes Kapitel erklärt kurz einen Ablauf, Schritt für Schritt, mit einem Beispi
 - Schritt-für-Schritt-Läufe werden nicht fortgesetzt. Beendest du die Anwendung selbst während eines Laufs, wird kein Fortsetzen angeboten.
 
 > Beispiel: Die Routine legt 200 Benutzer an und bei Zeile 120 fällt der Strom aus. Beim Neustart wählst du „Lauf fortsetzen“; die Zeilen 2–119 werden übersprungen, du prüfst den Benutzer aus Zeile 120 im System und wählst „Ist erledigt, als OK markieren“ oder „Zeile neu ausführen“.
+
+## 26. Website scannen und eine Bibliothek pro Anwendung
+
+1. 📚 Bibliothek → **＋ Neu**: Namen der Anwendung eingeben; AutoPilot schlägt `OneDrive\AutoPilotDC\obiecte\<Anwendung>\obiecte.json` vor (ohne OneDrive: in Dokumente). Jeder andere Ordner ist möglich.
+2. **🔍 Website scannen**: Adresse eingeben, der AutoPilot-Browser öffnet sich. Melden Sie sich an, öffnen Sie die gewünschte Seite und wählen Sie **🔍 Automatisch scannen**.
+3. Sie erhalten die Liste der sichtbaren Schaltflächen, Felder, Listen, Kontrollkästchen und Links (auch in iframes, höchstens 500). Klick auf eine Zeile = an-/abhaken; **Ohne Links** entfernt Navigationsmenüs. **💾 Zur Bibliothek hinzufügen** speichert sie.
+4. Öffnen Sie ein anderes Menü oder einen anderen Tab im Browser und wählen Sie **🔍 Erneut scannen**. Objekte, die schon in der Bibliothek sind, werden übersprungen.
+5. **🖐 3-s-Erfassung**: Mauszeiger 3 Sekunden auf einem Feld oder einer Schaltfläche halten (blauer Rahmen, Countdown), es wird automatisch gespeichert; dann zum nächsten. Klicks funktionieren normal, Menüs lassen sich also öffnen. Esc im Browser oder **Fertig** beendet.
+- Der Scan liest nur die bereits geladene Seite: kein Klick, keine Eingabe, nichts wird an den Server gesendet, die Anwendung wird also nicht belastet. Ausgeblendete Elemente (geschlossene Menüs, andere Tabs) erscheinen erst, wenn Sie sie öffnen.
+- **📂 Öffnen** wechselt die Bibliothek. Eine gespeicherte Routine merkt sich ihre Bibliothek und lädt sie beim Öffnen selbst; die Anwendung merkt sich nur den Pfad der letzten Bibliothek.
+- Hat OneDrive auf dem anderen Laptop einen anderen Pfad, wird die Bibliothek an derselben Stelle im OneDrive dieses PCs gefunden.
+
+> Beispiel: Für die Bestellanwendung legen Sie die Bibliothek „Bestellungen“ in OneDrive an, scannen die Suchseite und das Bestellformular und fügen mit der 3-s-Erfassung die Schaltfläche aus dem Menü hinzu, das nur beim Überfahren erscheint. Neue Routinen für diese Anwendung nutzen die Bibliothek „Bestellungen“.

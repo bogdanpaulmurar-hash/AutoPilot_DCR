@@ -103,10 +103,19 @@ class RoutineStore:
 class RepositoryStore:
     @staticmethod
     def load(path: Optional[str]) -> ObjectRepository:
-        path = path if path and path.strip() else RprPaths.default_repository()
+        path = RepositoryStore.resolve(path)
         if not os.path.isfile(path):
             return ObjectRepository()
         return ObjectRepository.from_dict(_read_json(path) or {})
+
+    @staticmethod
+    def resolve(path: Optional[str]) -> str:
+        """Calea reala a bibliotecii: gol = cea implicita; o cale din OneDrive-ul altui laptop
+        se cauta in OneDrive-ul de pe acest PC (v4.9)."""
+        if not path or not path.strip():
+            return RprPaths.default_repository()
+        from .scan import resolve_library_path
+        return resolve_library_path(path.strip().strip('"'))
 
     @staticmethod
     def save(repo: ObjectRepository, path: Optional[str]) -> None:

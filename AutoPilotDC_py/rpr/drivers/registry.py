@@ -20,6 +20,7 @@ class StudioSettings:
         self.minimize_on_run = True
         self.last_routine_path = ""
         self.routines_folder = ""          # 📂 Managerul de rutine: folderul citit la pornire (gol = rutine\\)
+        self.library_path = ""             # 📚 biblioteca de obiecte deschisa ultima data (gol = obiecte.json implicit)
 
     @staticmethod
     def path() -> str:
@@ -37,6 +38,7 @@ class StudioSettings:
             s.minimize_on_run = bool(d.get("minimize_on_run", s.minimize_on_run))
             s.last_routine_path = str(d.get("last_routine_path", ""))
             s.routines_folder = str(d.get("routines_folder", ""))
+            s.library_path = str(d.get("library_path", ""))
         except (OSError, ValueError):
             pass
         return s
@@ -50,7 +52,8 @@ class StudioSettings:
         except (OSError, ValueError):
             d = {}
         d.update({"browser": self.browser, "headless": self.headless, "minimize_on_run": self.minimize_on_run,
-                  "last_routine_path": self.last_routine_path, "routines_folder": self.routines_folder})
+                  "last_routine_path": self.last_routine_path, "routines_folder": self.routines_folder,
+                  "library_path": self.library_path})
         try:
             with open(self.path(), "w", encoding="utf-8") as f:
                 json.dump(d, f, ensure_ascii=False, indent=2)

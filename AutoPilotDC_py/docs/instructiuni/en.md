@@ -282,3 +282,16 @@ Each chapter briefly explains one procedure, step by step, with an example. Pick
 - Step-by-step runs are not resumed. If you close the application yourself during a run, no resume is offered.
 
 > Example: the routine creates 200 users and the power goes off at row 120. On restart you choose "Resume the run"; rows 2–119 are skipped, you check the user from row 120 in the system and choose "It is done, mark OK" or "Redo the row".
+
+## 26. Scanning a site and one library per application
+
+1. 📚 Library → **＋ New**: type the application name; AutoPilot suggests `OneDrive\AutoPilotDC\obiecte\<Application>\obiecte.json` (without OneDrive: in Documents). You can pick any other folder.
+2. **🔍 Scan site**: type the address and the AutoPilot browser opens. Sign in and open the page you want, then choose **🔍 Scan automatically**.
+3. You get the list of visible buttons, fields, lists, checkboxes and links (also inside iframes, up to 500). Click a row to tick / untick it; **No links** removes navigation menus. **💾 Add to library** saves them.
+4. Open another menu or tab in the browser and choose **🔍 Scan again**. Objects already in the library are skipped.
+5. **🖐 3 s capture**: hold the cursor 3 seconds on a field or button (blue outline, countdown) and it is saved by itself; then move to the next one. Clicks work normally, so you can open menus. Esc in the browser or **Done** stops it.
+- The scan only reads the page already loaded: it does not click, type or send anything to the server, so it does not load the application. Hidden elements (closed menus, other tabs) are not seen until you open them.
+- **📂 Open** switches the library. A saved routine remembers its library and loads it by itself when opened; the application only remembers the path of the last library.
+- If OneDrive has a different path on the other laptop, the library is found at the same place in that PC's OneDrive.
+
+> Example: for the orders application you create the "Orders" library in OneDrive, scan the search page and the order form, then use the 3 s capture to add the button from the menu that only appears on hover. New routines for this application use the "Orders" library.

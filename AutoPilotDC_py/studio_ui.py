@@ -45,6 +45,7 @@ from rpr.model import (ACTIONS, ActionNode, BreakNode, CellColor, CompareOperato
                        OBJECT_TYPES, CONTAINER_TYPES, SiteGroup)
 from rpr import report as rpr_report
 from rpr import resume as rpr_resume
+from rpr import scan as rpr_scan
 from rpr.storage import Examples, ExcelInfo, RepositoryStore, RoutineStore, RprPaths, RunLogExporter
 
 try:
@@ -508,7 +509,7 @@ class StudioPanel(tk.Frame):
 
         self._styles()
         self._build()
-        self.load_repository(RprPaths.default_repository())
+        self.load_repository(self.studio_settings.library_path or RprPaths.default_repository())
         self.new_routine(ask=False)
         self.after(50, self._poll)
         # 📂 rutinele din folderul setat se citesc in fundal (Managerul de rutine le are gata)
@@ -692,6 +693,27 @@ class StudioPanel(tk.Frame):
         """📚 Biblioteca de obiecte (ca in SilkTest): Site -> Pagina -> Container -> obiecte,
         comuna tuturor rutinelor. Fiecare obiect poate fi testat inainte de a-l folosi."""
         C = self.C
+        # v4.9: biblioteca e un fisier ales de tine (de ex. una pe aplicatie, in OneDrive)
+        lib = tk.Frame(host, bg=C["bg_card"])
+        lib.pack(fill="x", padx=4, pady=(4, 2))
+        self._lib_label = tk.Label(lib, text="", bg=C["bg_card"], fg=C["text"], font=("Segoe UI", 9, "bold"),
+                                   anchor="w")
+        self._lib_label.pack(fill="x", padx=6, pady=(3, 1))
+        lrow = tk.Frame(lib, bg=C["bg_card"])
+        lrow.pack(fill="x", padx=2, pady=(0, 3))
+        for text, cmd, tip in [("📂 Deschide", self.open_library, "Deschide alta biblioteca de obiecte (fisier .json)"),
+                               ("＋ Noua", lambda: self.new_library(), "Biblioteca noua pentru o aplicatie "
+                                                                      "(propune un folder in OneDrive)"),
+                               ("📁", self.open_library_folder, "Deschide folderul bibliotecii")]:
+            self._btn(lrow, text, cmd, tip=tip).pack(side="left", padx=1)
+        srow = tk.Frame(host, bg=C["bg_main"])
+        srow.pack(fill="x", padx=4, pady=(0, 2))
+        self._btn(srow, "🔍 Scaneaza site", self.scan_site,
+                  tip="Deschide adresa si adauga butoanele si campurile gasite pe pagina (doar citeste pagina)").pack(
+            side="left", padx=1)
+        self._btn(srow, "🖐 Captura 3 s", self.hover_capture,
+                  tip="Tii cursorul 3 secunde pe un camp / buton si se salveaza singur; apoi treci la urmatorul").pack(
+            side="left", padx=1)
         top = tk.Frame(host, bg=C["bg_main"])
         top.pack(fill="x", padx=4, pady=(4, 2))
         self._obj_filter = tk.StringVar()
@@ -730,7 +752,7 @@ class StudioPanel(tk.Frame):
                                ("🗑", self.delete_object, "Sterge obiectul din biblioteca"),
                                ("🌐 Site-uri", self.edit_sites, "Site-uri si link-urile lor (sisteme similare: test / productie)")]:
             self._btn(row, text, cmd, tip=tip).pack(side="left", padx=1)
-        hint = tk.Label(host, text="Comuna tuturor rutinelor. Obiecte noi: Spy (Web) sau Inregistreaza Web. "
+        hint = tk.Label(host, text="Obiecte noi: Scaneaza site, Captura 3 s, Spy (Web) sau Inregistreaza Web. "
                                    "Click dreapta pe obiect: testeaza, adauga in rutina, muta in container, copiaza pentru alt site.",
                         bg=C["bg_main"], fg=C["text_dim"], font=("Segoe UI", 8), justify="left", wraplength=220)
         hint.pack(anchor="w", padx=6, pady=(0, 6))
@@ -763,6 +785,7 @@ class StudioPanel(tk.Frame):
         if ask and not self.confirm_discard():
             return
         self.routine = Routine(name="Rutina noua")
+        self.routine.repository_path = "" if self._is_default_library() else self.repo_path
         self.routine_path = None
         self.dirty = False
         self.rebuild_tree()
@@ -783,8 +806,7 @@ class StudioPanel(tk.Frame):
             messagebox.showerror("Studio RPR", f"Rutina nu poate fi deschisa:\n{ex}", parent=self)
             return
         self.routine = r
-        if r.repository_path.strip():
-            self.load_repository(r.repository_path)
+        self._load_routine_library(r)
         converted = not path.lower().endswith(".rpr.json")
         self.routine_path = None if converted else path
         self.dirty = converted
@@ -811,6 +833,8 @@ class StudioPanel(tk.Frame):
             if not path.lower().endswith(".rpr.json"):
                 path = re.sub(r"(\.json)?$", ".rpr.json", path, flags=re.I)
         try:
+            # biblioteca folosita de rutina (gol = cea implicita, ca pana acum)
+            self.routine.repository_path = "" if self._is_default_library() else self.repo_path
             RoutineStore.save(self.routine, path)
             self.save_repository()
         except Exception as ex:  # noqa: BLE001
@@ -824,14 +848,291 @@ class StudioPanel(tk.Frame):
 
     def load_repository(self, path: str):
         try:
-            self.repo = RepositoryStore.load(path)
-            self.repo_path = path
+            real = RepositoryStore.resolve(path)
+            self.repo = RepositoryStore.load(real)
+            self.repo_path = real
         except Exception as ex:  # noqa: BLE001
             messagebox.showerror("Studio RPR", f"Object Repository nu poate fi citit:\n{ex}", parent=self)
         self.refresh_objects()
+        self._update_library_label()
 
     def save_repository(self):
         RepositoryStore.save(self.repo, self.repo_path)
+
+    # ── v4.9: biblioteca pe aplicatie, intr-un fisier ales de tine ──
+    def _is_default_library(self) -> bool:
+        return os.path.normcase(os.path.abspath(self.repo_path)) == \
+            os.path.normcase(os.path.abspath(RprPaths.default_repository()))
+
+    def _load_routine_library(self, r: Routine):
+        """Rutina isi aduce biblioteca; o rutina fara cale foloseste biblioteca implicita (ca inainte de 4.9)."""
+        if r.repository_path.strip():
+            self.load_repository(r.repository_path)
+        elif not self._is_default_library():
+            self.load_repository(RprPaths.default_repository())
+
+    def _update_library_label(self):
+        lbl = getattr(self, "_lib_label", None)
+        if lbl is None:
+            return
+        if self._is_default_library():
+            text = "📚 obiecte.json (implicita)"
+        else:
+            text = f"📚 {os.path.basename(os.path.dirname(self.repo_path))} / {os.path.basename(self.repo_path)}"
+        lbl.configure(text=f"{text}  ·  {len(self.repo.objects)}")
+
+    def _remember_library(self):
+        self.studio_settings.library_path = "" if self._is_default_library() else self.repo_path
+        self.studio_settings.save()
+        want = "" if self._is_default_library() else self.repo_path
+        if self.routine.repository_path != want:
+            self.routine.repository_path = want   # rutina deschisa foloseste de acum biblioteca aleasa
+            if any(True for _ in self.routine.all_nodes()):
+                self.mark_dirty()
+
+    def open_library(self):
+        start = os.path.dirname(self.repo_path) if not self._is_default_library() else rpr_scan.libraries_root()
+        path = filedialog.askopenfilename(parent=self, title="Deschide biblioteca de obiecte",
+                                          initialdir=start if os.path.isdir(start) else RprPaths.root,
+                                          filetypes=[("Biblioteca de obiecte", "*.json"), ("Toate fisierele", "*.*")])
+        if not path:
+            return
+        try:
+            self.save_repository()
+        except Exception:
+            pass
+        self.load_repository(path)
+        self._remember_library()
+        self.set_status(f"Biblioteca deschisa: {self.repo_path} ({len(self.repo.objects)} obiecte)")
+
+    def new_library(self, app_name: str = "") -> bool:
+        """Biblioteca noua pentru o aplicatie: OneDrive\\AutoPilotDC\\obiecte\\<Aplicatie>\\obiecte.json."""
+        name = input_dialog(self, "Biblioteca noua", "Numele aplicatiei (devine numele folderului bibliotecii):",
+                            app_name, C=self.C)
+        if not name or not name.strip():
+            return False
+        suggested = rpr_scan.suggest_library_path(name.strip())
+        try:
+            os.makedirs(os.path.dirname(suggested), exist_ok=True)
+        except OSError:
+            pass
+        path = filedialog.asksaveasfilename(parent=self, title="Unde salvez biblioteca?",
+                                            initialdir=os.path.dirname(suggested), initialfile=os.path.basename(suggested),
+                                            defaultextension=".json", filetypes=[("Biblioteca de obiecte", "*.json")])
+        if not path:
+            return False
+        try:
+            self.save_repository()
+        except Exception:
+            pass
+        if os.path.isfile(path):
+            self.load_repository(path)
+        else:
+            self.repo = ObjectRepository()
+            self.repo_path = path
+            try:
+                self.save_repository()
+            except Exception as ex:  # noqa: BLE001
+                messagebox.showerror("Studio RPR", f"Nu am putut salva:\n{ex}", parent=self)
+                return False
+            self.refresh_objects()
+            self._update_library_label()
+        self._remember_library()
+        self.set_status(f"Biblioteca: {self.repo_path}")
+        return True
+
+    def open_library_folder(self):
+        try:
+            os.startfile(os.path.dirname(os.path.abspath(self.repo_path)))
+        except Exception as ex:  # noqa: BLE001
+            self.set_status(str(ex))
+
+    def _ensure_app_library(self, url: str) -> bool:
+        """Inainte de scanare: daca lucram in biblioteca implicita, propunem una separata pentru aplicatie."""
+        if not self._is_default_library():
+            return True
+        app = rpr_scan.app_name_from_url(url)
+        a = choice_dialog(self, "Biblioteca aplicatiei",
+                          f"Obiectele s-ar salva in biblioteca implicita (obiecte.json din AppData). "
+                          f"Recomandat: o biblioteca separata pentru {app}, intr-un folder ales de tine (ex. OneDrive).",
+                          ["Biblioteca noua", "Biblioteca curenta", "Anuleaza"], C=self.C)
+        if a == "Biblioteca noua":
+            return self.new_library(app)
+        return a == "Biblioteca curenta"
+
+    # ── v4.9: scanarea site-ului si captura cu cursorul tinut 3 s ──
+    def _browser_url(self) -> str:
+        try:
+            web = self.web()
+            return web.current_url() if web.is_open else ""
+        except Exception:
+            return ""
+
+    def scan_site(self):
+        if self.busy:
+            self.set_status("Asteapta sa se termine operatia curenta.")
+            return
+        if self._recording:
+            self.record_web()
+        cur = self._browser_url()
+        url = input_dialog(self, "🔍 Scaneaza site",
+                           "Adresa aplicatiei (se deschide in browserul AutoPilot). Daca browserul e deja pe pagina "
+                           "dorita, lasa adresa asa cum e.", cur or "https://", C=self.C)
+        if not url or not url.strip() or url.strip() == "https://":
+            return
+        url = url.strip()
+        if not self._ensure_app_library(url):
+            return
+        self._open_then(url if url != cur else None, "scan")
+
+    def hover_capture(self):
+        if self.busy:
+            self.set_status("Asteapta sa se termine operatia curenta.")
+            return
+        if self._recording:
+            self.record_web()
+        cur = self._browser_url()
+        url = None
+        if not cur:
+            url = input_dialog(self, "🖐 Captura 3 s", "Browserul nu e deschis. La ce adresa sa-l deschid?",
+                               "https://", C=self.C)
+            if not url or not url.strip() or url.strip() == "https://":
+                return
+            url = url.strip()
+        if not self._ensure_app_library(url or cur):
+            return
+        self._open_then(url, "hover")
+
+    def _open_then(self, url: Optional[str], what: str):
+        """Deschide adresa (pe un fir separat), apoi intreaba daca pagina e gata."""
+        self.busy = True
+        web = self.web()
+
+        def work():
+            try:
+                if url:
+                    web.open(url)
+                self.post("scan_ready", (what, bool(url), None))
+            except Exception as ex:  # noqa: BLE001
+                self.post("scan_ready", (what, bool(url), str(ex)))
+        self.set_status("Deschid browserul..." if url else "")
+        threading.Thread(target=work, daemon=True, name="ScanOpen").start()
+
+    def _scan_ready(self, what: str, opened: bool, error: Optional[str]):
+        self.busy = False
+        if error:
+            messagebox.showerror("Browser", f"Browserul nu a putut deschide pagina:\n{error}", parent=self)
+            return
+        if opened or what == "scan":
+            a = choice_dialog(self, "Pagina e gata?",
+                              "Browserul e deschis. Autentifica-te si deschide pagina dorita (meniu, tab, formular), "
+                              "apoi alege:",
+                              ["🔍 Scaneaza automat", "🖐 Captura 3 s", "Anuleaza"], C=self.C)
+            if a == "🔍 Scaneaza automat":
+                what = "scan"
+            elif a == "🖐 Captura 3 s":
+                what = "hover"
+            else:
+                return
+        if what == "scan":
+            self._scan_now()
+        else:
+            self._hover_start()
+
+    def _scan_now(self):
+        self.busy = True
+        cancel = threading.Event()
+        self._scan_cancel = cancel
+        self._show_spy_hint("🔍 Scanez pagina: doar citesc butoanele si campurile, nu dau click.",
+                            on_cancel=cancel.set)
+        web = self.web()
+
+        def work():
+            try:
+                self.post("scan_done", (web.scan_page(500, cancel=cancel), None))
+            except Exception as ex:  # noqa: BLE001
+                self.post("scan_done", ([], str(ex)))
+        self.set_status("Scanez pagina...")
+        threading.Thread(target=work, daemon=True, name="Scan").start()
+
+    def _scan_done(self, objs: List[UiObject], error: Optional[str]):
+        self.busy = False
+        self._hide_spy_hint()
+        if error:
+            messagebox.showerror("Scanare", f"Scanarea nu a reusit:\n{error}", parent=self)
+            return
+        fresh, existing = rpr_scan.new_objects(self.repo, objs)
+        if not fresh:
+            msg = f"Nu am gasit obiecte noi pe pagina ({len(objs)} gasite, {existing} deja in biblioteca)."
+        else:
+            chosen = ScanReviewDialog(self, fresh, existing).result
+            if chosen is None:
+                self.set_status("Scanare anulata: nimic adaugat.")
+                return
+            n = rpr_scan.add_objects(self.repo, chosen)
+            self.save_repository()
+            self.refresh_objects()
+            self._update_library_label()
+            msg = f"Am adaugat {n} obiecte in biblioteca ({existing} erau deja)."
+        self.set_status(msg)
+        a = choice_dialog(self, "Scanare", msg + " Deschide alt meniu / alta pagina in browser si continua:",
+                          ["🔍 Scaneaza din nou", "🖐 Captura 3 s", "Am terminat"], C=self.C)
+        if a == "🔍 Scaneaza din nou":
+            self._scan_now()
+        elif a == "🖐 Captura 3 s":
+            self._hover_start()
+
+    def _hover_start(self):
+        self.busy = True
+        self._hover_count = 0
+        self._hover_on = True
+        self._show_spy_hint("🖐 Tine cursorul 3 s pe camp / buton (contur albastru): se salveaza singur. "
+                            "Click-urile merg normal. Esc in browser = gata.",
+                            on_cancel=self._hover_stop, cancel_text="Am terminat")
+        web = self.web()
+
+        def work():
+            try:
+                web.start_hover_capture(lambda o: self.post("hover_obj", o), tr("3 s = salveaza · Esc = gata"),
+                                        RprPaths.object_images())
+            except Exception as ex:  # noqa: BLE001
+                self.post("hover_failed", str(ex))
+        self.set_status("Captura 3 s: tine cursorul pe fiecare camp / buton din browser.")
+        threading.Thread(target=work, daemon=True, name="Hover").start()
+
+    def _hover_object(self, obj: Optional[UiObject]):
+        if not getattr(self, "_hover_on", False):
+            return
+        if obj is None:
+            self._hover_finished()
+            return
+        self.repo.classify(obj)
+        same = rpr_scan.find_existing(self.repo, obj)
+        if same is not None:
+            self.set_status(f"Deja in biblioteca: [{same.name}]")
+            return
+        self.repo.add(obj)
+        self.save_repository()
+        self.refresh_objects()
+        self._update_library_label()
+        self._hover_count += 1
+        self.set_status(f"Salvat [{obj.name}] ({self._hover_count} obiecte noi).")
+
+    def _hover_stop(self):
+        web = self.web()
+        threading.Thread(target=web.stop_hover_capture, daemon=True, name="HoverStop").start()
+        self._hover_finished()
+
+    def _hover_finished(self, error: Optional[str] = None):
+        if not getattr(self, "_hover_on", False):
+            return
+        self._hover_on = False
+        self.busy = False
+        self._hide_spy_hint()
+        if error:
+            messagebox.showerror("Captura 3 s", f"Captura nu a putut porni:\n{error}", parent=self)
+            return
+        self.set_status(f"Captura 3 s oprita: {self._hover_count} obiecte noi in biblioteca.")
 
     def show_examples(self):
         try:
@@ -1446,7 +1747,7 @@ class StudioPanel(tk.Frame):
             return False
         return url.strip()
 
-    def _show_spy_hint(self, text: str):
+    def _show_spy_hint(self, text: str, on_cancel: Optional[Callable[[], None]] = None, cancel_text: str = "Anuleaza"):
         self._hide_spy_hint()
         C = self.C
         w = tk.Toplevel(self)
@@ -1454,7 +1755,8 @@ class StudioPanel(tk.Frame):
         w.attributes("-topmost", True)
         w.configure(bg=C["primary"])
         tk.Label(w, text=text, bg=C["primary"], fg="white", font=("Segoe UI", 10, "bold"), padx=12, pady=6).pack(side="left")
-        tk.Button(w, text="Anuleaza", command=lambda: (getattr(self, "_spy_driver", None) or self.web()).cancel_spy(), bg="white", fg=C["primary"],
+        cancel = on_cancel or (lambda: (getattr(self, "_spy_driver", None) or self.web()).cancel_spy())
+        tk.Button(w, text=cancel_text, command=cancel, bg="white", fg=C["primary"],
                   relief="flat", font=("Segoe UI", 9, "bold"), cursor="hand2").pack(side="left", padx=8, pady=4)
         w.update_idletasks()
         w.geometry(f"+{(w.winfo_screenwidth() - w.winfo_reqwidth()) // 2}+8")
@@ -1705,6 +2007,14 @@ class StudioPanel(tk.Frame):
                     self._set_recording(False)
             elif kind == "spy_done":
                 self._spy_finished(*p)
+            elif kind == "scan_ready":
+                self._scan_ready(*p)
+            elif kind == "scan_done":
+                self._scan_done(*p)
+            elif kind == "hover_obj":
+                self._hover_object(p)
+            elif kind == "hover_failed":
+                self._hover_finished(p)
             elif kind == "test_result":
                 self._test_finished(*p)
             elif kind == "recorded":
@@ -2007,8 +2317,7 @@ class StudioPanel(tk.Frame):
                 messagebox.showerror("Studio RPR", f"Rutina nu poate fi refacuta:\n{ex}", parent=self)
                 return False
             self.routine = r
-            if r.repository_path.strip():
-                self.load_repository(r.repository_path)
+            self._load_routine_library(r)
             self.routine_path = state.path or None
             self.dirty = True
             self.rebuild_tree()
@@ -2753,6 +3062,90 @@ class ObjectDialog(tk.Toplevel):
                              for k, v, e in self.rows if v.get().strip()]
         self.lib.apply()
         self.result = True
+        self.destroy()
+
+
+# ==============================================================================
+# 6b. DIALOG "SCANARE SITE" (v4.9): alegi ce obiecte gasite intra in biblioteca
+# ==============================================================================
+class ScanReviewDialog(tk.Toplevel):
+    """result: None (anulat) / lista obiectelor alese."""
+
+    def __init__(self, panel: "StudioPanel", objs: List[UiObject], existing: int = 0):
+        super().__init__(panel)
+        self.p, self.objs, self.result = panel, list(objs), None
+        self.sel = [True] * len(self.objs)
+        C = panel.C
+        self.title("Scanare site")
+        self.configure(bg=C["bg_main"])
+        self.transient(panel.winfo_toplevel())
+        self.attributes("-topmost", True)
+        tk.Label(self, text="🔍  Obiecte gasite pe pagina", bg=C["bg_main"], fg=C["primary"],
+                 font=("Segoe UI", 13, "bold")).pack(anchor="w", padx=14, pady=(12, 2))
+        tk.Label(self, text=f"{len(self.objs)} obiecte noi, {existing} deja in biblioteca. "
+                            f"Click pe un rand = il bifezi / debifezi.",
+                 bg=C["bg_main"], fg=C["text_dim"], font=("Segoe UI", 9)).pack(anchor="w", padx=14)
+        box = tk.Frame(self, bg=C["bg_main"])
+        box.pack(fill="both", expand=True, padx=14, pady=6)
+        cols = ("sel", "nume", "tip", "pagina", "locator")
+        self.tree = ttk.Treeview(box, columns=cols, show="headings", style="Studio.Treeview", height=16)
+        for c, title, w, stretch in [("sel", "✔", 30, False), ("nume", "Nume", 220, False), ("tip", "Tip", 90, False),
+                                     ("pagina", "Pagina", 140, False), ("locator", "Locator", 300, True)]:
+            self.tree.heading(c, text=title, anchor="w")
+            self.tree.column(c, width=w, stretch=stretch, anchor="w")
+        vsb = ttk.Scrollbar(box, orient="vertical", command=self.tree.yview)
+        self.tree.configure(yscrollcommand=vsb.set)
+        vsb.pack(side="right", fill="y")
+        self.tree.pack(side="left", fill="both", expand=True)
+        for i, o in enumerate(self.objs):
+            best = next((l for l in o.locators if l.enabled), None)
+            loc = f"{best.kind.value}: {best.value}" if best is not None else ""
+            self.tree.insert("", "end", iid=str(i), values=("", o.name, o.object_type or o.element_type,
+                                                            o.page, loc[:120]))
+        self.tree.bind("<ButtonRelease-1>", self._toggle_clicked)
+        self.tree.bind("<space>", lambda e: (self._toggle(self.tree.selection()), "break")[1])
+        row = tk.Frame(self, bg=C["bg_main"])
+        row.pack(fill="x", padx=14, pady=(0, 12))
+        panel._btn(row, "Toate", lambda: self._set_all(True)).pack(side="left", padx=2)
+        panel._btn(row, "Niciunul", lambda: self._set_all(False)).pack(side="left", padx=2)
+        panel._btn(row, "Fara link-uri", self._no_links,
+                   tip="Debifeaza link-urile (meniurile de navigare au de obicei multe)").pack(side="left", padx=2)
+        self._ok_btn = panel._btn(row, "", self._ok, color=C["success"])
+        self._ok_btn.pack(side="right", padx=2)
+        panel._btn(row, "Anuleaza", self.destroy).pack(side="right", padx=2)
+        self._refresh()
+        self.update_idletasks()
+        self.geometry(f"+{max(0, (self.winfo_screenwidth() - self.winfo_reqwidth()) // 2)}+60")
+        self.grab_set()
+        self.wait_window()
+
+    def _refresh(self):
+        for i in range(len(self.objs)):
+            self.tree.set(str(i), "sel", "✔" if self.sel[i] else "")
+        self._ok_btn.configure(text=f"💾 Adauga in biblioteca ({sum(self.sel)})")
+
+    def _toggle(self, iids):
+        for iid in iids:
+            self.sel[int(iid)] = not self.sel[int(iid)]
+        self._refresh()
+
+    def _toggle_clicked(self, e):
+        iid = self.tree.identify_row(e.y)
+        if iid and self.tree.identify_region(e.x, e.y) == "cell":
+            self._toggle([iid])
+
+    def _set_all(self, on: bool):
+        self.sel = [on] * len(self.objs)
+        self._refresh()
+
+    def _no_links(self):
+        for i, o in enumerate(self.objs):
+            if o.element_type == "a" or o.element_type.startswith("a ("):
+                self.sel[i] = False
+        self._refresh()
+
+    def _ok(self):
+        self.result = [o for o, on in zip(self.objs, self.sel) if on]
         self.destroy()
 
 
