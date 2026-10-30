@@ -30,12 +30,25 @@ class RprPaths:
         return p
 
     @classmethod
+    def _located(cls, kind: str, sub: str) -> str:
+        """v4.14: folderul ales in 🌐 Setari Studio → 📁 Unde se salveaza (altfel cel de aici)."""
+        from . import locations
+        p = locations.folder(kind)
+        if p:
+            try:
+                os.makedirs(p, exist_ok=True)
+                return p
+            except OSError:
+                pass        # folder indisponibil (ex. disc de retea deconectat): ramanem pe cel local
+        return cls._ensure(sub)
+
+    @classmethod
     def routines(cls) -> str:
-        return cls._ensure("rutine")
+        return cls._located("routines", "rutine")
 
     @classmethod
     def output(cls) -> str:
-        return cls._ensure("rezultate")
+        return cls._located("results", "rezultate")
 
     @classmethod
     def object_images(cls) -> str:

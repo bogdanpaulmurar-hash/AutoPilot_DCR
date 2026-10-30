@@ -31,6 +31,7 @@ import time
 import uuid
 from tkinter import filedialog, messagebox, ttk
 import tkinter as tk
+import tkinter.font as tkfont
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from rpr.drivers.base import DriverProvider
@@ -49,6 +50,7 @@ from rpr import resume as rpr_resume
 from rpr import scan as rpr_scan
 from rpr import subroutine as rpr_sub
 from rpr.storage import Examples, ExcelInfo, RepositoryStore, RoutineStore, RprPaths, RunLogExporter
+import ui_theme   # v4.14: contrast automat, texte care se rup dupa latime
 
 try:
     from i18n import tr   # limba interfetei (listele de mai jos se traduc doar la afisare)
@@ -228,7 +230,7 @@ class ToolTip:
         self._tip = tk.Toplevel(self._w)
         self._tip.overrideredirect(True)
         self._tip.attributes("-topmost", True)
-        tk.Label(self._tip, text=self._text, bg="#FFFFE0", fg="#222", font=("Segoe UI", 9),
+        tk.Label(self._tip, text=self._text, bg="#FFFFE0", fg="#222", font=("Segoe UI", 10),
                  relief="solid", bd=1, padx=6, pady=3, wraplength=360, justify="left").pack()
         self._tip.geometry(f"+{x}+{y}")
 
@@ -473,14 +475,14 @@ class RunControlWindow(tk.Toplevel):
         row = tk.Frame(self, bg=C["bg_card"])
         row.pack(padx=8, pady=4, anchor="w")
         self._pause = tk.Button(row, text="⏸ Pauza", command=panel.toggle_pause, bg=C["warning"], fg="white",
-                                relief="flat", font=("Segoe UI", 9, "bold"), padx=8, cursor="hand2")
+                                relief="flat", font=("Segoe UI", 10, "bold"), padx=8, cursor="hand2")
         self._pause.pack(side="left", padx=2)
         tk.Button(row, text="⏭ Pas", command=panel.step_once, bg=C["bg_input"], fg=C["text"], relief="flat",
-                  font=("Segoe UI", 9, "bold"), padx=8, cursor="hand2").pack(side="left", padx=2)
+                  font=("Segoe UI", 10, "bold"), padx=8, cursor="hand2").pack(side="left", padx=2)
         tk.Button(row, text="⏹ STOP", command=panel.stop, bg=C["danger"], fg="white", relief="flat",
-                  font=("Segoe UI", 9, "bold"), padx=8, cursor="hand2").pack(side="left", padx=2)
+                  font=("Segoe UI", 10, "bold"), padx=8, cursor="hand2").pack(side="left", padx=2)
         tk.Label(self, text="Ctrl+F11 pauza/reluare  ·  Ctrl+F12 stop", bg=C["bg_card"], fg=C["text_dim"],
-                 font=("Segoe UI", 8)).pack(padx=8, pady=(0, 6), anchor="w")
+                 font=("Segoe UI", 9)).pack(padx=8, pady=(0, 6), anchor="w")
         self.update_idletasks()
         self.geometry(f"+{self.winfo_screenwidth() - self.winfo_reqwidth() - 24}+"
                       f"{self.winfo_screenheight() - self.winfo_reqheight() - 90}")
@@ -551,6 +553,7 @@ class StudioPanel(tk.Frame):
         self.load_repository(self.studio_settings.library_path or RprPaths.default_repository())
         self.new_routine(ask=False)
         self.after(50, self._poll)
+        self.after(400, lambda: ui_theme.fix_contrast(self))   # v4.14: niciun text greu de citit
         # 📂 rutinele din folderul setat se citesc in fundal (Managerul de rutine le are gata)
         from rpr.batch import preload, shared_library
         if shared_library().scanned_at is None:
@@ -589,21 +592,25 @@ class StudioPanel(tk.Frame):
     def _styles(self):
         C = self.C
         st = ttk.Style()
+        # v4.14: inaltimea randului urmeaza fontul (cu "Marime text" mare, randurile nu se mai taie)
+        line = tkfont.Font(self, font=("Segoe UI", 10)).metrics("linespace")
+        self._row_h = max(24, line + 10)
+        on_primary = ui_theme.text_on(C["primary"], self)
         st.configure("Studio.Treeview", background=C["bg_input"], fieldbackground=C["bg_input"],
-                     foreground=C["text"], rowheight=24, font=("Segoe UI", 10), borderwidth=0)
-        st.map("Studio.Treeview", background=[("selected", C["primary"])], foreground=[("selected", "white")])
+                     foreground=C["text"], rowheight=self._row_h, font=("Segoe UI", 10), borderwidth=0)
+        st.map("Studio.Treeview", background=[("selected", C["primary"])], foreground=[("selected", on_primary)])
         st.configure("Studio.Treeview.Heading", background=C["bg_card"], foreground=C["text_dim"],
-                     font=("Segoe UI", 9, "bold"), relief="flat")
-        st.configure("Studio.TNotebook", background=C["bg_main"], borderwidth=0)
-        st.configure("Studio.TNotebook.Tab", background=C["bg_card"], foreground=C["text_dim"], padding=[10, 4],
-                     font=("Segoe UI", 9, "bold"))
-        st.map("Studio.TNotebook.Tab", background=[("selected", C["primary"])], foreground=[("selected", "white")])
-        st.configure("Studio.TPanedwindow", background=C["border"])
-        st.configure("Studio.TCombobox", fieldbackground=C["bg_input"], background=C["bg_card"],
-                     foreground=C["text"], arrowcolor=C["text"])
-        self.option_add("*TCombobox*Listbox.background", C["bg_input"])
-        self.option_add("*TCombobox*Listbox.foreground", C["text"])
-        self.option_add("*TCombobox*Listbox.selectBackground", C["primary"])
+                     font=("Segoe UI", 10, "bold"), relief="flat", padding=[6, 4])
+        st.map("Studio.Treeview.Heading", background=[("active", C["bg_card"])])
+        st.configure("Studio.TNotebook", background=C["bg_main"], borderwidth=0, tabmargins=[2, 4, 2, 0])
+        st.configure("Studio.TNotebook.Tab", background=C["bg_card"], foreground=C["text_dim"], padding=[14, 6],
+                     font=("Segoe UI", 10, "bold"), borderwidth=0)
+        st.map("Studio.TNotebook.Tab", background=[("selected", C["primary"])], foreground=[("selected", on_primary)],
+               padding=[("selected", [14, 6])])
+        st.configure("Studio.TPanedwindow", background=C["bg_main"])
+        st.configure("Sash", sashthickness=6, gripcount=0)
+        ui_theme.style_combobox(st, "Studio.TCombobox", C)
+        ui_theme.style_popdown(self, C)
 
     def _label(self, parent, text, size=9, bold=False, color=None, **kw):
         return tk.Label(parent, text=text, bg=kw.pop("bg", parent["bg"]), fg=color or self.C["text"],
@@ -611,10 +618,10 @@ class StudioPanel(tk.Frame):
 
     def _btn(self, parent, text, cmd, color=None, tip="", **kw):
         bg = color or self.C["bg_input"]
-        fg = "white" if color else self.C["text"]
+        fg = ui_theme.text_on(bg, self) if color else self.C["text"]   # v4.14: textul se alege dupa fundal
         b = tk.Button(parent, text=text, command=cmd, bg=bg, fg=fg, activebackground=self.C["primary"],
-                      activeforeground="white", relief="flat", font=("Segoe UI", 9, "bold"), padx=8, pady=2,
-                      cursor="hand2", bd=0, **kw)
+                      activeforeground=ui_theme.text_on(self.C["primary"], self), relief="flat",
+                      font=("Segoe UI", 10), padx=10, pady=4, cursor="hand2", bd=0, highlightthickness=0, **kw)
         if tip:
             ToolTip(b, tip)
         return b
@@ -622,13 +629,14 @@ class StudioPanel(tk.Frame):
     def _build(self):
         C = self.C
         vpaned = ttk.PanedWindow(self, orient="vertical", style="Studio.TPanedwindow")
-        vpaned.pack(fill="both", expand=True, padx=4, pady=4)
+        vpaned.pack(fill="both", expand=True, padx=6, pady=6)
         hpaned = ttk.PanedWindow(vpaned, orient="horizontal", style="Studio.TPanedwindow")
         vpaned.add(hpaned, weight=4)
+        self._vpaned, self._hpaned = vpaned, hpaned
 
         # ── Stanga: blocuri + obiecte ──
-        left = tk.Frame(hpaned, bg=C["bg_main"], width=250)
-        hpaned.add(left, weight=0)
+        left = tk.Frame(hpaned, bg=C["bg_main"], width=260)
+        hpaned.add(left, weight=1)
         nb = ttk.Notebook(left, style="Studio.TNotebook")
         nb.pack(fill="both", expand=True)
         tb = ScrollFrame(nb, C["bg_main"])
@@ -668,11 +676,16 @@ class StudioPanel(tk.Frame):
         self.tree.configure(yscrollcommand=vsb.set)
         vsb.pack(side="right", fill="y")
         self.tree.pack(side="left", fill="both", expand=True)
-        self.tree.tag_configure("disabled", foreground=C["text_muted"])
-        self.tree.tag_configure("branch", foreground=C["accent"], font=("Segoe UI", 9, "italic"))
+        rd = lambda c: ui_theme.readable(c, C["bg_input"], widget=self)   # noqa: E731 — culori lizibile pe ambele teme
+        self.tree.tag_configure("disabled", foreground=ui_theme.readable(C["text_muted"], C["bg_input"], 3.0, self))
+        self.tree.tag_configure("branch", foreground=rd(C["accent"]), font=("Segoe UI", 10, "italic"))
         self.tree.tag_configure("running", background="#B36B00", foreground="white")
-        self.tree.tag_configure("ok", foreground="#3CCF6E")
-        self.tree.tag_configure("error", foreground="#FF5C5C")
+        self.tree.tag_configure("ok", foreground=rd("#3CCF6E"))
+        self.tree.tag_configure("error", foreground=rd("#FF5C5C"))
+        self.tree.tag_configure("drop_into", background=C["row_active"] if "row_active" in C else C["bg_card"])
+        self._drop_line = tk.Frame(self.tree, bg=C["primary"], height=3)
+        self._drop_into = None
+        self._drag_source(self.tree, self._tree_drag_payload, "↕ Muta pasul")
         self.tree.bind("<<TreeviewSelect>>", self._on_select)
         self.tree.bind("<Delete>", lambda e: self.delete_selected())
         self.tree.bind("<space>", lambda e: (self.toggle_enabled(), "break")[1])
@@ -690,6 +703,11 @@ class StudioPanel(tk.Frame):
         # ── Jos: log + variabile ──
         bottom = ttk.Notebook(vpaned, style="Studio.TNotebook")
         vpaned.add(bottom, weight=1)
+        # v4.14: latimea panourilor se tine minte ca procent din fereastra (merge si pe ecrane mici)
+        for pw in (hpaned, vpaned):
+            pw.bind("<ButtonRelease-1>", lambda e: self.after(50, self._save_layout), add="+")
+        hpaned.bind("<Configure>", lambda e: self._layout_later(), add="+")
+        self.after(150, self._apply_layout)
         logf = tk.Frame(bottom, bg=C["bg_main"])
         bottom.add(logf, text="📋 Log rulare")
         lbar = tk.Frame(logf, bg=C["bg_main"])
@@ -703,8 +721,8 @@ class StudioPanel(tk.Frame):
                                      ("pas", "Pas", 240, False), ("mesaj", "Mesaj", 500, True)]:
             self.log.heading(c, text=title, anchor="w")
             self.log.column(c, width=w, stretch=stretch, anchor="w")
-        self.log.tag_configure("Error", foreground="#FF6B6B")
-        self.log.tag_configure("Warning", foreground="#FFC24B")
+        self.log.tag_configure("Error", foreground=ui_theme.readable("#FF6B6B", C["bg_input"], widget=self))
+        self.log.tag_configure("Warning", foreground=ui_theme.readable("#FFC24B", C["bg_input"], widget=self))
         lsb = ttk.Scrollbar(logf, orient="vertical", command=self.log.yview)
         self.log.configure(yscrollcommand=lsb.set)
         lsb.pack(side="right", fill="y")
@@ -718,21 +736,249 @@ class StudioPanel(tk.Frame):
         self.vars.column("valoare", width=600, stretch=True)
         self.vars.pack(fill="both", expand=True)
 
+    # =========================================================================
+    # v4.14: aspect — latimea panourilor (procent din fereastra, tinut minte)
+    # =========================================================================
+    def _apply_layout(self):
+        hp, vp = self._hpaned, self._vpaned
+        W, H = hp.winfo_width(), vp.winfo_height()
+        if W < 200 or H < 200:
+            self.after(150, self._apply_layout)
+            return
+        lay = getattr(self.studio_settings, "layout", None) or {}
+        left, right, bottom = (float(lay.get(k, d)) for k, d in (("left", 0.22), ("right", 0.30), ("bottom", 0.24)))
+        lw, rw = max(230, int(W * left)), max(300, int(W * right))
+        avail = W - 280                       # arborele rutinei pastreaza cel putin ~280 px
+        if lw + rw > avail:
+            lw = max(180, int(avail * left / (left + right)))
+            rw = max(220, avail - lw)
+        try:
+            hp.sashpos(0, lw)
+            hp.sashpos(1, W - rw)
+            vp.sashpos(0, max(200, int(H * (1 - min(0.5, max(0.1, bottom))))))
+        except tk.TclError:
+            pass
+        self._layout_w = W
+
+    def _layout_later(self):
+        W = self._hpaned.winfo_width()
+        if abs(W - getattr(self, "_layout_w", 0)) < 40:
+            return
+        if getattr(self, "_layout_job", None):
+            self.after_cancel(self._layout_job)
+        self._layout_job = self.after(150, self._apply_layout)
+
+    def _save_layout(self):
+        hp, vp = self._hpaned, self._vpaned
+        W, H = hp.winfo_width(), vp.winfo_height()
+        if W < 200 or H < 200:
+            return
+        try:
+            lay = {"left": round(hp.sashpos(0) / W, 3), "right": round((W - hp.sashpos(1)) / W, 3),
+                   "bottom": round((H - vp.sashpos(0)) / H, 3)}
+        except tk.TclError:
+            return
+        self._layout_w = W
+        if lay != getattr(self.studio_settings, "layout", None):
+            self.studio_settings.layout = lay
+            self.studio_settings.save()
+
+    # =========================================================================
+    # v4.14: drag and drop — pasi in arbore, blocuri, obiecte si rutine trase in rutina
+    # =========================================================================
+    def _drag_source(self, widget, payload_fn: Callable[[], Optional[Tuple[str, Any]]], label: str = ""):
+        widget.bind("<ButtonPress-1>", lambda e: self._drag_press(e, payload_fn, label), add="+")
+        widget.bind("<B1-Motion>", self._drag_motion, add="+")
+        widget.bind("<ButtonRelease-1>", self._drag_release, add="+")
+
+    def _drag_press(self, e, payload_fn, label):
+        self._drag = {"x": e.x_root, "y": e.y_root, "fn": payload_fn, "label": label, "on": False,
+                      "payload": None, "ghost": None, "src": e.widget}
+
+    def _drag_motion(self, e):
+        d = getattr(self, "_drag", None)
+        if not d:
+            return
+        if not d["on"]:
+            if abs(e.x_root - d["x"]) + abs(e.y_root - d["y"]) < 10:
+                return
+            payload = d["fn"]()
+            if not payload or payload[1] is None:
+                self._drag = None
+                return
+            d["on"], d["payload"] = True, payload
+            g = tk.Toplevel(self)
+            g.overrideredirect(True)
+            try:
+                g.attributes("-topmost", True)
+                g.attributes("-alpha", 0.9)
+            except tk.TclError:
+                pass
+            tk.Label(g, text=d["label"] or "…", bg=self.C["primary"], fg=ui_theme.text_on(self.C["primary"], self),
+                     font=("Segoe UI", 10, "bold"), padx=10, pady=4).pack()
+            d["ghost"] = g
+        d["ghost"].geometry(f"+{e.x_root + 14}+{e.y_root + 10}")
+        self._show_drop(e.x_root, e.y_root)
+
+    def _drag_release(self, e):
+        d, self._drag = getattr(self, "_drag", None), None
+        self._hide_drop()
+        if not d or not d["on"]:
+            return
+        if d["ghost"] is not None:
+            d["ghost"].destroy()
+        target = self._drop_target(e.x_root, e.y_root)
+        if target is None:
+            return "break"
+        owner, index, _y, _into = target
+        kind, obj = d["payload"]
+        if kind == "move":
+            self._move_node_to(obj, owner, index)
+        elif kind == "node":
+            self._insert_at = (owner, index)
+            self.insert_node(obj)
+        elif kind == "object":
+            self._drop_object_menu(obj, owner, index, e.x_root, e.y_root)
+        elif kind == "routine":
+            self.add_routine_step(entry=obj, at=(owner, index))
+        return "break"
+
+    def _drop_target(self, x_root: int, y_root: int):
+        """Unde ajunge pasul lasat la (x_root, y_root): (lista, pozitie, y linie, rand "in interior")."""
+        tree = self.tree
+        w = tree.winfo_containing(x_root, y_root)
+        if w is not tree:
+            return None
+        y = y_root - tree.winfo_rooty()
+        row = tree.identify_row(y)
+        if not row or row not in self._items:
+            kids = tree.get_children()
+            last_y = 0
+            if kids:
+                vis = [i for i in self._visible_rows() if tree.bbox(i)]
+                if vis:
+                    bx = tree.bbox(vis[-1])
+                    last_y = bx[1] + bx[3]
+            return self.routine.steps, len(self.routine.steps), last_y, None
+        kind, node, owner = self._items[row]
+        bbox = tree.bbox(row) or (0, y, 0, self._row_h)
+        rel = (y - bbox[1]) / max(1, bbox[3])
+        if kind == "branch":
+            return owner, len(owner), None, row
+        branches = node.branches()
+        if len(branches) == 1 and 0.3 <= rel <= 0.75:
+            return branches[0][1], len(branches[0][1]), None, row
+        idx = next(i for i, x in enumerate(owner) if x is node)
+        if rel < 0.5:
+            return owner, idx, bbox[1], None
+        return owner, idx + 1, bbox[1] + bbox[3], None
+
+    def _visible_rows(self):
+        out, stack = [], list(reversed(self.tree.get_children()))
+        while stack:
+            iid = stack.pop()
+            out.append(iid)
+            if self.tree.item(iid, "open"):
+                stack.extend(reversed(self.tree.get_children(iid)))
+        return out
+
+    def _show_drop(self, x_root: int, y_root: int):
+        tree = self.tree
+        y = y_root - tree.winfo_rooty()     # derulare automata langa margini
+        if 0 <= y < 24:
+            tree.yview_scroll(-1, "units")
+        elif tree.winfo_height() - 24 < y <= tree.winfo_height():
+            tree.yview_scroll(1, "units")
+        t = self._drop_target(x_root, y_root)
+        if getattr(self, "_drop_into", None) and self.tree.exists(self._drop_into):
+            tags = [x for x in self.tree.item(self._drop_into, "tags") if x != "drop_into"]
+            self.tree.item(self._drop_into, tags=tags)
+        self._drop_into = None
+        if t is None:
+            self._drop_line.place_forget()
+            return
+        _o, _i, line_y, into = t
+        if into:
+            self._drop_line.place_forget()
+            self.tree.item(into, tags=list(self.tree.item(into, "tags")) + ["drop_into"])
+            self._drop_into = into
+        else:
+            self._drop_line.place(in_=tree, x=0, y=max(0, line_y - 1), relwidth=1, height=3)
+            self._drop_line.lift()
+
+    def _hide_drop(self):
+        try:
+            self._drop_line.place_forget()
+            if getattr(self, "_drop_into", None) and self.tree.exists(self._drop_into):
+                tags = [x for x in self.tree.item(self._drop_into, "tags") if x != "drop_into"]
+                self.tree.item(self._drop_into, tags=tags)
+        except tk.TclError:
+            pass
+        self._drop_into = None
+
+    def _tree_drag_payload(self):
+        node, _owner = self._sel_node()
+        return ("move", node) if node is not None else None
+
+    def _move_node_to(self, node: RprNode, target: List[RprNode], index: int):
+        # nu se poate muta un pas in interiorul lui insusi
+        for n in flatten([node]):
+            if any(lst is target for _, lst in n.branches()):
+                self.set_status("Un pas nu poate fi mutat in interiorul lui.")
+                return
+        owner = next((info[2] for info in self._items.values() if info[0] == "node" and info[1] is node), None)
+        if owner is None:
+            return
+        i = next(k for k, x in enumerate(owner) if x is node)
+        if owner is target and index in (i, i + 1):
+            return                              # acelasi loc
+        owner.pop(i)
+        if owner is target and index > i:
+            index -= 1
+        target.insert(max(0, min(index, len(target))), node)
+        self.mark_dirty()
+        self.rebuild_tree(node)
+
+    def _drop_object_menu(self, obj: UiObject, owner, index, x_root, y_root):
+        """Obiect tras in rutina: alegi ce face pasul."""
+        C = self.C
+        m = tk.Menu(self, tearoff=0, bg=C["bg_card"], fg=C["text"], activebackground=C["primary"],
+                    activeforeground=ui_theme.text_on(C["primary"], self), font=("Segoe UI", 10))
+
+        def put(fn):
+            self._insert_at = (owner, index)
+            fn()
+            self._insert_at = None
+        m.add_command(label="Click", command=lambda: put(lambda: self._obj_step(RprAction.Click, obj)))
+        m.add_command(label="Scrie text", command=lambda: put(lambda: self._obj_step(RprAction.TypeText, obj)))
+        m.add_command(label="Citeste valoare", command=lambda: put(lambda: self._obj_step(RprAction.ReadText, obj)))
+        m.add_command(label="Alege din lista", command=lambda: put(lambda: self._obj_step(RprAction.SelectOption, obj)))
+        m.add_separator()
+        m.add_command(label="Daca obiectul exista", command=lambda: put(lambda: self.insert_node(
+            IfNode(condition=Condition(kind=ConditionKind.ElementExists, target=obj.name, timeout_ms=2000)))))
+        try:
+            m.tk_popup(x_root, y_root)
+        finally:
+            m.grab_release()
+
     def _build_toolbox(self, host):
         C = self.C
-        tk.Label(host, text="Click pe un bloc = il adaugi dupa pasul selectat. Ca sa adaugi IN interiorul unui "
-                            "\"Daca\" sau al unei bucle, selecteaza mai intai ramura (ex: ▸ Atunci).",
-                 bg=C["bg_main"], fg=C["text_dim"], font=("Segoe UI", 8), wraplength=220, justify="left").pack(
-            anchor="w", padx=6, pady=(6, 2))
+        ui_theme.autowrap(tk.Label(host, text="Click pe un bloc = il adaugi dupa pasul selectat. Sau trage-l cu mouse-ul "
+                                              "exact unde vrei in rutina (si in interiorul unui \"Daca\" sau al unei bucle).",
+                                   bg=C["bg_main"], fg=C["text_dim"], font=("Segoe UI", 9), justify="left", anchor="w"),
+                          margin=12).pack(fill="x", padx=8, pady=(8, 2))
         for group, items in TOOLBOX:
-            tk.Label(host, text=tr(group).upper(), bg=C["bg_main"], fg=C["primary"], font=("Segoe UI", 8, "bold")).pack(
-                anchor="w", padx=6, pady=(10, 2))
+            tk.Label(host, text=tr(group).upper(), bg=C["bg_main"], fg=C["primary"], font=("Segoe UI", 9, "bold")).pack(
+                anchor="w", padx=8, pady=(12, 3))
             for text, tip, factory in items:
                 b = tk.Button(host, text=text, anchor="w", command=lambda f=factory: self.insert_node(f()),
-                              bg=C["bg_card"], fg=C["text"], activebackground=C["primary"], activeforeground="white",
-                              relief="flat", font=("Segoe UI", 9), padx=8, pady=3, cursor="hand2", bd=0)
-                b.pack(fill="x", padx=6, pady=1)
+                              bg=C["bg_card"], fg=C["text"], activebackground=C["primary"],
+                              activeforeground=ui_theme.text_on(C["primary"], self),
+                              relief="flat", font=("Segoe UI", 10), padx=10, pady=5, cursor="hand2", bd=0,
+                              highlightthickness=0)
+                b.pack(fill="x", padx=8, pady=2)
                 ToolTip(b, tip)
+                self._drag_source(b, lambda f=factory: ("node", f()), text)
 
     def _build_objects(self, host):
         """📚 Biblioteca de obiecte (ca in SilkTest): Site -> Pagina -> Container -> obiecte,
@@ -741,7 +987,7 @@ class StudioPanel(tk.Frame):
         # v4.9: biblioteca e un fisier ales de tine (de ex. una pe aplicatie, in OneDrive)
         lib = tk.Frame(host, bg=C["bg_card"])
         lib.pack(fill="x", padx=4, pady=(4, 2))
-        self._lib_label = tk.Label(lib, text="", bg=C["bg_card"], fg=C["text"], font=("Segoe UI", 9, "bold"),
+        self._lib_label = tk.Label(lib, text="", bg=C["bg_card"], fg=C["text"], font=("Segoe UI", 10, "bold"),
                                    anchor="w")
         self._lib_label.pack(fill="x", padx=6, pady=(3, 1))
         lrow = tk.Frame(lib, bg=C["bg_card"])
@@ -766,14 +1012,14 @@ class StudioPanel(tk.Frame):
         top.pack(fill="x", padx=4, pady=(4, 2))
         self._obj_filter = tk.StringVar()
         e = tk.Entry(top, textvariable=self._obj_filter, bg=C["bg_input"], fg=C["text"], relief="flat",
-                     insertbackground=C["text"], font=("Segoe UI", 9))
+                     insertbackground=C["text"], font=("Segoe UI", 10))
         e.pack(fill="x", ipady=2)
         ToolTip(e, "Cauta dupa nume, tip, site, pagina sau eticheta")
         self._obj_filter.trace_add("write", lambda *a: self.refresh_objects())
         self._obj_only_page = tk.BooleanVar(value=False)
         tk.Checkbutton(top, text="Doar ce merge pe pagina din browser", variable=self._obj_only_page,
                        command=self.refresh_objects, bg=C["bg_main"], fg=C["text_dim"], selectcolor=C["bg_input"],
-                       activebackground=C["bg_main"], font=("Segoe UI", 8)).pack(anchor="w")
+                       activebackground=C["bg_main"], font=("Segoe UI", 9)).pack(anchor="w")
         box = tk.Frame(host, bg=C["bg_main"])
         box.pack(fill="both", expand=True, padx=4)
         self.objects = ttk.Treeview(box, columns=("tip",), show="tree headings", style="Studio.Treeview")
@@ -785,11 +1031,14 @@ class StudioPanel(tk.Frame):
         self.objects.configure(yscrollcommand=vsb.set)
         vsb.pack(side="right", fill="y")
         self.objects.pack(fill="both", expand=True)
-        self.objects.tag_configure("site", foreground=C["primary"], font=("Segoe UI", 9, "bold"))
-        self.objects.tag_configure("page", foreground=C["accent"], font=("Segoe UI", 9, "italic"))
-        self.objects.tag_configure("container", font=("Segoe UI", 9, "bold"))
-        self.objects.tag_configure("folder", foreground=C["text"], font=("Segoe UI", 9, "bold"))
+        self.objects.tag_configure("site", foreground=ui_theme.readable(C["primary"], C["bg_input"], widget=self),
+                                   font=("Segoe UI", 10, "bold"))
+        self.objects.tag_configure("page", foreground=ui_theme.readable(C["accent"], C["bg_input"], widget=self),
+                                   font=("Segoe UI", 10, "italic"))
+        self.objects.tag_configure("container", font=("Segoe UI", 10, "bold"))
+        self.objects.tag_configure("folder", foreground=C["text"], font=("Segoe UI", 10, "bold"))
         self.objects.bind("<Double-1>", lambda e: self.edit_object())
+        self._drag_source(self.objects, lambda: ("object", self._sel_object()), "➕ Obiect in rutina")
         self.objects.bind("<Button-3>", self._object_menu)
         row = tk.Frame(host, bg=C["bg_main"])
         row.pack(fill="x", padx=4, pady=4)
@@ -803,7 +1052,7 @@ class StudioPanel(tk.Frame):
             self._btn(row, text, cmd, tip=tip).pack(side="left", padx=1)
         hint = tk.Label(host, text="Obiecte noi: Scaneaza site, Captura 3 s, Spy (Web) sau Inregistreaza Web. "
                                    "Click dreapta pe obiect: testeaza, adauga in rutina, muta in container, copiaza pentru alt site.",
-                        bg=C["bg_main"], fg=C["text_dim"], font=("Segoe UI", 8), justify="left", wraplength=220)
+                        bg=C["bg_main"], fg=C["text_dim"], font=("Segoe UI", 9), justify="left", wraplength=220)
         hint.pack(anchor="w", padx=6, pady=(0, 6))
         host.bind("<Configure>", lambda e: hint.configure(wraplength=max(120, e.width - 20)), add="+")
 
@@ -814,9 +1063,10 @@ class StudioPanel(tk.Frame):
         C = self.C
         head = tk.Frame(host, bg=C["bg_card"])
         head.pack(fill="x", padx=4, pady=(4, 2))
-        self._rt_folder = tk.Label(head, text="", bg=C["bg_card"], fg=C["text"], font=("Segoe UI", 9, "bold"),
+        self._rt_folder = tk.Label(head, text="", bg=C["bg_card"], fg=C["text"], font=("Segoe UI", 10, "bold"),
                                    anchor="w", justify="left", wraplength=230)
         self._rt_folder.pack(fill="x", padx=6, pady=(3, 1))
+        ui_theme.autowrap(self._rt_folder, margin=12)
         hr = tk.Frame(head, bg=C["bg_card"])
         hr.pack(fill="x", padx=2, pady=(0, 3))
         self._btn(hr, "📁 Folder", self.choose_routines_folder,
@@ -824,7 +1074,7 @@ class StudioPanel(tk.Frame):
         self._btn(hr, "↻", self.refresh_routines, tip="Citeste din nou folderul").pack(side="left", padx=1)
         self._rt_filter = tk.StringVar()
         e = tk.Entry(host, textvariable=self._rt_filter, bg=C["bg_input"], fg=C["text"], relief="flat",
-                     insertbackground=C["text"], font=("Segoe UI", 9))
+                     insertbackground=C["text"], font=("Segoe UI", 10))
         e.pack(fill="x", padx=4, pady=(2, 2), ipady=2)
         ToolTip(e, "Cauta dupa nume, descriere sau folder")
         self._rt_filter.trace_add("write", lambda *a: self.refresh_routines_view())
@@ -840,17 +1090,19 @@ class StudioPanel(tk.Frame):
         self.routines_tree.configure(yscrollcommand=vsb.set)
         vsb.pack(side="right", fill="y")
         self.routines_tree.pack(fill="both", expand=True)
-        self.routines_tree.tag_configure("dir", foreground=C["accent"], font=("Segoe UI", 9, "bold"))
+        self.routines_tree.tag_configure("dir", foreground=ui_theme.readable(C["accent"], C["bg_input"], widget=self),
+                                         font=("Segoe UI", 10, "bold"))
         self.routines_tree.tag_configure("bad", foreground=C["danger"] if "danger" in C else "#FF6B6B")
         self.routines_tree.bind("<Double-1>", lambda e: self.add_routine_step())
+        self._drag_source(self.routines_tree, lambda: ("routine", self._sel_routine_entry()), "➕ Rutina ca pas")
         self.routines_tree.bind("<<TreeviewSelect>>", lambda e: self._routine_detail())
         self.routines_tree.bind("<Button-3>", self._routine_menu)
         sbox = tk.Frame(host, bg=C["bg_main"])
         sbox.pack(fill="x", padx=4, pady=(2, 0))
         tk.Label(sbox, text="Pasii rutinei alese (doar citire)", bg=C["bg_main"], fg=C["text_dim"],
-                 font=("Segoe UI", 8, "bold"), anchor="w").pack(fill="x", padx=2)
+                 font=("Segoe UI", 9, "bold"), anchor="w").pack(fill="x", padx=2)
         self.routine_steps_tree = self._steps_preview(sbox, 7)
-        self._rt_info = tk.Label(host, text="", bg=C["bg_main"], fg=C["text_dim"], font=("Segoe UI", 8), anchor="w",
+        self._rt_info = tk.Label(host, text="", bg=C["bg_main"], fg=C["text_dim"], font=("Segoe UI", 9), anchor="w",
                                  justify="left", wraplength=230)
         self._rt_info.pack(fill="x", padx=6)
         row = tk.Frame(host, bg=C["bg_main"])
@@ -865,7 +1117,7 @@ class StudioPanel(tk.Frame):
             self._btn(row, text, cmd, tip=tip).pack(side="left", padx=1)
         hint = tk.Label(host, text="Ai deja o rutina de cativa pasi? Adaug-o aici ca pas si pune intre ele doar pasii "
                                    "tai. „Ca pas” urmareste fisierul (o schimbi o data, merge peste tot); „Ca pasi” face o copie.",
-                        bg=C["bg_main"], fg=C["text_dim"], font=("Segoe UI", 8), justify="left", wraplength=220)
+                        bg=C["bg_main"], fg=C["text_dim"], font=("Segoe UI", 9), justify="left", wraplength=220)
         hint.pack(anchor="w", padx=6, pady=(0, 6))
         host.bind("<Configure>", lambda e: (hint.configure(wraplength=max(120, e.width - 20)),
                                             self._rt_info.configure(wraplength=max(120, e.width - 20))), add="+")
@@ -970,7 +1222,7 @@ class StudioPanel(tk.Frame):
         vsb.pack(side="right", fill="y")
         tv.pack(fill="x", expand=True)
         tv.tag_configure("disabled", foreground=self.C["text_dim"])
-        tv.tag_configure("branch", foreground=self.C["accent"])
+        tv.tag_configure("branch", foreground=ui_theme.readable(self.C["accent"], self.C["bg_input"], widget=self))
         return tv
 
     def _fill_steps_preview(self, tv, path: str):
@@ -1029,8 +1281,8 @@ class StudioPanel(tk.Frame):
         except OSError:
             return False
 
-    def add_routine_step(self):
-        e = self._sel_routine_entry()
+    def add_routine_step(self, entry=None, at=None):
+        e = entry or self._sel_routine_entry()
         if e is None:
             self.set_status("Alege o rutina din lista.")
             return
@@ -1040,6 +1292,7 @@ class StudioPanel(tk.Frame):
         if self._is_current_routine(e.path):
             messagebox.showwarning("Rutine", "Aceasta e rutina deschisa acum: nu se poate apela pe ea insasi.", parent=self)
             return
+        self._insert_at = at
         self.insert_node(RunRoutineNode(path=e.path, name=e.name))
         self.set_status(f"Pas adaugat: ruleaza rutina [{e.name}] ({e.steps} pasi).")
 
@@ -1647,13 +1900,13 @@ class StudioPanel(tk.Frame):
             anchor="w", padx=16, pady=(14, 2))
         tk.Label(dlg, text="Incepe cu 01 Invatare: apasa ⏭ Pas cu pas de mai multe ori si urmareste fiecare bloc.\n"
                            "Exemplele Web / SAP / Desktop au nevoie de aplicatia respectiva (browser, SAP GUI, Notepad).",
-                 bg=C["bg_main"], fg=C["text_dim"], font=("Segoe UI", 9), justify="left").pack(anchor="w", padx=16)
+                 bg=C["bg_main"], fg=C["text_dim"], font=("Segoe UI", 10), justify="left").pack(anchor="w", padx=16)
         for ex in examples:
             card = tk.Frame(dlg, bg=C["bg_card"])
             card.pack(fill="x", padx=16, pady=4)
             tk.Label(card, text=ex["name"], bg=C["bg_card"], fg=C["text"], font=("Segoe UI", 10, "bold")).pack(
                 anchor="w", padx=10, pady=(6, 0))
-            tk.Label(card, text=ex["description"], bg=C["bg_card"], fg=C["text_dim"], font=("Segoe UI", 9),
+            tk.Label(card, text=ex["description"], bg=C["bg_card"], fg=C["text_dim"], font=("Segoe UI", 10),
                      wraplength=520, justify="left").pack(anchor="w", padx=10)
             self._btn(card, "Deschide", lambda p=ex["path"]: (dlg.destroy(), self.open_routine(p)),
                       color=C["primary"]).pack(anchor="e", padx=10, pady=6)
@@ -1663,7 +1916,7 @@ class StudioPanel(tk.Frame):
         C = self.C
         dlg = tk.Toplevel(self)
         dlg.title("Ghid Studio RPR")
-        dlg.geometry("900x700")
+        ui_theme.fit_window(dlg, 900, 700)
         dlg.configure(bg=C["bg_main"])
         t = tk.Text(dlg, wrap="word", bg=C["bg_card"], fg=C["text"], font=("Segoe UI", 10), relief="flat",
                     padx=16, pady=12, spacing1=2, spacing3=2)
@@ -1766,6 +2019,13 @@ class StudioPanel(tk.Frame):
             self.tree.item(node.id, text=self._node_text(node), tags=tags)
 
     def insert_node(self, node: RprNode):
+        at, self._insert_at = getattr(self, "_insert_at", None), None
+        if at is not None:          # v4.14: locul ales prin drag and drop
+            target, index = at
+            target.insert(max(0, min(index, len(target))), node)
+            self.mark_dirty()
+            self.rebuild_tree(node)
+            return
         iid, info = self._selected()
         if info and info[0] == "branch":
             target, index = info[2], len(info[2])
@@ -2365,7 +2625,7 @@ class StudioPanel(tk.Frame):
         tk.Label(w, text=text, bg=C["primary"], fg="white", font=("Segoe UI", 10, "bold"), padx=12, pady=6).pack(side="left")
         cancel = on_cancel or (lambda: (getattr(self, "_spy_driver", None) or self.web()).cancel_spy())
         tk.Button(w, text=cancel_text, command=cancel, bg="white", fg=C["primary"],
-                  relief="flat", font=("Segoe UI", 9, "bold"), cursor="hand2").pack(side="left", padx=8, pady=4)
+                  relief="flat", font=("Segoe UI", 10, "bold"), cursor="hand2").pack(side="left", padx=8, pady=4)
         w.update_idletasks()
         w.geometry(f"+{(w.winfo_screenwidth() - w.winfo_reqwidth()) // 2}+8")
         self._spy_hint = w
@@ -2508,32 +2768,59 @@ class StudioPanel(tk.Frame):
         ScheduleDialog(self, self.routine_path, self.routine.name)
 
     # ── Setari Studio ──
-    def show_settings(self):
+    def show_settings(self, tab: int = 0):
+        """v4.14: setarile pe tab-uri: 🌐 Browser · 🎨 Aspect · 📁 Unde se salveaza · 🎬 Filme."""
         C, st = self.C, self.studio_settings
+        from rpr import locations
+        import screen_recorder as sr
+        import video_ui
         dlg = tk.Toplevel(self)
         dlg.title("Setari Studio")
         dlg.configure(bg=C["bg_main"])
         dlg.transient(self.winfo_toplevel())
-        dlg.resizable(False, False)
+        dlg.minsize(520, 380)
         tk.Label(dlg, text="⚙  Setari Studio", bg=C["bg_main"], fg=C["primary"], font=("Segoe UI", 13, "bold")).pack(
             anchor="w", padx=16, pady=(14, 6))
+        nb = ttk.Notebook(dlg, style="Studio.TNotebook")
+        nb.pack(fill="both", expand=True, padx=12)
+
+        def page(title):
+            f = tk.Frame(nb, bg=C["bg_main"])
+            nb.add(f, text=title)
+            return f
+
+        def caption(host, text):
+            tk.Label(host, text=text, bg=C["bg_main"], fg=C["text_dim"], font=("Segoe UI", 10, "bold"),
+                     anchor="w").pack(fill="x", padx=12, pady=(12, 2))
+
+        def hint(host, text):
+            ui_theme.autowrap(tk.Label(host, text=text, bg=C["bg_main"], fg=C["text_dim"], font=("Segoe UI", 9),
+                                       justify="left", anchor="w", wraplength=560), margin=10).pack(
+                fill="x", padx=12, pady=(4, 6))
+
+        def check(host, text, var):
+            cb = tk.Checkbutton(host, text=text, variable=var, bg=C["bg_main"], fg=C["text"], selectcolor=C["bg_input"],
+                                activebackground=C["bg_main"], activeforeground=C["text"], font=("Segoe UI", 10),
+                                anchor="w", justify="left", wraplength=560)
+            cb.pack(fill="x", padx=10, pady=2)
+            ui_theme.autowrap(cb, margin=34)
+
+        # ── 🌐 Browser ──
+        pg = page("🌐 Browser")
         from rpr.drivers.web import BROWSERS
-        tk.Label(dlg, text="Browser pentru pasii Web", bg=C["bg_main"], fg=C["text_dim"], font=("Segoe UI", 9, "bold")).pack(
-            anchor="w", padx=16)
-        browser = ttk.Combobox(dlg, values=[l for _, l in BROWSERS], state="readonly", width=40)
+        caption(pg, "Browser pentru pasii Web")
+        browser = ttk.Combobox(pg, values=[l for _, l in BROWSERS], state="readonly", width=40,
+                               style="Studio.TCombobox")
         browser.current(next((i for i, (v, _) in enumerate(BROWSERS) if v.lower() == st.browser.lower()), 0))
-        browser.pack(anchor="w", padx=16, pady=(0, 8))
+        browser.pack(anchor="w", padx=12, pady=(0, 8))
         headless = tk.BooleanVar(value=st.headless)
         minimize = tk.BooleanVar(value=st.minimize_on_run)
-        for text, var in [("Browser fara fereastra (headless) — doar pentru rulari programate", headless),
-                          ("Minimizeaza aplicatia la rulare (ramane bara plutitoare de control)", minimize)]:
-            tk.Checkbutton(dlg, text=text, variable=var, bg=C["bg_main"], fg=C["text"], selectcolor=C["bg_input"],
-                           activebackground=C["bg_main"], font=("Segoe UI", 10), anchor="w").pack(fill="x", padx=12)
-        tk.Label(dlg, text="Edge / Chrome folosesc browserul instalat (nu se descarca nimic). Profilul browserului "
-                           "(login, cookie-uri) se pastreaza intre rulari.", bg=C["bg_main"], fg=C["text_dim"],
-                 font=("Segoe UI", 8), wraplength=480, justify="left").pack(anchor="w", padx=16, pady=(4, 8))
-        row = tk.Frame(dlg, bg=C["bg_main"])
-        row.pack(anchor="w", padx=14, pady=4)
+        check(pg, "Browser fara fereastra (headless) — doar pentru rulari programate", headless)
+        check(pg, "Minimizeaza aplicatia la rulare (ramane bara plutitoare de control)", minimize)
+        hint(pg, "Edge / Chrome folosesc browserul instalat (nu se descarca nimic). Profilul browserului "
+                 "(login, cookie-uri) se pastreaza intre rulari.")
+        row = tk.Frame(pg, bg=C["bg_main"])
+        row.pack(anchor="w", padx=10, pady=4)
 
         def close_browser():
             try:
@@ -2555,20 +2842,136 @@ class StudioPanel(tk.Frame):
         self._btn(row, "Sterge profilul browserului", clear_profile).pack(side="left", padx=2)
         self._btn(row, "📂 Folderul de lucru", lambda: os.startfile(RprPaths.root)).pack(side="left", padx=2)
 
+        # ── 🎨 Aspect ──
+        pg = page("🎨 Aspect")
+        caption(pg, "Marimea textului (toata aplicatia)")
+        size = tk.StringVar(value=ui_theme.text_size())
+        for key, label, _f in ui_theme.TEXT_SIZES:
+            tk.Radiobutton(pg, text=label, value=key, variable=size, bg=C["bg_main"], fg=C["text"],
+                           selectcolor=C["bg_input"], activebackground=C["bg_main"], activeforeground=C["text"],
+                           font=("Segoe UI", 10), anchor="w").pack(fill="x", padx=12)
+        hint(pg, "Se aplica la urmatoarea pornire a aplicatiei. Pe un ecran mic (laptop) alege Normal; pe un monitor "
+                 "mare sau cu scalare mica alege Mare. Latimea panourilor Studio se tine minte (trage de marginea "
+                 "dintre ele); butonul de mai jos le readuce la impartirea initiala.")
+        lay_row = tk.Frame(pg, bg=C["bg_main"])
+        lay_row.pack(anchor="w", padx=10, pady=4)
+
+        def reset_layout():
+            st.layout = {}
+            st.save()
+            self._layout_w = 0
+            self._apply_layout()
+            self.set_status("Panourile au revenit la impartirea initiala.")
+        self._btn(lay_row, "↺ Panouri ca la inceput", reset_layout).pack(side="left", padx=2)
+
+        # ── 📁 Unde se salveaza ──
+        sf = ScrollFrame(nb, C["bg_main"])     # lunga: pe ecrane mici se deruleaza
+        nb.add(sf, text="📁 Unde se salveaza")
+        pg = sf.inner
+        hint(pg, "Alege un folder comun (de ex. in OneDrive, ca fisierele sa ajunga singure in cloud). Tot ce creezi "
+                 "ajunge acolo, in subfoldere: rutine, obiecte, rezultate, filme. Un camp completat mai jos are "
+                 "prioritate pentru felul lui de fisiere; ce setezi pe o rutina (⚙ Rutina → folderul filmelor / "
+                 "raportului) sau pe o biblioteca de obiecte (fisierul ei) are prioritate fata de toate.")
+        vs = sr.VideoSettings.load()
+        base_var = tk.StringVar(value=st.save_base_folder)
+        legacy = {"routines": os.path.join(RprPaths.root, "rutine"),
+                  "libraries": os.path.join(rpr_report.onedrive_folder() or os.path.join(os.path.expanduser("~"),
+                                                                                         "Documents"),
+                                            "AutoPilotDC", "obiecte"),
+                  "results": os.path.join(RprPaths.root, "rezultate"),
+                  "videos": sr._legacy_folder()}
+        explicit_now = {"routines": st.routines_folder, "libraries": st.save_folders.get("libraries", ""),
+                        "results": st.save_folders.get("results", ""),
+                        "videos": "" if os.path.normcase(os.path.normpath(vs.folder)) == os.path.normcase(
+                            os.path.normpath(sr._default_folder())) else vs.folder}
+        vars_ = {k: tk.StringVar(value=explicit_now[k]) for k, _l, _s in locations.KINDS}
+        info = {}
+
+        def folder_row(host, var, title):
+            r = tk.Frame(host, bg=C["bg_main"])
+            r.pack(fill="x", padx=12, pady=(0, 2))
+            e = tk.Entry(r, textvariable=var, bg=C["bg_input"], fg=C["text"], insertbackground=C["text"],
+                         relief="flat", font=("Segoe UI", 10))
+            e.pack(side="left", fill="x", expand=True, ipady=4)
+
+            def browse():
+                d = filedialog.askdirectory(parent=dlg, title=title, initialdir=var.get() or base_var.get() or None)
+                if d:
+                    var.set(os.path.normpath(d))
+            self._btn(r, "…", browse, tip="Alege folderul").pack(side="left", padx=(4, 0))
+            self._btn(r, "✕", lambda: var.set(""), tip="Goleste (foloseste folderul comun)").pack(side="left", padx=(2, 0))
+            return r
+
+        caption(pg, "Folderul comun")
+        br = folder_row(pg, base_var, "Folderul comun")
+        od = rpr_report.onedrive_folder()
+        if od:
+            self._btn(br, "☁ OneDrive", lambda: base_var.set(os.path.join(od, "AutoPilotDC")),
+                      tip="Folder in OneDrive-ul sincronizat").pack(side="left", padx=(2, 0))
+        for key, label, sub in locations.KINDS:
+            caption(pg, label)
+            folder_row(pg, vars_[key], label)
+            info[key] = tk.Label(pg, text="", bg=C["bg_main"], fg=C["text_dim"], font=("Segoe UI", 9), anchor="w",
+                                 justify="left", wraplength=560)
+            info[key].pack(fill="x", padx=14)
+            ui_theme.autowrap(info[key], margin=10)
+
+        def refresh_info(*_a):
+            b = base_var.get().strip().strip('"')
+            for key, _label, sub in locations.KINDS:
+                own = vars_[key].get().strip()
+                where = own or (os.path.join(b, sub) if b else legacy[key])
+                info[key].configure(text="→ " + where if own else tr("gol = implicit:") + " " + where)
+        base_var.trace_add("write", refresh_info)
+        for v in vars_.values():
+            v.trace_add("write", refresh_info)
+        refresh_info()
+
+        # ── 🎬 Filme ──
+        pg = page("🎬 Filme")
+        caption(pg, "Deschide filmele cu")
+        player_value = video_ui.build_player_chooser(pg, C, vs.player)
+        hint(pg, "Se foloseste la 🎬, la linkurile din Excel / raport si la dublu-click pe un fisier .apvid. "
+                 "Alta aplicatie decat playerul AutoPilot primeste o copie MP4 a filmului, facuta o singura data, "
+                 "langa film (GIF daca lipseste pachetul opencv-python). Editarea (taieri, texte, zone ascunse) "
+                 "ramane in playerul AutoPilot.")
+
         def save():
             new_browser = BROWSERS[browser.current()][0]
             changed = new_browser != st.browser or headless.get() != st.headless
             st.browser, st.headless, st.minimize_on_run = new_browser, headless.get(), minimize.get()
+            old_routines = st.effective_routines_folder()
+            st.save_base_folder = base_var.get().strip().strip('"')
+            st.routines_folder = vars_["routines"].get().strip().strip('"')
+            st.save_folders = {k: vars_[k].get().strip().strip('"') for k in ("libraries", "results")
+                               if vars_[k].get().strip()}
             st.save()
+            v = sr.VideoSettings.load()
+            v.folder = vars_["videos"].get().strip().strip('"') or sr._default_folder()
+            v.player = player_value()
+            v.save()
+            size_changed = size.get() != ui_theme.text_size()
+            ui_theme.save(text_size=size.get())
             if changed:   # browser nou -> driver nou (cel vechi se inchide)
                 self.drivers.close()
                 self.drivers = self._build_drivers()
             dlg.destroy()
-            self.set_status("Setarile Studio au fost salvate.")
+            self._update_routines_label()
+            if os.path.normcase(st.effective_routines_folder()) != os.path.normcase(old_routines):
+                self.refresh_routines()
+            self.set_status(tr("Setarile Studio au fost salvate.") +
+                            (" " + tr("Marimea textului se aplica la urmatoarea pornire.") if size_changed else ""))
         bottom = tk.Frame(dlg, bg=C["bg_main"])
         bottom.pack(anchor="e", padx=14, pady=12)
         self._btn(bottom, "💾 Salveaza", save, color=C["success"]).pack(side="left", padx=3)
         self._btn(bottom, "Anuleaza", dlg.destroy).pack(side="left", padx=3)
+        if 0 <= tab < len(nb.tabs()):
+            nb.select(tab)
+        # fereastra incape pe ecran (si pe un laptop 1366 x 768)
+        dlg.update_idletasks()
+        sw, sh = dlg.winfo_screenwidth(), dlg.winfo_screenheight()
+        w, h = min(max(680, dlg.winfo_reqwidth()), 820, sw - 40), min(max(560, dlg.winfo_reqheight()), sh - 80)
+        dlg.geometry(f"{w}x{h}+{max(0, (sw - w) // 2)}+{max(0, (sh - h) // 3)}")
         dlg.grab_set()
 
     # =========================================================================
@@ -3000,6 +3403,7 @@ class PropertyEditor:
             self._build_node(t)
         elif isinstance(t, Routine):
             self._build_routine(t)
+        ui_theme.fix_contrast(self.p.props.inner)
 
     def _later_rebuild(self):
         self.p.after_idle(self._rebuild)
@@ -3015,25 +3419,28 @@ class PropertyEditor:
 
     # ── elemente vizuale ──
     def _title(self, text):
-        tk.Label(self._host, text=text, bg=self.C["bg_card"], fg=self.C["primary"], font=("Segoe UI", 13, "bold"),
-                 anchor="w").pack(fill="x", padx=10, pady=(10, 4))
+        ui_theme.autowrap(tk.Label(self._host, text=text, bg=self.C["bg_card"], fg=self.C["primary"],
+                                   font=("Segoe UI", 13, "bold"), anchor="w", justify="left")).pack(
+            fill="x", padx=12, pady=(12, 4))
 
     def _caption(self, text, host=None):
-        tk.Label(host or self._host, text=text, bg=(host or self._host)["bg"], fg=self.C["text_dim"],
-                 font=("Segoe UI", 9, "bold"), anchor="w", justify="left", wraplength=330).pack(
-            fill="x", padx=10, pady=(8, 1))
+        ui_theme.autowrap(tk.Label(host or self._host, text=text, bg=(host or self._host)["bg"], fg=self.C["text_dim"],
+                                   font=("Segoe UI", 10, "bold"), anchor="w", justify="left", wraplength=330)).pack(
+            fill="x", padx=12, pady=(10, 2))
 
     def _hint(self, text, host=None, color=None):
-        tk.Label(host or self._host, text=text, bg=(host or self._host)["bg"], fg=color or self.C["text_dim"],
-                 font=("Segoe UI", 8), anchor="w", justify="left", wraplength=330).pack(fill="x", padx=10, pady=(2, 2))
+        ui_theme.autowrap(tk.Label(host or self._host, text=text, bg=(host or self._host)["bg"],
+                                   fg=color or self.C["text_dim"], font=("Segoe UI", 9), anchor="w", justify="left",
+                                   wraplength=330)).pack(fill="x", padx=12, pady=(2, 2))
 
     def _card(self, host=None, title="") -> tk.Frame:
         f = tk.Frame(host or self._host, bg=self.C["bg_main"], highlightthickness=1,
                      highlightbackground=self.C["border"])
-        f.pack(fill="x", padx=8, pady=6)
+        f.pack(fill="x", padx=10, pady=8)
         if title:
-            tk.Label(f, text=title, bg=self.C["bg_main"], fg=self.C["accent"], font=("Segoe UI", 10, "bold"),
-                     anchor="w").pack(fill="x", padx=8, pady=(6, 0))
+            ui_theme.autowrap(tk.Label(f, text=title, bg=self.C["bg_main"], fg=self.C["accent"],
+                                       font=("Segoe UI", 10, "bold"), anchor="w", justify="left")).pack(
+                fill="x", padx=10, pady=(8, 2))
         return f
 
     def _entry_style(self):
@@ -3068,7 +3475,7 @@ class PropertyEditor:
 
     def _var_inserter(self, parent, widget, node):
         mb = tk.Menubutton(parent, text="＋{x}", bg=self.C["bg_input"], fg=self.C["accent"], relief="flat",
-                           font=("Segoe UI", 9, "bold"), cursor="hand2", activebackground=self.C["primary"])
+                           font=("Segoe UI", 10, "bold"), cursor="hand2", activebackground=self.C["primary"])
         menu = tk.Menu(mb, tearoff=0, bg=self.C["bg_card"], fg=self.C["text"], activebackground=self.C["primary"])
         mb.configure(menu=menu)
 
@@ -3115,9 +3522,10 @@ class PropertyEditor:
         var = tk.BooleanVar(value=bool(get()))
         cb = tk.Checkbutton(host, text=label, variable=var, bg=host["bg"], fg=self.C["text"], anchor="w",
                             justify="left", wraplength=320, selectcolor=self.C["bg_input"],
-                            activebackground=host["bg"], activeforeground=self.C["text"], font=("Segoe UI", 9),
+                            activebackground=host["bg"], activeforeground=self.C["text"], font=("Segoe UI", 10),
                             command=lambda: (set_(var.get()), self._changed(node, structural)))
-        cb.pack(fill="x", padx=8, pady=2)
+        cb.pack(fill="x", padx=10, pady=3)
+        ui_theme.autowrap(cb, margin=34)
         return cb
 
     def combo(self, node, label, options, get, set_, host=None, structural=False):
@@ -3127,7 +3535,7 @@ class PropertyEditor:
         labels = [tr(l) for _, l in options]
         current = get()
         idx = next((i for i, (v, _) in enumerate(options) if v == current), 0)
-        cb = ttk.Combobox(host, values=labels, state="readonly", style="Studio.TCombobox", font=("Segoe UI", 9))
+        cb = ttk.Combobox(host, values=labels, state="readonly", style="Studio.TCombobox", font=("Segoe UI", 10))
         cb.current(idx)
         cb.pack(fill="x", padx=10, pady=1)
 
@@ -3141,7 +3549,7 @@ class PropertyEditor:
         host = host or self._host
         self._caption(label, host)
         var = tk.StringVar(value=get() or "")
-        cb = ttk.Combobox(host, textvariable=var, values=list(values), style="Studio.TCombobox", font=("Segoe UI", 9))
+        cb = ttk.Combobox(host, textvariable=var, values=list(values), style="Studio.TCombobox", font=("Segoe UI", 10))
         cb.pack(fill="x", padx=10, pady=1)
         var.trace_add("write", lambda *a: (set_(var.get()), self._changed(node)))
         if structural:
@@ -3713,7 +4121,7 @@ class ObjectDialog(DialogBase):
         es = dict(bg=C["bg_input"], fg=C["text"], insertbackground=C["text"], relief="flat", font=("Segoe UI", 10))
 
         def cap(text):
-            tk.Label(self.body, text=text, bg=C["bg_main"], fg=C["text_dim"], font=("Segoe UI", 9, "bold")).pack(
+            tk.Label(self.body, text=text, bg=C["bg_main"], fg=C["text_dim"], font=("Segoe UI", 10, "bold")).pack(
                 anchor="w", padx=14, pady=(8, 1))
         cap("Nume (cum il alegi in pasi)")
         self.name = tk.StringVar(value=obj.name)
@@ -3735,7 +4143,7 @@ class ObjectDialog(DialogBase):
         panel._btn(self.body, "＋ Locator", lambda: self._add_row(Locator(LocatorKind.Css, ""))).pack(anchor="w", padx=14, pady=4)
         tk.Label(self.body, text="Web: TestId, Id, Role (button|Salveaza), Label, Name, Placeholder, Text, Css, XPath · "
                             "Desktop: AutomationId, UiaName (Button|OK), ClassName, UiaPath · SAP: SapId (wnd[0]/usr/...), SapName",
-                 bg=C["bg_main"], fg=C["text_dim"], font=("Segoe UI", 8), wraplength=560, justify="left").pack(
+                 bg=C["bg_main"], fg=C["text_dim"], font=("Segoe UI", 9), wraplength=560, justify="left").pack(
             anchor="w", padx=14)
         row = tk.Frame(self.bottom, bg=C["bg_main"])
         row.pack(anchor="e")
@@ -3805,7 +4213,7 @@ class ScanReviewDialog(DialogBase):
                  font=("Segoe UI", 13, "bold")).pack(anchor="w", padx=14, pady=(12, 2))
         tk.Label(self.body, text=f"{len(self.objs)} obiecte noi, {existing} deja in biblioteca. "
                             f"Click pe un rand = il marchez in browser; bifa din prima coloana = il pastrezi / nu.",
-                 bg=C["bg_main"], fg=C["text_dim"], font=("Segoe UI", 9), wraplength=860, justify="left").pack(
+                 bg=C["bg_main"], fg=C["text_dim"], font=("Segoe UI", 10), wraplength=860, justify="left").pack(
             anchor="w", padx=14)
 
         # unde intra in tree: Site · Pagina · Folder
@@ -3815,10 +4223,10 @@ class ScanReviewDialog(DialogBase):
         pages = sorted({o.page for o in repo.objects if o.page} | {o.page for o in self.objs if o.page}, key=str.lower)
         main_page = max(({o.page for o in self.objs if o.page} or {""}),
                         key=lambda pg: sum(1 for o in self.objs if o.page == pg))
-        tk.Label(dest, text="Pagina", bg=C["bg_main"], fg=C["text_dim"], font=("Segoe UI", 9, "bold")).grid(
+        tk.Label(dest, text="Pagina", bg=C["bg_main"], fg=C["text_dim"], font=("Segoe UI", 10, "bold")).grid(
             row=0, column=0, sticky="w")
         tk.Label(dest, text="Folder (in tree-ul aplicatiei; subfolder: Comenzi/Export)", bg=C["bg_main"],
-                 fg=C["text_dim"], font=("Segoe UI", 9, "bold")).grid(row=0, column=1, sticky="w", padx=(10, 0))
+                 fg=C["text_dim"], font=("Segoe UI", 10, "bold")).grid(row=0, column=1, sticky="w", padx=(10, 0))
         self.page = ttk.Combobox(dest, values=pages, width=26)
         self.page.set(main_page)
         self.page.grid(row=1, column=0, sticky="ew")
@@ -3851,7 +4259,7 @@ class ScanReviewDialog(DialogBase):
         self.tree.bind("<F2>", lambda e: (self._rename(), "break")[1])
         self.tree.bind("<<TreeviewSelect>>", lambda e: self._schedule_highlight())
 
-        self._info = tk.Label(self.body, text="", bg=C["bg_main"], fg=C["text"], font=("Segoe UI", 9), anchor="w",
+        self._info = tk.Label(self.body, text="", bg=C["bg_main"], fg=C["text"], font=("Segoe UI", 10), anchor="w",
                               justify="left", wraplength=860)
         self._info.pack(fill="x", padx=14)
         row = tk.Frame(self.bottom, bg=C["bg_main"])
@@ -3993,7 +4401,7 @@ class ObjectReviewDialog(DialogBase):
             info += f"   ·   Text: \"{obj.captured_text[:60]}\""
         if obj.frame_path:
             info += f"   ·   in iframe: {' > '.join(obj.frame_path)}"
-        tk.Label(self.body, text=info, bg=C["bg_main"], fg=C["text_dim"], font=("Segoe UI", 9), wraplength=620,
+        tk.Label(self.body, text=info, bg=C["bg_main"], fg=C["text_dim"], font=("Segoe UI", 10), wraplength=620,
                  justify="left").pack(anchor="w", padx=14)
 
         # captura elementului
@@ -4008,18 +4416,18 @@ class ObjectReviewDialog(DialogBase):
                 pass
 
         tk.Label(self.body, text="Nume (cum il alegi in pasi)", bg=C["bg_main"], fg=C["text_dim"],
-                 font=("Segoe UI", 9, "bold")).pack(anchor="w", padx=14, pady=(6, 1))
+                 font=("Segoe UI", 10, "bold")).pack(anchor="w", padx=14, pady=(6, 1))
         self.name = tk.StringVar(value=panel.repo.make_unique_name(obj.name))
         tk.Entry(self.body, textvariable=self.name, bg=C["bg_input"], fg=C["text"], insertbackground=C["text"],
                  relief="flat", font=("Segoe UI", 11)).pack(fill="x", padx=14, ipady=3)
         self.lib = LibraryFields(self.body, panel, obj, compact=True)
         if obj.parent:
             tk.Label(self.body, text=f"▣ Elementul e in interiorul containerului [{obj.parent}] — va fi cautat acolo.",
-                     bg=C["bg_main"], fg=C["accent"], font=("Segoe UI", 9, "bold")).pack(anchor="w", padx=14)
+                     bg=C["bg_main"], fg=C["accent"], font=("Segoe UI", 10, "bold")).pack(anchor="w", padx=14)
 
         tk.Label(self.body, text="Locatori — primul care gaseste exact UN element castiga; daca pagina se schimba, se trece "
                             "automat la urmatorul. Debifeaza ce e instabil (ex: un text care se schimba).",
-                 bg=C["bg_main"], fg=C["text_dim"], font=("Segoe UI", 8), wraplength=620, justify="left").pack(
+                 bg=C["bg_main"], fg=C["text_dim"], font=("Segoe UI", 9), wraplength=620, justify="left").pack(
             anchor="w", padx=14, pady=(10, 2))
         box = tk.Frame(self.body, bg=C["bg_main"])
         box.pack(fill="x", padx=14)
@@ -4032,14 +4440,14 @@ class ObjectReviewDialog(DialogBase):
                            activebackground=C["bg_main"]).pack(side="left")
             color = "#3CCF6E" if loc.score >= 70 else "#FFC24B" if loc.score >= 40 else "#FF6B6B"
             tk.Label(r, text=f"{loc.score:>3}", bg=C["bg_main"], fg=color, font=("Consolas", 10, "bold"), width=4).pack(side="left")
-            tk.Label(r, text=str(loc.kind), bg=C["bg_main"], fg=C["accent"], font=("Segoe UI", 9, "bold"), width=12,
+            tk.Label(r, text=str(loc.kind), bg=C["bg_main"], fg=C["accent"], font=("Segoe UI", 10, "bold"), width=12,
                      anchor="w").pack(side="left")
             val = tk.StringVar(value=loc.value)
             tk.Entry(r, textvariable=val, bg=C["bg_input"], fg=C["text"], insertbackground=C["text"], relief="flat",
                      font=("Consolas", 9)).pack(side="left", fill="x", expand=True, padx=4, ipady=2)
             self.rows.append((loc, en, val))
         tk.Label(self.body, text="Scor: verde 70+ stabil · galben 40–69 acceptabil · rosu sub 40 fragil",
-                 bg=C["bg_main"], fg=C["text_dim"], font=("Segoe UI", 8)).pack(anchor="w", padx=14, pady=(2, 0))
+                 bg=C["bg_main"], fg=C["text_dim"], font=("Segoe UI", 9)).pack(anchor="w", padx=14, pady=(2, 0))
 
         row = tk.Frame(self.bottom, bg=C["bg_main"])
         row.pack(anchor="e")
@@ -4089,7 +4497,7 @@ class LibraryFields:
                              if o.is_container and o.name.lower() not in banned]
 
         def lbl(text, r, c, span=1):
-            tk.Label(f, text=text, bg=C["bg_main"], fg=C["text_dim"], font=("Segoe UI", 9, "bold")).grid(
+            tk.Label(f, text=text, bg=C["bg_main"], fg=C["text_dim"], font=("Segoe UI", 10, "bold")).grid(
                 row=r, column=c, columnspan=span, sticky="w", pady=(4, 0), padx=(0, 8))
         f.columnconfigure(0, weight=1, uniform="lib")
         f.columnconfigure(1, weight=1, uniform="lib")
@@ -4180,7 +4588,7 @@ class CheckResultDialog(DialogBase):
         self.attributes("-topmost", False)   # nu blocheaza: lucrezi in browser si apesi Verifica din nou
         tk.Label(self.body, text="🩺  Butoanele salvate pe pagina din browser", bg=C["bg_main"], fg=C["primary"],
                  font=("Segoe UI", 13, "bold")).pack(anchor="w", padx=14, pady=(12, 2))
-        self._summary = tk.Label(self.body, text="", bg=C["bg_main"], fg=C["text_dim"], font=("Segoe UI", 9),
+        self._summary = tk.Label(self.body, text="", bg=C["bg_main"], fg=C["text_dim"], font=("Segoe UI", 10),
                                  justify="left", wraplength=760)
         self._summary.pack(anchor="w", padx=14)
         box = tk.Frame(self.body, bg=C["bg_main"])
@@ -4197,13 +4605,13 @@ class CheckResultDialog(DialogBase):
         self.tree.pack(side="left", fill="both", expand=True)
         self.tree.bind("<<TreeviewSelect>>", lambda e: self._show_detail())
         self.tree.bind("<Double-1>", lambda e: self._mark())
-        self._detail = tk.Label(self.body, text="", bg=C["bg_main"], fg=C["text"], font=("Segoe UI", 9), justify="left",
+        self._detail = tk.Label(self.body, text="", bg=C["bg_main"], fg=C["text"], font=("Segoe UI", 10), justify="left",
                                 wraplength=760, anchor="w")
         self._detail.pack(fill="x", padx=14)
         tk.Label(self.body, text="Simulare: aceleasi verificari ca la un click real (gasit, vizibil, activ, nu se misca, "
                             "nu e acoperit), dar fara apasare. Un element care apare doar dupa o actiune (meniu, tab) "
                             "se verifica dupa ce il deschizi in browser.",
-                 bg=C["bg_main"], fg=C["text_dim"], font=("Segoe UI", 8), wraplength=760, justify="left").pack(
+                 bg=C["bg_main"], fg=C["text_dim"], font=("Segoe UI", 9), wraplength=760, justify="left").pack(
             anchor="w", padx=14, pady=(4, 0))
         row = tk.Frame(self.bottom, bg=C["bg_main"])
         row.pack(fill="x")
@@ -4303,13 +4711,13 @@ class TestResultDialog(DialogBase):
                                                                 if res.get("container_found") else "NU a fost gasit pe pagina"))
         if web and not panel.repo.valid_on(obj, res.get("url", "")):
             info += f"\n⚠ Obiectul e definit pentru site-ul \"{obj.site}\", nu pentru aceasta pagina."
-        tk.Label(self.body, text=info, bg=C["bg_main"], fg=C["text_dim"], font=("Segoe UI", 9), justify="left",
+        tk.Label(self.body, text=info, bg=C["bg_main"], fg=C["text_dim"], font=("Segoe UI", 10), justify="left",
                  wraplength=640).pack(anchor="w", padx=14)
         grid = tk.Frame(self.body, bg=C["bg_main"])
         grid.pack(fill="x", padx=14, pady=8)
         heads = ["Locator", "Valoare", "In container", "In pagina" if web else "Gasite"]
         for c, h in enumerate(heads):
-            tk.Label(grid, text=h, bg=C["bg_main"], fg=C["text_dim"], font=("Segoe UI", 9, "bold")).grid(row=0, column=c, sticky="w", padx=4)
+            tk.Label(grid, text=h, bg=C["bg_main"], fg=C["text_dim"], font=("Segoe UI", 10, "bold")).grid(row=0, column=c, sticky="w", padx=4)
 
         def cell(n, best_one=True):
             if n is None:
@@ -4318,7 +4726,7 @@ class TestResultDialog(DialogBase):
         for r, row in enumerate(res.get("rows", []), 1):
             loc = row["locator"]
             tk.Label(grid, text=str(loc.kind) + ("" if loc.enabled else " (inactiv)"), bg=C["bg_main"], fg=C["accent"],
-                     font=("Segoe UI", 9, "bold")).grid(row=r, column=0, sticky="w", padx=4)
+                     font=("Segoe UI", 10, "bold")).grid(row=r, column=0, sticky="w", padx=4)
             tk.Label(grid, text=loc.value[:60], bg=C["bg_main"], fg=C["text"], font=("Consolas", 9)).grid(row=r, column=1, sticky="w", padx=4)
             for c, key in ((2, "in_container"), (3, "in_page")):
                 t, col = cell(row.get(key))
@@ -4327,7 +4735,7 @@ class TestResultDialog(DialogBase):
                 tk.Label(grid, text=t, bg=C["bg_main"], fg=col, font=("Consolas", 10, "bold")).grid(row=r, column=c, padx=4)
         tk.Label(self.body, text="1 = exact elementul (bun) · mai multe = ambiguu (se ia primul) · 0 = nu gaseste. "
                             "Primul locator care gaseste exact UN element castiga.",
-                 bg=C["bg_main"], fg=C["text_dim"], font=("Segoe UI", 8), wraplength=640, justify="left").pack(anchor="w", padx=14)
+                 bg=C["bg_main"], fg=C["text_dim"], font=("Segoe UI", 9), wraplength=640, justify="left").pack(anchor="w", padx=14)
         row = tk.Frame(self.bottom, bg=C["bg_main"])
         row.pack(anchor="e")
         for text, action in [("➕ Pas Click", RprAction.Click), ("➕ Scrie text", RprAction.TypeText),
@@ -4356,7 +4764,7 @@ class SitesDialog(DialogBase):
         tk.Label(self.body, text="Un site grupeaza toate link-urile la care raspunde aceeasi aplicatie (ex: test + productie, "
                             "sau acelasi sistem la alt client). Obiectele din biblioteca ale site-ului merg pe toate link-urile lui. "
                             "Un link pe rand; * = orice (ex: *.portal.siemens.com/app/*).",
-                 bg=C["bg_main"], fg=C["text_dim"], font=("Segoe UI", 9), wraplength=640, justify="left").pack(anchor="w", padx=14)
+                 bg=C["bg_main"], fg=C["text_dim"], font=("Segoe UI", 10), wraplength=640, justify="left").pack(anchor="w", padx=14)
         body = tk.Frame(self.body, bg=C["bg_main"])
         body.pack(fill="both", expand=True, padx=14, pady=8)
         self.lb = tk.Listbox(body, width=26, height=12, bg=C["bg_input"], fg=C["text"], selectbackground=C["primary"],
@@ -4366,13 +4774,13 @@ class SitesDialog(DialogBase):
         right = tk.Frame(body, bg=C["bg_main"])
         right.pack(side="left", fill="both", expand=True, padx=(10, 0))
         es = dict(bg=C["bg_input"], fg=C["text"], insertbackground=C["text"], relief="flat", font=("Segoe UI", 10))
-        tk.Label(right, text="Nume", bg=C["bg_main"], fg=C["text_dim"], font=("Segoe UI", 9, "bold")).pack(anchor="w")
+        tk.Label(right, text="Nume", bg=C["bg_main"], fg=C["text_dim"], font=("Segoe UI", 10, "bold")).pack(anchor="w")
         self.name = tk.StringVar()
         tk.Entry(right, textvariable=self.name, **es).pack(fill="x", ipady=2)
-        tk.Label(right, text="Link-uri (unul pe rand)", bg=C["bg_main"], fg=C["text_dim"], font=("Segoe UI", 9, "bold")).pack(anchor="w", pady=(6, 0))
+        tk.Label(right, text="Link-uri (unul pe rand)", bg=C["bg_main"], fg=C["text_dim"], font=("Segoe UI", 10, "bold")).pack(anchor="w", pady=(6, 0))
         self.urls = tk.Text(right, height=7, width=50, **es)
         self.urls.pack(fill="both", expand=True)
-        tk.Label(right, text="Descriere", bg=C["bg_main"], fg=C["text_dim"], font=("Segoe UI", 9, "bold")).pack(anchor="w", pady=(6, 0))
+        tk.Label(right, text="Descriere", bg=C["bg_main"], fg=C["text_dim"], font=("Segoe UI", 10, "bold")).pack(anchor="w", pady=(6, 0))
         self.desc = tk.StringVar()
         tk.Entry(right, textvariable=self.desc, **es).pack(fill="x", ipady=2)
         row = tk.Frame(right, bg=C["bg_main"])
@@ -4475,11 +4883,11 @@ class ScheduleDialog(DialogBase):
         tk.Label(self.body, text="🕒  Programeaza rutina", bg=C["bg_main"], fg=C["primary"],
                  font=("Segoe UI", 13, "bold")).pack(anchor="w", padx=14, pady=(12, 0))
         tk.Label(self.body, text=f"{routine_name}  ·  {routine_path}", bg=C["bg_main"], fg=C["text"],
-                 font=("Segoe UI", 9, "bold"), wraplength=740, justify="left").pack(anchor="w", padx=14)
+                 font=("Segoe UI", 10, "bold"), wraplength=740, justify="left").pack(anchor="w", padx=14)
         tk.Label(self.body, text="Rutina ruleaza fara Studio, cu chenarul RUN si \"Nu deranja\" (daca e activ in rutina). "
                             "Calculatorul trebuie sa fie pornit si tu autentificat (rutinele folosesc ecranul). "
                             "La final apare un mesaj in coltul ecranului; logul ramane in folderul de rezultate.",
-                 bg=C["bg_main"], fg=C["text_dim"], font=("Segoe UI", 9), wraplength=740, justify="left").pack(
+                 bg=C["bg_main"], fg=C["text_dim"], font=("Segoe UI", 10), wraplength=740, justify="left").pack(
             anchor="w", padx=14, pady=(2, 6))
 
         f = tk.Frame(self.body, bg=C["bg_main"])
@@ -4487,7 +4895,7 @@ class ScheduleDialog(DialogBase):
         es = dict(bg=C["bg_input"], fg=C["text"], insertbackground=C["text"], relief="flat", font=("Segoe UI", 10))
 
         def lbl(t, c):
-            tk.Label(f, text=t, bg=C["bg_main"], fg=C["text_dim"], font=("Segoe UI", 9, "bold")).grid(
+            tk.Label(f, text=t, bg=C["bg_main"], fg=C["text_dim"], font=("Segoe UI", 10, "bold")).grid(
                 row=0, column=c, sticky="w", padx=(0, 10))
         lbl("Cand", 0)
         lbl("Ora (HH:mm)", 1)
@@ -4507,7 +4915,7 @@ class ScheduleDialog(DialogBase):
         self.every_e.grid(row=1, column=3, sticky="w", ipady=2)
         days = tk.Frame(self.body, bg=C["bg_main"])
         days.pack(anchor="w", padx=14, pady=(6, 0))
-        tk.Label(days, text="Zile:", bg=C["bg_main"], fg=C["text_dim"], font=("Segoe UI", 9, "bold")).pack(side="left")
+        tk.Label(days, text="Zile:", bg=C["bg_main"], fg=C["text_dim"], font=("Segoe UI", 10, "bold")).pack(side="left")
         self.days = []
         for i, d in enumerate(sch.DAY_LABELS):
             v = tk.BooleanVar(value=i < 5)
@@ -4518,11 +4926,11 @@ class ScheduleDialog(DialogBase):
         name_row = tk.Frame(self.body, bg=C["bg_main"])
         name_row.pack(fill="x", padx=14, pady=(6, 0))
         tk.Label(name_row, text="Numele programarii", bg=C["bg_main"], fg=C["text_dim"],
-                 font=("Segoe UI", 9, "bold")).pack(side="left")
+                 font=("Segoe UI", 10, "bold")).pack(side="left")
         self.task_name = tk.StringVar(value=sanitize_name(routine_name))
         tk.Entry(name_row, textvariable=self.task_name, width=34, **es).pack(side="left", padx=8, ipady=2)
         tk.Label(name_row, text="(acelasi nume = inlocuieste programarea)", bg=C["bg_main"], fg=C["text_dim"],
-                 font=("Segoe UI", 8)).pack(side="left")
+                 font=("Segoe UI", 9)).pack(side="left")
         row = tk.Frame(self.body, bg=C["bg_main"])
         row.pack(anchor="w", padx=14, pady=8)
         panel._btn(row, "✔ Creeaza programarea", self._create, color=C["success"]).pack(side="left", padx=2)
@@ -4555,7 +4963,7 @@ class ScheduleDialog(DialogBase):
         self.hist.pack(fill="both", expand=True)
         self.hist.bind("<Double-1>", self._open_log)
         tk.Label(t2, text="Dublu click = deschide logul rularii.", bg=C["bg_main"], fg=C["text_dim"],
-                 font=("Segoe UI", 8)).pack(anchor="w")
+                 font=("Segoe UI", 9)).pack(anchor="w")
         panel._btn(self.bottom, "Inchide", self.destroy).pack(anchor="e")
         self._hist_items: List[dict] = []
         self.fit(780)

@@ -197,7 +197,7 @@ Fiecare capitol explică pe scurt o procedură, pas cu pas, cu un exemplu. Alege
 
 - **⚙ Setări** (aplicație): delay și viteză la redare, countdown, înregistrarea mișcărilor, siguranța la rulare, shortcut-uri, **pornire cu Windows** (opțional direct în tray), butonul ✕ ascunde în tray, scurtătură pe Desktop, **limba** (Română / English / Deutsch) și tema. Limba și tema se aplică după repornire.
 - **O singură limbă** pentru toată aplicația (⚙ Setări → 🌐 Limba): pe lângă interfață, în aceeași limbă se scriu logurile, coloana de status din Excel-ul rutinei (OK / EROARE / IN LUCRU), raportul rulării, rezumatul și documentația pregătirilor. La reluare, statusurile sunt recunoscute în orice limbă (ex. „IN PROGRESS” = „IN LUCRU”), deci un Excel început în română poate fi reluat după trecerea pe engleză.
-- **🌐 Setări Studio**: browserul pentru pașii Web (Edge recomandat, Chrome), fără fereastră (doar pentru programări), minimizare la rulare, închide browserul, șterge profilul browserului (logout).
+- **🌐 Setări Studio**: browserul pentru pașii Web (Edge recomandat, Chrome), fără fereastră (doar pentru programări), minimizare la rulare, închide browserul, șterge profilul browserului (logout); plus mărimea textului, unde se salvează fișierele și aplicația pentru filme (capitolul 31).
 - **⚙ Setări rutină**: politica la eroare, marcarea obiectelor, timeout implicit, pauză între pași, reîncercări, capturi, Nu deranja, prevenție, variabile.
 
 > Exemplu: Setări → Limba → English → Salvează setările → aplicația repornește în engleză.
@@ -350,3 +350,15 @@ Uneori apar mesaje sau erori pe care le știi dinainte (ex. „Sigur vrei să î
 - **Demo**: butonul **Exemple** → **06 Demo - Daca apare si reguli la mesaj** (o pagină locală, fără internet): apeși „Porneste”, apare „Sigur vrei să continui?”, regula îl închide singură, iar „Daca apare” trece mai departe când mesajul lipsește. Rulează-l cu **⏭ Pas cu pas** ca să vezi fiecare pas.
 
 > Exemplu: la începutul rutinei, **🧯 Regula** cu „Sigur” și pasul Click pe „Da, închide”, apoi *reia pasul*; dacă mesajul nu apare, rutina rulează ca până acum.
+
+## 31. Aspect, drag and drop și unde se salvează fișierele
+
+**🌐 Setări Studio** are acum patru tab-uri: 🌐 Browser, 🎨 Aspect, 📁 Unde se salvează, 🎬 Filme.
+
+- **🎨 Aspect → Mărimea textului**: Mic / Normal / Mare / Foarte mare, pentru toată aplicația (se aplică la repornire). Lățimea panourilor Studio se ține minte ca procent din fereastră, deci arată la fel pe laptop și pe monitor; **↺ Panouri ca la început** le readuce la împărțirea inițială.
+- Pe ecrane mici bara de sus rămâne pe un rând: butoanele pierd o parte din text (textul întreg e în tooltip), iar comenzile rare (Salvează ca…, Exemple, Programează, Ghid) sunt în **⋯**.
+- **Drag and drop**: tragi un pas din arbore în alt loc (o linie arată unde ajunge; peste „▸ Atunci” / „▸ Altfel” sau peste mijlocul unei bucle intră în interior). La fel tragi un bloc din 🧱 Pași, un obiect din 📚 Bibliotecă (alegi Click / Scrie text / Citește / Dacă există) sau o rutină din 📋 Rutine (devine pas „Rulează rutina”).
+- **📁 Unde se salvează**: alegi un **folder comun** (de ex. ☁ OneDrive); rutinele, bibliotecile de obiecte, rezultatele (capturi, loguri, rapoarte) și filmele ajung în subfolderele `rutine`, `obiecte`, `rezultate`, `filme`. Un câmp completat pentru un fel de fișiere are prioritate; ce setezi pe o rutină (folderul filmelor / raportului) sau pe o bibliotecă are prioritate față de toate. Câmpurile goale = ca până acum.
+- **🎬 Filme → Deschide filmele cu**: playerul AutoPilot (redare + editare), aplicația implicită din Windows sau altă aplicație de pe laptop (ex. VLC). Pentru alte aplicații filmul se exportă o dată în MP4, lângă el (GIF dacă lipsește opencv-python). Aceeași alegere e și în ⚙ Setări → Video.
+
+> Exemplu: 🌐 Setări Studio → 📁 Unde se salvează → ☁ OneDrive → Salvează; rutina nouă salvată cu 💾 propune folderul `OneDrive\AutoPilotDC\rutine`, iar filmele ajung în `OneDrive\AutoPilotDC\filme`.

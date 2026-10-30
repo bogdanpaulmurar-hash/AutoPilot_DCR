@@ -90,6 +90,7 @@ except ImportError:
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import app_shell  # v4.1: iconita, pornire cu Windows, tray
 import i18n       # v4.7: romana / engleza / germana (limba din Setari)
+import ui_theme   # v4.14: marimea textului, contrast automat
 i18n.install()
 import video_ui   # v4.8: 🎥 inregistrare video a ecranului + editor
 from autopilot_safety import (DoNotDisturb, RunFrame, SafetyGuard, GuardAlert,
@@ -134,16 +135,16 @@ COLORS_DARK = {
     "primary":        "#009999",
     "primary_hover":  "#007777",
     "primary_light":  "#00BBBB",
-    "accent":         "#0288D1",
-    "success":        "#00AA44",
-    "success_hover":  "#008833",
+    "accent":         "#3DA9E0",
+    "success":        "#1F8F4E",
+    "success_hover":  "#17733E",
     "warning":        "#FF8800",
     "danger":         "#CC0000",
     "danger_hover":   "#AA0000",
     "emergency":      "#8B0000",
     "text":           "#FFFFFF",
-    "text_dim":       "#AAAACC",
-    "text_muted":     "#666688",
+    "text_dim":       "#B4B4D0",
+    "text_muted":     "#8A8AAA",
     "row_even":       "#252535",
     "row_odd":        "#2E2E45",
     "row_active":     "#1A4A4A",
@@ -164,15 +165,15 @@ COLORS_LIGHT = {
     "primary_hover":  "#007777",
     "primary_light":  "#00BBBB",
     "accent":         "#006666",
-    "success":        "#00AA44",
-    "success_hover":  "#008833",
+    "success":        "#1F8F4E",
+    "success_hover":  "#17733E",
     "warning":        "#FF8800",
     "danger":         "#CC0000",
     "danger_hover":   "#AA0000",
     "emergency":      "#8B0000",
     "text":           "#1B1B2E",
     "text_dim":       "#444466",
-    "text_muted":     "#888899",
+    "text_muted":     "#6E6E80",
     "row_even":       "#F5F8FC",
     "row_odd":        "#EBF0F7",
     "row_active":     "#CCF0F0",
@@ -1461,7 +1462,7 @@ def make_treeview(parent, columns: List[Tuple], style_name: str,
                     background=C["bg_card"],
                     foreground=C["text"],
                     fieldbackground=C["bg_card"],
-                    rowheight=row_height,
+                    rowheight=int(row_height * ui_theme.text_factor()),   # v4.14: randul creste cu textul
                     font=("Segoe UI", font_size))
     style.configure(f"{style_name}.Treeview.Heading",
                     background=C["primary"],
@@ -2327,11 +2328,30 @@ class FlowFrame(tk.Frame):
         super().__init__(master, **kw)
         self._items = []
         self._last = None
+        self._compact = False
+        self._full_w = {}          # latimea grupurilor cu textul intreg (masurata in modul normal)
+        self._labels = []          # (buton, text intreg, text scurt)
         self.bind("<Configure>", lambda e: self._relayout())
+
+    def compactable(self, button, full: str, short: str):
+        """v4.14: pe ecrane inguste butonul arata doar textul scurt (iconita)."""
+        if short and short != full:
+            self._labels.append((button, full, short))
+
+    def _set_compact(self, on: bool):
+        self._compact = on
+        for b, full, short in self._labels:
+            try:
+                b.configure(text=short if on else full)
+            except tk.TclError:
+                pass
+        self.update_idletasks()
 
     def set_items(self, items):
         for w in self._items:
             w.place_forget()
+        if self._compact:          # masuram din nou cu textul intreg (alt mod = alte butoane)
+            self._set_compact(False)
         self._items = list(items)
         self._last = None
         self.after_idle(self._relayout)
@@ -2340,6 +2360,14 @@ class FlowFrame(tk.Frame):
         width = self.winfo_width()
         if width <= 1:
             width = self.master.winfo_width()
+        if width > 1 and self._items:
+            if not self._compact:
+                self._full_w = {id(w): w.winfo_reqwidth() for w in self._items}
+            need = sum(self._full_w.get(id(w), w.winfo_reqwidth()) + 6 for w in self._items)
+            if not self._compact and need > width:
+                self._set_compact(True)
+            elif self._compact and need + 12 <= width:
+                self._set_compact(False)
         x = y = row_h = 0
         pad = 6
         for w in self._items:
@@ -2387,6 +2415,9 @@ class MainWindow:
         ctk.set_default_color_theme("blue")
         app_shell.set_app_id()          # iconita AutoPilot in bara de activitati (nu cea a lui Python)
         self.root = ctk.CTk()
+        # v4.14: marimea textului (Setari Studio → Aspect) si contrast automat in orice fereastra
+        ui_theme.apply_scaling(self.root)
+        ui_theme.install_contrast_guard(self.root)
         app_shell.apply_icon(self.root)
         self._start_in_tray = "--tray" in sys.argv
         self._really_quit = False
@@ -2412,8 +2443,15 @@ class MainWindow:
                    ("Iesire", self._quit_app, True)],
             on_open=self._show_from_tray)
         self.root.title(f"{APP_NAME} v{APP_VERSION}")
-        self.root.geometry("1280x800")
-        self.root.minsize(1024, 600)
+        # v4.14: pe ecrane mici (laptop 1366x768) fereastra porneste maximizata, iar minimul e mai mic
+        sw, sh = self.root.winfo_screenwidth(), self.root.winfo_screenheight()
+        self.root.geometry(f"{min(1400, int(sw * 0.92))}x{min(880, int(sh * 0.88))}")
+        self.root.minsize(min(900, sw - 40), min(560, sh - 80))
+        if sw <= 1440 or sh <= 900:
+            try:
+                self.root.state("zoomed")
+            except tk.TclError:
+                pass
         # v3.7: debug var + overlay engines
         self._debug_var  = tk.BooleanVar(value=self.settings.get("debug_visual", False))
         self._debug_mode = bool(self._debug_var.get())
@@ -2454,6 +2492,7 @@ class MainWindow:
 
         # ── 14.8 Conectare callbacks ──────────────────────────────
         self._connect_callbacks()
+        self.root.after(600, lambda: ui_theme.fix_contrast(self.root))   # v4.14: niciun text greu de citit
 
         # v4.1: ultima zona de lucru folosita
         if self.settings.get("ui_mode", "recorder") == "studio":
@@ -2608,7 +2647,7 @@ class MainWindow:
         def hbtn(text, cmd, bg=None, fg=None, tip=""):
             b = tk.Button(hdr, text=text, command=cmd, bg=bg or C["bg_input"], fg=fg or C["text"],
                           activebackground=C["primary"], activeforeground="white", relief="flat", bd=0,
-                          font=("Segoe UI", 9, "bold"), padx=9, pady=4, cursor="hand2")
+                          font=("Segoe UI", 10), padx=9, pady=4, cursor="hand2")
             b.pack(side="right", padx=2, pady=6)
             if tip:
                 ToolTip(b, tip, "")
@@ -2641,25 +2680,49 @@ class MainWindow:
         self._groups = {"recorder": [], "studio": [], "help": []}
 
         def group(mode, title):
+            # v4.14: fara titluri mici deasupra (ocupau un rand); grupurile se despart printr-o linie subtire,
+            # iar titlul grupului apare in tooltip-ul fiecarui buton
             g = tk.Frame(self._actions, bg=C["bg_main"])
-            tk.Label(g, text=title, bg=C["bg_main"], fg=C["text_muted"],
-                     font=("Segoe UI", 7, "bold")).pack(anchor="w", padx=2)
+            if self._groups[mode]:
+                tk.Frame(g, bg=C["border"], width=1).pack(side="left", fill="y", padx=(0, 8), pady=4)
             row = tk.Frame(g, bg=C["bg_main"])
-            row.pack(anchor="w")
+            row.pack(side="left")
+            setattr(row, "_title", title)
             self._groups[mode].append(g)
             return row
 
-        def abtn(row, text, cmd, bg=None, tip="", sc=""):
+        def abtn(row, text, cmd, bg=None, tip="", sc="", short=None):
             bg = bg or C["bg_input"]
             b = tk.Button(row, text=text, command=cmd, bg=bg, fg=_btn_fg(bg), activebackground=C["primary"],
-                          activeforeground="white", relief="flat", bd=0, font=("Segoe UI", 9, "bold"),
-                          padx=8, pady=3, cursor="hand2", highlightthickness=1, highlightbackground=bg)
-            b.pack(side="left", padx=2)
+                          activeforeground="white", relief="flat", bd=0, font=("Segoe UI", 10),
+                          padx=10, pady=4, cursor="hand2", highlightthickness=0)
+            b.pack(side="left", padx=2, pady=2)
             setattr(b, "_orig_bg", bg)
             setattr(b, "_orig_fg", _btn_fg(bg))
-            if tip:
-                ToolTip(b, tip, sc)
+            # pe ecrane inguste butonul ramane doar cu iconita (textul intreg e in tooltip)
+            self._actions.compactable(b, text, short if short is not None else text.split(" ")[0])
+            title = getattr(row, "_title", "")
+            tr = i18n.tr
+            full_tip = (f"{tr(text).strip()} — {tr(tip)}" if tip else tr(text).strip())
+            ToolTip(b, (f"[{tr(title)}] " if title else "") + full_tip, sc)
             return b
+
+        def more_btn(row, items):
+            """⋯ : comenzile folosite mai rar, intr-un meniu (bara ramane aerisita)."""
+            mb = tk.Menubutton(row, text="⋯", bg=C["bg_input"], fg=C["text"], relief="flat", bd=0,
+                               font=("Segoe UI", 11, "bold"), padx=10, pady=2, cursor="hand2",
+                               activebackground=C["primary"], activeforeground="white")
+            menu = tk.Menu(mb, tearoff=0, bg=C["bg_card"], fg=C["text"], activebackground=C["primary"],
+                           activeforeground="white", font=("Segoe UI", 10))
+            for label, cmd in items:
+                if label == "-":
+                    menu.add_separator()
+                else:
+                    menu.add_command(label=label, command=cmd)
+            mb.configure(menu=menu)
+            mb.pack(side="left", padx=2, pady=2)
+            ToolTip(mb, "Mai multe comenzi", "")
+            return mb
 
         _sc = self.settings.get("shortcuts", DEFAULT_SHORTCUTS)
         # Recorder
@@ -2691,32 +2754,34 @@ class MainWindow:
         r = group("studio", "RUTINA")
         abtn(r, "📄 Nou", st("new_routine"), None, "Rutina noua (Ctrl+N)")
         abtn(r, "📂 Deschide", st("open_routine"), None, "Deschide o rutina .rpr.json (sau una veche, se converteste)")
-        abtn(r, "💾 Salveaza", st("save_routine"), C["primary"], "Salveaza rutina")
-        abtn(r, "Salveaza ca…", st("save_routine", True), None, "Salveaza intr-un fisier nou")
-        abtn(r, "📚 Exemple", st("show_examples"), None, "Rutinele exemplu (incepe cu 01 Invatare)")
-        abtn(r, "📂 Manager rutine", st("show_routine_manager"), None,
+        abtn(r, "💾 Salveaza", st("save_routine"), C["primary"], "Salveaza rutina", short="💾 Salveaza")
+        abtn(r, "🗂 Manager rutine", st("show_routine_manager"), None,
              "Rutinele din folderul setat (citite la pornire) si pregatirile: mai multe rutine rulate una dupa alta, "
-             "cu film, raport Excel si documentatie")
+             "cu film, raport Excel si documentatie", short="🗂 Manager")
+        more_btn(r, [("Salveaza ca…", st("save_routine", True)),
+                     ("📚 Exemple", st("show_examples")),
+                     ("-", None),
+                     ("🕒 Programeaza", st("show_schedule")),
+                     ("❓ Ghid", st("show_guide"))])
         r = group("studio", "RULARE")
-        abtn(r, "▶ Ruleaza", st("run"), C["success"], "Ruleaza rutina", "F7")
+        abtn(r, "▶ Ruleaza", st("run"), C["success"], "Ruleaza rutina", "F7", short="▶ Ruleaza")
         abtn(r, "⏭ Pas cu pas", st("run", True), None, "Fiecare apasare executa un singur pas")
         abtn(r, "⏸ Pauza", st("toggle_pause"), C["warning"], "Pauza / reluare", "Ctrl+F11")
-        abtn(r, "⏹ Stop", st("stop"), C["danger"], "Opreste rutina", "Ctrl+F12")
+        abtn(r, "⏹ Stop", st("stop"), C["danger"], "Opreste rutina", "Ctrl+F12", short="⏹ Stop")
         r = group("studio", "OBIECTE (SPY)")
-        abtn(r, "🎯 Web", lambda: self._studio and self._studio.spy("Web"), None, "Marcheaza un element din browser")
-        abtn(r, "🎯 SAP", lambda: self._studio and self._studio.spy("SAP"), None, "Marcheaza un camp / buton SAP")
+        abtn(r, "🎯 Web", lambda: self._studio and self._studio.spy("Web"), None, "Marcheaza un element din browser",
+             short="🎯 Web")
+        abtn(r, "🎯 SAP", lambda: self._studio and self._studio.spy("SAP"), None, "Marcheaza un camp / buton SAP",
+             short="🎯 SAP")
         abtn(r, "🎯 Desktop", lambda: self._studio and self._studio.spy("Desktop"), None,
-             "Marcheaza un element dintr-o aplicatie Windows")
+             "Marcheaza un element dintr-o aplicatie Windows", short="🎯 Desktop")
         abtn(r, "⏺ Inregistreaza Web", st("record_web"), C["danger"],
              "Lucrezi normal in browser; fiecare click / text / optiune devine un pas. Apasa din nou (sau Esc in "
-             "browser) ca sa opresti.")
+             "browser) ca sa opresti.", short="⏺ Web")
         r = group("studio", "RUTINA CURENTA")
-        abtn(r, "⚙ Setari rutina", st("show_routine_settings"), None, "Setarile rutinei si variabilele")
-        abtn(r, "🕒 Programeaza", st("show_schedule"), None,
-             "Ruleaza rutina automat (zilnic, in anumite zile, o data...) prin Windows Task Scheduler; "
-             "lista programarilor si istoricul rularilor")
-        abtn(r, "🌐 Setari Studio", st("show_settings"), None, "Browserul folosit (Edge / Chrome), profilul browserului")
-        abtn(r, "❓ Ghid", st("show_guide"), None, "Ghidul pas cu pas al Studio")
+        abtn(r, "⚙ Rutina", st("show_routine_settings"), None, "Setarile rutinei si variabilele", short="⚙ Rutina")
+        abtn(r, "🌐 Setari Studio", st("show_settings"), None,
+             "Browserul, marimea textului, unde se salveaza fisierele, aplicatia pentru filme", short="🌐 Setari")
 
         self._set_btn_state_idle()
 
@@ -2767,6 +2832,9 @@ class MainWindow:
         # Notebook ttk stilizat
         style = ttk.Style()
         style.theme_use("clam")
+        # v4.14: toate listele (si cele "readonly") cu culorile temei: fara text alb pe fundal alb
+        ui_theme.style_combobox(style, "TCombobox", C)
+        ui_theme.style_popdown(self.root, C)
         style.configure("Main.TNotebook",
                         background=C["bg_main"],
                         tabmargins=[4, 4, 0, 0])

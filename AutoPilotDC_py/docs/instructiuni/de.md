@@ -352,3 +352,15 @@ Manchmal erscheinen Meldungen oder Fehler, die Sie vorher kennen (z. B. „Wirkl
 - **Demo**: Schaltflaeche **Beispiele** → **06 Demo - Daca apare si reguli la mesaj** (lokale Seite, ohne Internet): Sie druecken „Porneste“, „Wirklich fortfahren?“ erscheint, die Regel schliesst es selbst, und „Falls es erscheint“ laeuft weiter, wenn die Meldung fehlt. Starten Sie es mit **⏭ Schritt fuer Schritt**, um jeden Schritt zu sehen.
 
 > Beispiel: am Anfang der Routine eine **🧯 Regel** mit „Sicher“ und dem Schritt Klick auf „Ja, schliessen“, dann *Schritt wiederholen*; erscheint die Meldung nicht, laeuft die Routine wie bisher.
+
+## 31. Darstellung, Drag and Drop und Speicherorte
+
+**🌐 Studio-Einstellungen** hat jetzt vier Registerkarten: 🌐 Browser, 🎨 Darstellung, 📁 Speicherorte, 🎬 Videos.
+
+- **🎨 Darstellung → Textgröße**: Klein / Normal / Groß / Sehr groß, für die gesamte Anwendung (gilt nach einem Neustart). Die Breite der Studio-Bereiche wird als Prozent des Fensters gespeichert und sieht daher auf Laptop und Monitor gleich aus; **↺ Bereiche zurücksetzen** stellt die ursprüngliche Aufteilung wieder her.
+- Auf kleinen Bildschirmen bleibt die obere Leiste einzeilig: Schaltflächen verlieren einen Teil des Textes (der volle Text steht im Tooltip), selten genutzte Befehle (Speichern unter…, Beispiele, Planen, Anleitung) liegen unter **⋯**.
+- **Drag and Drop**: einen Schritt im Baum an eine andere Stelle ziehen (eine Linie zeigt, wo er landet; über „▸ Dann“ / „▸ Sonst“ oder über der Mitte einer Schleife kommt er hinein). Ebenso einen Block aus 🧱 Schritte, ein Objekt aus 📚 Bibliothek (Klick / Text schreiben / Lesen / Wenn vorhanden wählen) oder eine Routine aus 📋 Routinen (wird zum Schritt „Routine ausführen“).
+- **📁 Speicherorte**: einen **gemeinsamen Ordner** wählen (z. B. ☁ OneDrive); Routinen, Objektbibliotheken, Ergebnisse (Screenshots, Logs, Berichte) und Videos landen in den Unterordnern `rutine`, `obiecte`, `rezultate`, `filme`. Ein ausgefülltes Feld für eine Dateiart hat Vorrang; was an einer Routine (Ordner der Videos / des Berichts) oder an einer Bibliothek eingestellt ist, hat Vorrang vor allem. Leere Felder = wie bisher.
+- **🎬 Videos → Videos öffnen mit**: der AutoPilot-Player (Wiedergabe + Bearbeitung), die Standardanwendung von Windows oder eine andere Anwendung auf dem Laptop (z. B. VLC). Für andere Anwendungen wird das Video einmal als MP4 daneben exportiert (GIF, wenn opencv-python fehlt). Dieselbe Auswahl gibt es unter ⚙ Einstellungen → Video.
+
+> Beispiel: 🌐 Studio-Einstellungen → 📁 Speicherorte → ☁ OneDrive → Speichern; eine neue, mit 💾 gespeicherte Routine schlägt den Ordner `OneDrive\AutoPilotDC\rutine` vor, Videos landen in `OneDrive\AutoPilotDC\filme`.
