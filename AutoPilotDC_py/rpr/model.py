@@ -49,6 +49,13 @@ class ErrorPolicy(_StrEnum):
     SkipRow = "SkipRow"
 
 
+class RuleAfter(_StrEnum):
+    """Ce se intampla dupa ce o regula si-a rulat pasii."""
+    Retry = "Retry"      # reia pasul care a esuat
+    Skip = "Skip"        # pasul se considera rezolvat
+    Error = "Error"      # eroarea merge mai departe (politica normala)
+
+
 class UiTechnology(_StrEnum):
     Web = "Web"
     WebSelenium = "WebSelenium"
@@ -519,12 +526,13 @@ class IfNode(RprNode):
     condition: Condition = field(default_factory=Condition)
     then: List[RprNode] = field(default_factory=list)
     else_: List[RprNode] = field(default_factory=list)
+    optional: bool = False   # "Daca apare" (v4.13): se asteapta scurt; daca nu apare, rutina merge mai departe
 
     _child_lists = ("then", "else_")
     _branch_names = ("Atunci", "Altfel")
 
     def auto_title(self) -> str:
-        return f"Daca {self.condition.describe()}"
+        return f"Daca apare {self.condition.describe()}" if self.optional else f"Daca {self.condition.describe()}"
 
     # "else" e cuvant rezervat in Python -> campul se numeste else_, in JSON "else"
     def to_dict(self):
@@ -645,6 +653,31 @@ class GroupNode(RprNode):
 
     def auto_title(self) -> str:
         return "Grup"
+
+
+@_node("on_error_rule")
+@dataclass
+class RuleNode(RprNode):
+    """Regula pentru mesaje / erori (v4.13): nu ruleaza cand e intalnita, ci se armeaza pana la sfarsitul
+    listei in care sta. Daca un pas esueaza si regula se potriveste, se ruleaza pasii ei."""
+    KIND_LABEL = "Regula la mesaj / eroare"
+    error_contains: str = ""     # textul erorii (fara diferenta mare/mica); gol = nu conteaza
+    use_element: bool = False    # sau: un element apare pe ecran (conditia de mai jos)
+    condition: Condition = field(default_factory=Condition)
+    after: RuleAfter = RuleAfter.Retry
+    body: List[RprNode] = field(default_factory=list)
+
+    _enum_fields = {"on_error": ErrorPolicy, "after": RuleAfter}
+    _child_lists = ("body",)
+    _branch_names = ("Pasi de rulat",)
+
+    def auto_title(self) -> str:
+        what = []
+        if self.error_contains.strip():
+            what.append(f"eroarea contine \"{self.error_contains.strip()}\"")
+        if self.use_element:
+            what.append(f"apare {self.condition.describe()}")
+        return "Regula: " + (" sau ".join(what) if what else "(neconfigurata)")
 
 
 @_node("run_routine")
@@ -772,6 +805,8 @@ class Routine(_Json):
             cond = getattr(n, "condition", None)
             if isinstance(n, (IfNode, LoopNode, WaitNode)) and cond is not None:
                 yield from _condition_targets(cond)
+            if isinstance(n, RuleNode) and n.use_element:
+                yield from _condition_targets(n.condition)
 
 
 _ELEMENT_KINDS = {ConditionKind.ElementExists, ConditionKind.ElementNotExists, ConditionKind.ElementVisible,

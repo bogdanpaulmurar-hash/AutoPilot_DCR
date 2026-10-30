@@ -332,3 +332,19 @@ Ai deja o rutină de 2–3 pași (ex. autentificarea) și vrei s-o folosești î
 - Dacă mutați fișierul rutinei, pasul trebuie să arate din nou spre el (câmpul fișier din pas).
 
 > Exemplu: `Login SAP` (2 pași) e salvată în folderul rutinelor. În rutina de raport: ➕ Ca pas „Login SAP”, apoi pașii raportului.
+
+## 30. „Daca apare” și reguli pentru mesaje / erori
+
+Uneori apar mesaje sau erori pe care le știi dinainte (ex. „Sigur vrei să închizi?”). Nu trebuie să încurce rutina când nu apar.
+
+**👁 Daca apare (optional)** (Flux): pui pasul unde poate apărea mesajul, alegi elementul (în **Conditia**, cu **Asteapta obiectul maxim** de ex. 1500 ms) și pașii care trebuie făcuți în ramura „Atunci”. Dacă mesajul nu apare, rutina merge mai departe fără eroare.
+
+**🧯 Regula la mesaj / eroare** (Flux): o pui **înaintea** pașilor pe care îi acoperă (primul pas = pe toată rutina). Ea nu face nimic singură: se armează și rămâne activă până la sfârșitul listei în care stă (într-un Grup, doar în Grup). Când un pas **eșuează** și regula se potrivește, se rulează pașii din „Pasi de rulat”:
+1. **Daca eroarea contine textul**: o parte din mesajul erorii (fără diferență între litere mari și mici) și / sau
+2. **SAU un element / o condiție e adevărată pe ecran** (ex. fereastra de mesaj e deschisă);
+3. **Dupa ce ruleaza pasii regulii**: *reia pasul* (implicit; maxim de 3 ori), *consideră pasul rezolvat* sau *eroarea merge mai departe*.
+- Mesajul erorii e în variabila `{EroareRegula}`. Mai multe reguli: se verifică întâi cea mai apropiată de pas.
+- Regulile se verifică doar când un pas pică; dacă mesajul nu vine, nu se întâmplă nimic. Pașii din regulă nu declanșează alte reguli.
+- Browserul: ferestrele de tip alert / confirm ale paginii se acceptă automat (pasul „Handle dialog” alege „dismiss”). Un mesaj din pagina aplicației e un element: îl tratezi cu **Daca apare** sau cu o regulă.
+
+> Exemplu: la începutul rutinei, **🧯 Regula** cu „Sigur” și pasul Click pe „Da, închide”, apoi *reia pasul*; dacă mesajul nu apare, rutina rulează ca până acum.

@@ -2,6 +2,12 @@
 
 Pornirea aplicației: **`AutoPilot_DC.pyw`** (sau scurtătura „AutoPilot DC” de pe Desktop). Numele fișierelor nu se mai schimbă de la o versiune la alta, deci scurtăturile și pornirea cu Windows rămân valabile.
 
+## 4.13.0 — 2026-10-30
+- **👁 Daca apare (optional)** (Flux): așteaptă scurt un mesaj / element; dacă apare, rulează pașii din „Atunci”, dacă nu, rutina merge mai departe fără eroare. Câmp nou `optional` pe pasul `if` (versiunile care nu-l cunosc îl tratează ca „Daca” obișnuit).
+- **🧯 Regula la mesaj / eroare** (Flux): pas nou care se **armează** când e întâlnit și rămâne activ până la sfârșitul listei în care stă (primul pas = pe toată rutina). Când un pas pică și regula se potrivește (textul erorii conține un text dat și / sau un element e pe ecran), rulează pașii regulii, apoi *reia pasul* (maxim 3 ori), *îl consideră rezolvat* sau lasă eroarea să meargă mai departe. Mesajul erorii e în `{EroareRegula}`. Regulile se verifică doar la o eroare, deci nu încetinesc rutina; pașii regulii nu declanșează alte reguli. Tip nou de pas `on_error_rule` (doar Python; C# nu-l cunoaște).
+- Instrucțiuni: capitolul 30, în RO / EN / DE.
+- Teste (Linux, Python 3.12, Chromium fără interfață): 151 rulate, 3 sărite; aceleași 3 eșecuri vechi. Teste noi `test_rules` (13): regulă după text (fără diferență mare / mică), după element, variabila cu eroarea, nepotrivire = eroare normală, „sari”, „eroare mai departe”, regula se stinge la sfârșitul grupului, limita de 3 reluări, pașii regulii nu declanșează reguli, „Daca apare” cu element absent / prezent, titlu și salvare. Verificat în Studio (Xvfb): adăugare din meniu, editorul regulii și al pasului. Nu am putut testa pe Windows, cu o aplicație reală, nici regulile pe mesaje din SAP.
+
 ## 4.12.2 — 2026-10-30
 - **✎ Redenumește rutina din 📋 Rutine** (buton **✎ Nume** sau click dreapta → Redenumeste...): schimbă numele afișat direct în fișier, fără să deschizi rutina. Rutina deschisă acum se redenumește din ⚙ Rutina (câmpul Nume).
 - Teste: fără schimbări de logică (doar interfață); verificat în Studio (Xvfb) că numele se scrie în fișier și lista se reface. Netestat pe Windows.

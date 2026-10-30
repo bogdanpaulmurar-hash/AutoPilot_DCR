@@ -40,7 +40,7 @@ from rpr.legacy import execute_legacy_step
 from rpr.model import (ACTIONS, ActionNode, BreakNode, CellColor, CompareOperator, Condition, ConditionKind,
                        ErrorPolicy, ForEachRowNode, GroupNode, IfNode, LegacyStepNode, Locator, LocatorKind,
                        LogNode, LoopMode, LoopNode, ObjectRepository, QuestionNode, Routine, RprAction, RprLogLevel, RunRoutineNode,
-                       RprNode, SetVariableNode, StopNode, TryNode, UiObject, UiTechnology, VariableOperation,
+                       RprNode, RuleAfter, RuleNode, SetVariableNode, StopNode, TryNode, UiObject, UiTechnology, VariableOperation,
                        WaitMode, WaitNode, WriteExcelNode, action_info, flatten, sanitize_name,
                        OBJECT_TYPES, CONTAINER_TYPES, SiteGroup)
 from rpr import report as rpr_report
@@ -72,6 +72,11 @@ ERROR_POLICIES = [
     (ErrorPolicy.Stop, "Opreste rutina"),
     (ErrorPolicy.Continue, "Continua (doar logheaza)"),
     (ErrorPolicy.SkipRow, "Sari la urmatorul rand Excel"),
+]
+RULE_AFTER = [
+    (RuleAfter.Retry, "Reia pasul care a esuat"),
+    (RuleAfter.Skip, "Considera pasul rezolvat si continua"),
+    (RuleAfter.Error, "Eroarea merge mai departe (politica normala)"),
 ]
 CONDITION_KINDS = [
     (ConditionKind.ElementExists, "Obiectul exista pe ecran"),
@@ -147,8 +152,10 @@ def icon_for(node: RprNode) -> str:
         if a in (RprAction.ReadText, RprAction.ReadValue, RprAction.ReadAttribute):
             return "👁"
         return "👆"
+    if isinstance(node, IfNode) and node.optional:
+        return "👁"
     return {WaitNode: "⏱", SetVariableNode: "✎", IfNode: "🔀", LoopNode: "🔁", ForEachRowNode: "📊",
-            WriteExcelNode: "📝", QuestionNode: "💬", TryNode: "🛡", GroupNode: "📁", LogNode: "🗒", RunRoutineNode: "📋",
+            WriteExcelNode: "📝", QuestionNode: "💬", TryNode: "🛡", GroupNode: "📁", LogNode: "🗒", RunRoutineNode: "📋", RuleNode: "🧯",
             BreakNode: "⏏", StopNode: "⛔", LegacyStepNode: "🖱"}.get(type(node), "•")
 
 
@@ -181,6 +188,10 @@ TOOLBOX: List[Tuple[str, List[Tuple[str, str, Callable[[], RprNode]]]]] = [
     ("Flux (conditii si repetari)", [
         ("⏱  Asteapta", "Secunde sau pana apare / dispare ceva", WaitNode),
         ("🔀  Daca / Altfel", "Ramuri diferite dupa o conditie", IfNode),
+        ("👁  Daca apare (optional)", "Asteapta scurt un mesaj / element; daca nu apare, rutina merge mai departe",
+         lambda: IfNode(optional=True, condition=Condition(kind=ConditionKind.ElementExists, timeout_ms=1500))),
+        ("🧯  Regula la mesaj / eroare", "Pasi care ruleaza doar daca un pas esueaza cu un anumit mesaj (arma regula inainte)",
+         RuleNode),
         ("🔁  Repeta", "De N ori, cat timp sau pana cand", LoopNode),
         ("🛡  Incearca / La eroare", "Prinde erorile fara sa opreasca rutina", TryNode),
         ("💬  Intrebare", "Intreaba utilizatorul, cu butoane personalizate", QuestionNode),
@@ -3201,8 +3212,26 @@ class PropertyEditor:
                 self.text(node, "Inlocuieste cu" if op == VariableOperation.Replace else "Valoare",
                           lambda: node.value, lambda v: setattr(node, "value", v))
         elif isinstance(node, IfNode):
-            self._hint("Pasii din ramura \"Atunci\" ruleaza cand conditia e adevarata, cei din \"Altfel\" cand e falsa.")
+            if node.optional:
+                self._hint("Optional: asteapta scurt (timpul din conditie) sa apara mesajul / elementul. Daca apare, "
+                           "ruleaza pasii din \"Atunci\"; daca nu apare, rutina merge mai departe fara eroare. "
+                           "Pui pasul unde stii ca poate aparea ceva (ex. dupa ce inchizi browserul).")
+            else:
+                self._hint("Pasii din ramura \"Atunci\" ruleaza cand conditia e adevarata, cei din \"Altfel\" cand e falsa.")
             self.condition(node.condition, node)
+        elif isinstance(node, RuleNode):
+            self._hint("Regula e armata cand rutina ajunge aici si ramane activa pana la sfarsitul listei in care sta "
+                       "(pune-o primul pas ca sa se aplice pe toata rutina). Daca un pas esueaza si regula se "
+                       "potriveste, ruleaza pasii ei. Nu face nimic daca eroarea nu apare.")
+            self.text(node, "Daca eroarea contine textul (gol = nu conteaza)", lambda: node.error_contains,
+                      lambda v: setattr(node, "error_contains", v), vars_=False)
+            self.check(node, "SAU: un element / o conditie e adevarata pe ecran (ex. fereastra de mesaj)",
+                       lambda: node.use_element, lambda v: setattr(node, "use_element", v), structural=True)
+            if node.use_element:
+                self.condition(node.condition, node)
+            self.combo(node, "Dupa ce ruleaza pasii regulii", RULE_AFTER, lambda: node.after,
+                       lambda v: setattr(node, "after", v))
+            self._hint("Mesajul erorii e in variabila {EroareRegula}. Pasii se pun in ramura \"Pasi de rulat\".")
         elif isinstance(node, LoopNode):
             self.combo(node, "Cum repeta", LOOP_MODES, lambda: node.mode, lambda v: setattr(node, "mode", v), structural=True)
             if node.mode == LoopMode.Times:

@@ -334,3 +334,19 @@ Sie haben schon eine Routine mit 2–3 Schritten (z. B. die Anmeldung) und wolle
 - Wenn Sie die Routinendatei verschieben, muss der Schritt neu darauf zeigen (Dateifeld des Schritts).
 
 > Beispiel: `Login SAP` (2 Schritte) liegt im Routinenordner. In der Berichtsroutine: ➕ Als Schritt „Login SAP“, danach die Berichtsschritte.
+
+## 30. „Falls es erscheint“ und Regeln fuer Meldungen / Fehler
+
+Manchmal erscheinen Meldungen oder Fehler, die Sie vorher kennen (z. B. „Wirklich schliessen?“). Sie sollen nicht stoeren, wenn sie nicht erscheinen.
+
+**👁 Falls es erscheint (optional)** (Ablauf): Setzen Sie den Schritt dorthin, wo die Meldung erscheinen kann, waehlen Sie das Element (unter **Bedingung**, mit **Auf das Objekt hoechstens warten** z. B. 1500 ms) und die auszufuehrenden Schritte im Zweig „Atunci“. Erscheint die Meldung nicht, laeuft die Routine ohne Fehler weiter.
+
+**🧯 Regel fuer Meldung / Fehler** (Ablauf): Setzen Sie sie **vor** die Schritte, die sie abdeckt (erster Schritt = ganze Routine). Sie tut nichts von allein: sie wird aktiviert und bleibt bis zum Ende der Liste aktiv, in der sie steht (in einer Gruppe nur dort). **Scheitert** ein Schritt und die Regel passt, laufen die Schritte unter „Pasi de rulat“:
+1. **Wenn der Fehler den Text enthaelt**: ein Teil der Fehlermeldung (ohne Gross-/Kleinschreibung) und / oder
+2. **ODER ein Element / eine Bedingung ist am Bildschirm wahr** (z. B. das Meldungsfenster ist offen);
+3. **Nachdem die Schritte der Regel gelaufen sind**: *Schritt wiederholen* (Standard; hoechstens 3-mal), *Schritt als erledigt ansehen* oder *Fehler wird weitergegeben*.
+- Die Fehlermeldung steht in der Variablen `{EroareRegula}`. Bei mehreren Regeln wird zuerst die dem Schritt naechste geprueft.
+- Regeln werden nur geprueft, wenn ein Schritt scheitert; kommt die Meldung nicht, passiert nichts. Die Schritte einer Regel loesen keine anderen Regeln aus.
+- Browser: alert-/confirm-Dialoge der Seite werden automatisch akzeptiert (der Schritt „Handle dialog“ waehlt „dismiss“). Eine Meldung innerhalb der Anwendungsseite ist ein Element: behandeln Sie sie mit **Falls es erscheint** oder einer Regel.
+
+> Beispiel: am Anfang der Routine eine **🧯 Regel** mit „Sicher“ und dem Schritt Klick auf „Ja, schliessen“, dann *Schritt wiederholen*; erscheint die Meldung nicht, laeuft die Routine wie bisher.

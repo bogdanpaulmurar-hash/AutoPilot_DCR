@@ -13,7 +13,7 @@ Tool RPA + Data Cleansing: recorder/player de pași desktop și browser, plus **
 ## Care variantă
 - **Python (`AutoPilotDC_py/`) e varianta principală.** Are tot ce avea C#, inclusiv Studio RPR, drivere Web (Playwright), SAP GUI și Desktop, biblioteca de obiecte, programarea, limbile RO/EN/DE.
 - **C# (`AutoPilotDC_C#/`)** urmează să fie abandonat după testare. Nu adăuga funcții noi acolo fără cerere explicită.
-- Fișierele `.rpr.json` și `obiecte.json` sunt identice între variante. Nu le schimba formatul într-o singură parte. Setările noi doar în Python stau în câmpuri pe care C# le ignoră (ex. `settings.report`); `.pregatire.json` există doar în Python.
+- Fișierele `.rpr.json` și `obiecte.json` sunt identice între variante. Nu le schimba formatul într-o singură parte. Setările noi doar în Python stau în câmpuri pe care C# le ignoră (ex. `settings.report`); `.pregatire.json` există doar în Python. Pașii `run_routine` (v4.12) și `on_error_rule` (v4.13) și câmpul `optional` al pasului `if` există doar în Python.
 
 ## Comenzi (Python)
 - Instalare pe un PC: `AutoPilotDC_py\INSTALEAZA.bat`; verificare: `python verifica_instalare.py`
