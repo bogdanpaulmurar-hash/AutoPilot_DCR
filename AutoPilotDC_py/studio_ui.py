@@ -1528,15 +1528,23 @@ class StudioPanel(tk.Frame):
         if select:
             self.select_node(select)
 
+    def _flows(self) -> list:
+        """Fluxurile vizibile: cel din centru (daca e ales) si fereastra separata (v4.21), daca e deschisa."""
+        out = [self._flow] if getattr(self, "_view", "steps") == "flow" else []
+        win = getattr(self, "_flow_win", None)
+        if win is not None and win.winfo_exists():
+            out.append(win.view)
+        return out
+
     def _refresh_center(self):
         view = getattr(self, "_view", "steps")
-        if view == "flow":
-            self._flow.refresh()
-            sel = self.tree.selection()
-            if sel and sel[0] in self._flow.cards:
-                self._flow.select(sel[0])
-        elif view == "excel":
+        if view == "excel":
             self._bind_excel()
+        sel = self.tree.selection()
+        for fv in self._flows():
+            fv.refresh()
+            if sel and sel[0] in fv.cards:
+                fv.select(sel[0])
 
     def first_for_each(self, routine: Optional[Routine] = None) -> Optional[ForEachRowNode]:
         for n in (routine or self.routine).all_nodes():
@@ -1563,8 +1571,8 @@ class StudioPanel(tk.Frame):
 
     def _timeline_pick(self, node_id: str):
         self.select_node(node_id)
-        if self._view == "flow":
-            self._flow.select(node_id)
+        for fv in self._flows():
+            fv.select(node_id)
 
     def rerun_excel_row(self, f: ForEachRowNode, row: int):
         """Ruleaza din nou doar randul ales: o copie a rutinei, cu bucla Excel limitata la acel rand."""
@@ -3652,10 +3660,10 @@ class StudioPanel(tk.Frame):
             self.tree.item(node.id, tags=tags + ["running"])
             self.tree.see(node.id)
             self._running_iid = node.id
-        if self._view == "flow":
+        for fv in self._flows():
             if prev:
-                self._flow.set_state(prev)
-            self._flow.set_state(node.id)
+                fv.set_state(prev)
+            fv.set_state(node.id)
         if self._run_control:
             self._run_control.set_status(node.title)
         self.set_status("▶ " + node.title)
@@ -3771,8 +3779,8 @@ class StudioPanel(tk.Frame):
             self._excel.reload()
 
     def _step_finished(self, node: RprNode, ok: bool):
-        if self._view == "flow":
-            self._flow.set_state(node.id)
+        for fv in self._flows():
+            fv.set_state(node.id)
         if isinstance(node, ForEachRowNode):
             self._cur_row = 0
         if node.branches():         # in cronologie intra doar pasii propriu-zisi, nu blocurile
@@ -3813,8 +3821,8 @@ class StudioPanel(tk.Frame):
             self.vars.insert("", "end", values=(k, v))
         mark = "✔ " if result.success else "⏹ " if result.cancelled else "✖ "
         self._timeline.set_summary(f"{mark}{tr(result.message)}  ·  {studio_views.fmt_time(self._timeline.elapsed())}")
-        if self._view == "flow":
-            self._flow.sync_states()
+        for fv in self._flows():
+            fv.sync_states()
         report = getattr(result, "report_path", "")
         self.set_status(mark + result.message + (f"  📊 {report}" if report else ""))
         self.winfo_toplevel().deiconify()

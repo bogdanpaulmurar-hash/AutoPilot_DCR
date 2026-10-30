@@ -347,5 +347,34 @@ class StudioViewsTests(unittest.TestCase):
             self.assertEqual((int(w * 2), int(h * 2)), im.size)  # de 2 ori mai mare decat pe ecran
         self.assertLess(f._png_scale(4000, 40000), 1.0)          # rutina uriasa: poza ramane rezonabila
 
+    def test_flow_window_follows_run_while_center_shows_excel(self):
+        f, ifs = self._big_flow(3)
+        win = f.open_window()
+        self.root.update()
+        try:
+            self.assertIs(win, self.p._flow_win)
+            self.assertIs(win, f.open_window())                  # al doilea click = aceeasi fereastra
+            self.assertEqual(15, len(win.view.cards))
+            self.assertIn("Mare", win.title())
+            p = self.p
+            p.show_center("excel")                               # rularea cu Excel muta centrul pe 📊 Excel
+            self.assertEqual([win.view], p._flows())
+            step = ifs[1].then[0]
+            card = lambda n, opt: win.view.canvas.itemcget(win.view.cards[n.id], opt)   # noqa: E731
+            p._queue.put(("started", step))                      # aceleasi evenimente ca la o rulare
+            self.assertTrue(self._pump(lambda: card(step, "outline") == p.C["warning"]))
+            p._queue.put(("finished", (step, True)))
+            p._queue.put(("started", ifs[1].then[1]))
+            self.assertTrue(self._pump(lambda: card(step, "outline") == p.C["success"]))
+            p._queue.put(("finished", (ifs[1].then[1], False)))
+            self.assertTrue(self._pump(lambda: card(ifs[1].then[1], "outline") == p.C["danger"]))
+            p.routine.name = "Alta"
+            p.rebuild_tree()                                     # editarea rutinei reface si fereastra
+            self.assertIn("Alta", win.title())
+        finally:
+            win.close()
+        self.assertIsNone(self.p._flow_win)
+        self.assertEqual([], self.p._flows())
+
 if __name__ == "__main__":
     unittest.main()
