@@ -38,7 +38,7 @@ from .host import AlertDecision, ErrorDecision, RunAlert, RunGuard, RunHost, Run
 from . import subroutine
 from .model import (ActionNode, BreakNode, CellColor, ErrorPolicy, ForEachRowNode, GroupNode, IfNode,
                     LegacyStepNode, LogNode, LoopMode, LoopNode, ObjectRepository, QuestionNode, Routine,
-                    RoutineSettings, RprAction, RprLogLevel, RprNode, RunRoutineNode, SetVariableNode, StopNode, TryNode,
+                    RoutineSettings, RprAction, RprLogLevel, RprNode, RuleAfter, RuleNode, RunRoutineNode, SetVariableNode, StopNode, TryNode,
                     UiTechnology, VariableOperation, WaitMode, WaitNode, WriteExcelNode, action_info)
 from .variables import VariableStore
 
@@ -117,6 +117,8 @@ class RprEngine:
         self._vars = VariableStore()
         self._rows: List[_RowContext] = []
         self._try_depth = 0
+        self._rules: List[RuleNode] = []   # v4.13: regulile armate (se sting la sfarsitul listei lor)
+        self._in_rule = False
         self._result = RunResult()
         self._ignored_alerts: set = set()
 
@@ -179,6 +181,8 @@ class RprEngine:
         self._result = RunResult()
         self._rows = []
         self._try_depth = 0
+        self._rules = []
+        self._in_rule = False
         self._ignored_alerts = set()
         self._stop.clear()
         self._gate.set()
@@ -301,16 +305,38 @@ class RprEngine:
     # Parcurgerea pasilor
     # =========================================================
     def _execute_list(self, nodes: List[RprNode]) -> None:
-        for node in list(nodes):  # copie: lista poate fi editata in Studio in timpul rularii
-            self._check_stop()
-            if not node.enabled:
+        armed = len(self._rules)   # regulile armate in lista asta se sting la sfarsitul ei
+        try:
+            for node in list(nodes):  # copie: lista poate fi editata in Studio in timpul rularii
+                self._check_stop()
+                if not node.enabled:
+                    continue
+                self._wait_gate()
+                self._execute_node(node)
+        finally:
+            del self._rules[armed:]
+
+    def _match_rule(self, message: str) -> Optional[RuleNode]:
+        """Prima regula armata (cea mai apropiata de pas) care se potriveste erorii sau elementului de pe ecran."""
+        low = message.lower()
+        for r in reversed(self._rules):
+            if not r.enabled:
                 continue
-            self._wait_gate()
-            self._execute_node(node)
+            text = r.error_contains.strip().lower()
+            if text and text in low:
+                return r
+            if r.use_element:
+                try:
+                    if self._conditions.evaluate(r.condition):
+                        return r
+                except Exception:  # noqa: BLE001
+                    pass
+        return None
 
     def _execute_node(self, node: RprNode) -> None:
         is_container = node.is_container
         attempt = 0
+        rule_runs = 0
         while True:
             t0 = time.monotonic()
             started = _dt.datetime.now()
@@ -333,6 +359,26 @@ class RprEngine:
                 raise
             except Exception as ex:  # noqa: BLE001
                 message = str(ex) if isinstance(ex, RprStepException) else f"{type(ex).__name__}: {ex}"
+
+                # 0. Reguli pentru mesaje / erori (v4.13): pasii regulii, apoi reia / sari / eroare normala
+                rule = None
+                if not is_container and not self._in_rule and self._rules and rule_runs < 3:
+                    rule = self._match_rule(message)
+                if rule is not None:
+                    rule_runs += 1
+                    self._log(RprLogLevel.Warning, node, f"{rule.title} → ruleaza pasii regulii ({message})")
+                    self._vars.set("EroareRegula", message)
+                    self._in_rule = True
+                    try:
+                        self._execute_list(rule.body)
+                    finally:
+                        self._in_rule = False
+                    if rule.after == RuleAfter.Retry:
+                        attempt = 0
+                        continue
+                    if rule.after == RuleAfter.Skip:
+                        self._log(RprLogLevel.Info, node, "Pas considerat rezolvat de regula.")
+                        return
 
                 # 1. Reincercare automata (doar pasi simpli)
                 attempt += 1
@@ -401,9 +447,20 @@ class RprEngine:
         elif isinstance(node, SetVariableNode):
             self._execute_set_variable(node)
         elif isinstance(node, IfNode):
-            ok = self._conditions.evaluate(node.condition)
-            self._log(RprLogLevel.Info, node, "Adevarat → Atunci" if ok else "Fals → Altfel")
+            if node.optional:   # "Daca apare": o conditie care nu poate fi verificata inseamna ca nu a aparut
+                try:
+                    ok = self._conditions.evaluate(node.condition)
+                except RprStepException as ex:
+                    ok = False
+                    self._log(RprLogLevel.Warning, node, f"Nu am putut verifica ({ex}); trec mai departe.")
+                self._log(RprLogLevel.Info, node, "A aparut → Atunci" if ok else "Nu a aparut → trec mai departe")
+            else:
+                ok = self._conditions.evaluate(node.condition)
+                self._log(RprLogLevel.Info, node, "Adevarat → Atunci" if ok else "Fals → Altfel")
             self._execute_list(node.then if ok else node.else_)
+        elif isinstance(node, RuleNode):
+            self._rules.append(node)
+            self._log(RprLogLevel.Info, node, f"{node.title} — armata pana la sfarsitul listei")
         elif isinstance(node, LoopNode):
             self._execute_loop(node)
         elif isinstance(node, ForEachRowNode):

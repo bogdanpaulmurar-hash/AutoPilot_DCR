@@ -334,3 +334,19 @@ You already have a routine of 2–3 steps (e.g. the login) and want to use it in
 - If you move the routine file, the step has to point to it again (the file field of the step).
 
 > Example: `Login SAP` (2 steps) is saved in the routines folder. In the report routine: ➕ As step "Login SAP", then the report steps.
+
+## 30. "If it appears" and rules for messages / errors
+
+Sometimes messages or errors show up that you know about in advance (e.g. "Are you sure you want to close?"). They should not get in the way when they do not appear.
+
+**👁 If it appears (optional)** (Flow): put the step where the message may appear, choose the element (in **Condition**, with **Wait for the object at most** e.g. 1500 ms) and the steps to do in the "Atunci" branch. If the message does not appear, the routine carries on without an error.
+
+**🧯 Rule for message / error** (Flow): place it **before** the steps it covers (first step = whole routine). It does nothing by itself: it is armed and stays active until the end of the list it sits in (inside a Group, only in that Group). When a step **fails** and the rule matches, the steps in "Pasi de rulat" run:
+1. **If the error contains the text**: part of the error message (case-insensitive) and / or
+2. **OR an element / condition is true on screen** (e.g. the message window is open);
+3. **After the rule's steps have run**: *retry the step* (default; at most 3 times), *treat the step as solved* or *the error goes on*.
+- The error message is in the variable `{EroareRegula}`. With several rules, the one closest to the step is checked first.
+- Rules are checked only when a step fails; if the message does not come, nothing happens. The rule's own steps do not trigger other rules.
+- Browser: alert / confirm dialogs of the page are accepted automatically (the "Handle dialog" step chooses "dismiss"). A message inside the application page is an element: handle it with **If it appears** or a rule.
+
+> Example: at the start of the routine, a **🧯 Rule** with "Sure" and the step Click on "Yes, close", then *retry the step*; if the message does not appear, the routine runs as before.
