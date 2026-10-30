@@ -2,6 +2,11 @@
 
 Pornirea aplicației: **`AutoPilot_DC.pyw`** (sau scurtătura „AutoPilot DC” de pe Desktop). Numele fișierelor nu se mai schimbă de la o versiune la alta, deci scurtăturile și pornirea cu Windows rămân valabile.
 
+## 4.11.2 — 2026-10-30
+- **Marcarea în browser durează 8 s** (înainte 2 s la 🧪 Test, deci o secțiune mare se pierdea). Buton nou **👁 Marcheaza din nou** în fereastra de test și **👁 Marcheaza in browser (8 s)** la click dreapta pe obiect. Merge și pe containere (secțiuni): se marchează chenarul întreg.
+- **Reparat**: `version.py` rămăsese gol în 4.11.1 (aplicația nu pornea: lipsea `__version__`); restaurat.
+- Teste (Linux, Python 3.12): 127 rulate, 3 sărite; aceleași 3 eșecuri vechi; fără schimbări de logică. Verificat doar compilarea și testele existente; marcajul vizual pe Windows nu l-am putut vedea.
+
 ## 4.11.1 — 2026-10-30
 - **Redenumire pagină / site în bibliotecă**: click dreapta pe 📄 pagină (sau 🌐 site) → **✎ Redenumeste pagina... / site-ul...** schimbă numele pentru toate obiectele de sub ea (și grupul de link-uri al site-ului). Dacă numele nou există deja, paginile se unesc. Tot acolo: **🩺 Verifica obiectele de aici**.
 - Instrucțiuni: capitolul 28, în RO / EN / DE.

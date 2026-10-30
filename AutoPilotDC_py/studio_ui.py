@@ -1647,6 +1647,7 @@ class StudioPanel(tk.Frame):
         C = self.C
         m = tk.Menu(self, tearoff=0, bg=C["bg_card"], fg=C["text"], activebackground=C["primary"])
         m.add_command(label="🧪 Testeaza pe pagina din browser", command=self.test_object)
+        m.add_command(label="👁 Marcheaza in browser (8 s)", command=self.show_object)
         if rpr_scan.is_web(obj):
             m.add_command(label="🩺 Verifica fara click (merge? impedimente?)", command=lambda: self.check_saved([obj]))
         m.add_separator()
@@ -2121,15 +2122,16 @@ class StudioPanel(tk.Frame):
             return
         self.insert_node(ActionNode(action=rec.action, target=obj.name, value=rec.value, technology=obj.technology))
 
-    def show_object(self):
-        obj = self._sel_object()
+    def show_object(self, obj: Optional[UiObject] = None, ms: int = 8000):
+        obj = obj or self._sel_object()
         if obj is None:
             return
+        self.repo.link_parents(obj)
         web = self.web() if obj.technology in (UiTechnology.Web, UiTechnology.WebSelenium)             else self.drivers.get(obj.technology)
 
         def work():
             try:
-                ok, msg = web.show_object(obj)
+                ok, msg = web.show_object(obj, ms)
             except Exception as ex:  # noqa: BLE001
                 msg = str(ex)
             self.post("status", "👁 " + msg)
@@ -3916,6 +3918,7 @@ class TestResultDialog(DialogBase):
         for text, action in [("➕ Pas Click", RprAction.Click), ("➕ Scrie text", RprAction.TypeText),
                              ("➕ Citeste", RprAction.ReadText)]:
             panel._btn(row, text, lambda a=action: (panel._obj_step(a, obj), self.destroy()), color=C["success"]).pack(side="left", padx=2)
+        panel._btn(row, "👁 Marcheaza din nou", lambda: panel.show_object(obj), tip="Marcheaza elementul in browser 8 secunde").pack(side="left", padx=2)
         panel._btn(row, "✎ Editeaza locatorii", lambda: (self.destroy(), panel.edit_object())).pack(side="left", padx=2)
         panel._btn(row, "Inchide", self.destroy).pack(side="left", padx=2)
         self.fit(700)
