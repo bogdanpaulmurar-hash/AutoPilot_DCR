@@ -364,3 +364,15 @@ Sometimes messages or errors show up that you know about in advance (e.g. "Are y
 - **🎬 Videos → Open videos with**: the AutoPilot player (playback + editing), the default Windows application or another application on the laptop (e.g. VLC). For other applications the video is exported once to MP4, next to it (GIF if opencv-python is missing). The same choice is in ⚙ Settings → Video.
 
 > Example: 🌐 Studio settings → 📁 Where files are saved → ☁ OneDrive → Save; a new routine saved with 💾 suggests the folder `OneDrive\AutoPilotDC\rutine`, and videos go to `OneDrive\AutoPilotDC\filme`.
+
+## 32. Activity bar, tabs, timeline, the Excel screen and the flow
+
+Studio has an **activity bar** on the left: 🧱 Steps, 📚 Library, 📋 Routines, 🎬 Videos, and at the bottom 🌐 Settings and ❓ Guide. Each icon only changes the panel next to it; the routine stays where it is. Clicking the icon that is already selected **collapses the panel** (more room for the routine on a laptop); another click opens it again. The app remembers the chosen panel.
+
+- **Tabs for routines**: every open routine has its own tab above the steps (● = unsaved changes). **+** or 📄 New opens a new routine in a new tab; × closes the tab (it asks whether to save). A routine that is already open is not opened twice: its tab is shown. While a routine runs you cannot switch tabs.
+- **The center view**: **✎ Steps** (the list, for editing), **🔀 Flow** (the routine as a flow of cards, with "Then" and "Else" side by side; read only: clicking a card shows the step's properties on the right, double-click takes you to the step in the list) and **📊 Excel**.
+- **📊 Excel**: the rows of the file from the first "For each Excel row" step, with their status and the minute in the video. When you run a routine with Excel, this screen opens by itself and shows the row being worked on. Pick a row: on the right you see its steps, the error and its screenshot; **↻ Rerun row** runs only that row again (plus the steps before the loop, e.g. opening the browser), **🎬 See in video** opens the run's video at the row's minute (if recording during runs is on in Settings → Video).
+- **⏱ Timeline** (at the bottom, next to Log): one card for every finished step, with ✓ / ✕, the Excel row, the duration and, for errors, the message and the screenshot (double-click the screenshot to open it large). Clicking a card shows the step in the routine.
+- **🎬 Videos**: the saved videos, newest first; double-click opens them with the app chosen in 🌐 Studio settings → 🎬 Videos.
+
+> Example: open **Examples → 03 Web + Excel** and press ▶ Run. The center switches to 📊 Excel and colors every row (green OK, red error). Pick a red row, read the error on the right and press ↻ Rerun row.

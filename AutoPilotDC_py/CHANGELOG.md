@@ -2,6 +2,17 @@
 
 Pornirea aplicației: **`AutoPilot_DC.pyw`** (sau scurtătura „AutoPilot DC” de pe Desktop). Numele fișierelor nu se mai schimbă de la o versiune la alta, deci scurtăturile și pornirea cu Windows rămân valabile.
 
+## 4.15.0 — 2026-10-30
+- **Aspect nou în Studio (varianta C + D + A aleasă din machete)**. Panourile rămân aceleași, se schimbă felul în care le ajungi.
+- **Bara de activități** în stânga: 🧱 Pași, 📚 Bibliotecă, 📋 Rutine, 🎬 Filme (nou: filmele salvate, cele mai noi primele, dublu-click = aplicația aleasă pentru filme), jos 🌐 Setări și ❓ Ghid. Click pe iconița activă strânge panoul lateral; panoul ales se ține minte (`aspect.json`: `side_panel`, `side_collapsed`). Tab-urile vechi Pași / Bibliotecă / Rutine au dispărut.
+- **Tab-uri pentru mai multe rutine deschise**: 📄 Nou și Deschide pun rutina într-un tab nou (tab-ul gol curent se refolosește); o rutină deja deschisă doar se arată; × întreabă de salvare; la închiderea aplicației se întreabă pentru fiecare tab nesalvat. Cât rulează o rutină, tab-ul nu se schimbă.
+- **Centrul are trei vederi**: ✎ Pași (lista de până acum), 🔀 Flux (rutina ca flux de carduri, ramurile una lângă alta; doar citire, click = pasul și proprietățile lui, dublu-click = pasul în listă; cardurile se colorează la rulare) și 📊 Excel.
+- **📊 Ecranul de rulare pe Excel**: rândurile din primul pas „Pentru fiecare rând Excel” (până la 6 coloane + Status + Film), citite în fundal. La rulare se deschide singur (nu și la Pas cu pas), arată rândul în lucru, statusul fiecărui rând și minutul din film. Pe rândul ales: pașii lui din log, eroarea, captura; **↻ Reia rândul** rulează o copie a rutinei cu bucla limitată la acel rând (rutina din editor nu se schimbă; prevenția rămâne activă); **🎬 Vezi în film** deschide filmul la minutul rândului.
+- **⏱ Cronologia rulării** (primul tab de jos): un card pe pas terminat (✓ / ✕, rândul, durata; la erori mesajul și captura ecranului). Blocurile (Dacă, bucle) nu primesc card; se păstrează ultimele 400.
+- Motorul trimite rândurile Excel și spre interfață (`row_started` / `row_finished` cu filmul și secunda), pe lângă film. Formatul `.rpr.json` nu se schimbă.
+- Modul nou `studio_views.py`. Instrucțiuni: capitolul 32, în RO / EN / DE; texte noi traduse în EN / DE.
+- Teste (Linux, Python 3.12, Xvfb, Chromium fără interfață): 175 rulate, 3 sărite; aceleași 3 eșecuri vechi. Teste noi `test_views` (10): panoul lateral se strânge și se redeschide, tab-urile păstrează fiecare rutina și modificările ei, rutina deja deschisă doar comută, tab-ul gol se refolosește, schimbarea blocată la rulare, cronologia (doar pașii, ultimele 400), ecranul Excel citește rândurile și urmează rularea, Reia rândul rulează o copie limitată la rând, gazda trimite rândurile, fluxul are un card pe pas și alege pasul. Verificat în Xvfb la 1366 × 768, temă închisă și deschisă, cu o rulare reală pe un Excel cu 8 rânduri (un rând cu eroare). Netestat pe Windows (fonturi, DPI, filmul la minutul rândului, capturile pe ecranul real).
+
 ## 4.14.0 — 2026-10-30
 - **Design mai aerisit și lizibil**: textul din Studio, Managerul de rutine și player crește de la 8–9 la 9–10 pt, mai mult spațiu între elemente, butoane plate fără bold peste tot, tab-uri mai mari. Rândurile din liste cresc odată cu textul (nu se mai taie).
 - **🎨 Mărimea textului** (🌐 Setări Studio → Aspect): Mic / Normal / Mare / Foarte mare, pentru toată aplicația (fonturi + widget-uri customtkinter), aplicată la pornire. Fișier nou `%APPDATA%\AutoPilotDC\aspect.json`.

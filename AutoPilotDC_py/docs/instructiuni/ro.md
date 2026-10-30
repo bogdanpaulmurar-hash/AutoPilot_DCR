@@ -362,3 +362,15 @@ Uneori apar mesaje sau erori pe care le știi dinainte (ex. „Sigur vrei să î
 - **🎬 Filme → Deschide filmele cu**: playerul AutoPilot (redare + editare), aplicația implicită din Windows sau altă aplicație de pe laptop (ex. VLC). Pentru alte aplicații filmul se exportă o dată în MP4, lângă el (GIF dacă lipsește opencv-python). Aceeași alegere e și în ⚙ Setări → Video.
 
 > Exemplu: 🌐 Setări Studio → 📁 Unde se salvează → ☁ OneDrive → Salvează; rutina nouă salvată cu 💾 propune folderul `OneDrive\AutoPilotDC\rutine`, iar filmele ajung în `OneDrive\AutoPilotDC\filme`.
+
+## 32. Bara de activități, tab-uri, cronologie, ecranul Excel și fluxul
+
+Studio are o **bară de activități** în stânga: 🧱 Pași, 📚 Bibliotecă, 📋 Rutine, 🎬 Filme, iar jos 🌐 Setări și ❓ Ghid. Fiecare iconiță schimbă doar panoul de lângă ea; rutina rămâne pe loc. Un click pe iconița deja aleasă **strânge panoul** (mai mult loc pentru rutină pe un laptop); încă un click îl redeschide. Aplicația ține minte panoul ales.
+
+- **Tab-uri pentru rutine**: fiecare rutină deschisă are tab-ul ei deasupra pașilor (● = modificări nesalvate). **+** sau 📄 Nou deschide o rutină nouă într-un tab nou; × închide tab-ul (te întreabă dacă vrei să salvezi). O rutină deja deschisă nu se deschide de două ori: se arată tab-ul ei. Cât rulează o rutină nu poți schimba tab-ul.
+- **Vederea din centru**: **✎ Pași** (lista, pentru editare), **🔀 Flux** (rutina ca flux de carduri, cu „Atunci” și „Altfel” una lângă alta; doar citire: click pe un card arată proprietățile pasului în dreapta, dublu-click te duce la pas în listă) și **📊 Excel**.
+- **📊 Excel**: rândurile fișierului din primul pas „Pentru fiecare rând Excel”, cu statusul și minutul din film. Când rulezi o rutină cu Excel, ecranul acesta se deschide singur și arată rândul în lucru. Alegi un rând: în dreapta vezi pașii lui, eroarea și captura ei; **↻ Reia rândul** rulează din nou doar acel rând (și pașii de dinaintea buclei, de ex. deschiderea browserului), **🎬 Vezi în film** deschide filmul rulării la minutul rândului (dacă filmarea la rulare e pornită din Setări → Video).
+- **⏱ Cronologie** (jos, lângă Log): un card pentru fiecare pas terminat, cu ✓ / ✕, rândul Excel, durata și, la erori, mesajul și captura ecranului (dublu-click pe captură o deschide mare). Click pe un card arată pasul în rutină.
+- **🎬 Filme**: filmele salvate, cele mai noi primele; dublu-click le deschide cu aplicația aleasă în 🌐 Setări Studio → 🎬 Filme.
+
+> Exemplu: deschide **Exemple → 03 Web + Excel**, apasă ▶ Rulează. Centrul trece pe 📊 Excel și colorează fiecare rând (verde OK, roșu eroare). Alegi un rând roșu, citești eroarea în dreapta și apeși ↻ Reia rândul.
