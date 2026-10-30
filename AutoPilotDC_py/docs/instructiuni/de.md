@@ -364,3 +364,15 @@ Manchmal erscheinen Meldungen oder Fehler, die Sie vorher kennen (z. B. „Wirkl
 - **🎬 Videos → Videos öffnen mit**: der AutoPilot-Player (Wiedergabe + Bearbeitung), die Standardanwendung von Windows oder eine andere Anwendung auf dem Laptop (z. B. VLC). Für andere Anwendungen wird das Video einmal als MP4 daneben exportiert (GIF, wenn opencv-python fehlt). Dieselbe Auswahl gibt es unter ⚙ Einstellungen → Video.
 
 > Beispiel: 🌐 Studio-Einstellungen → 📁 Speicherorte → ☁ OneDrive → Speichern; eine neue, mit 💾 gespeicherte Routine schlägt den Ordner `OneDrive\AutoPilotDC\rutine` vor, Videos landen in `OneDrive\AutoPilotDC\filme`.
+
+## 32. Aktivitaetsleiste, Tabs, Zeitachse, Excel-Ansicht und Ablauf
+
+Studio hat links eine **Aktivitaetsleiste**: 🧱 Schritte, 📚 Bibliothek, 📋 Routinen, 🎬 Videos, unten 🌐 Einstellungen und ❓ Anleitung. Jedes Symbol wechselt nur das Feld daneben; die Routine bleibt, wo sie ist. Ein Klick auf das bereits gewaehlte Symbol **klappt das Feld ein** (mehr Platz fuer die Routine auf einem Laptop); ein weiterer Klick oeffnet es wieder. Die App merkt sich das gewaehlte Feld.
+
+- **Tabs fuer Routinen**: jede offene Routine hat ihren Tab ueber den Schritten (● = ungespeicherte Aenderungen). **+** oder 📄 Neu oeffnet eine neue Routine in einem neuen Tab; × schliesst den Tab (mit Frage, ob gespeichert werden soll). Eine bereits offene Routine wird nicht doppelt geoeffnet: ihr Tab wird gezeigt. Waehrend eine Routine laeuft, kann der Tab nicht gewechselt werden.
+- **Die Ansicht in der Mitte**: **✎ Schritte** (die Liste, zum Bearbeiten), **🔀 Ablauf** (die Routine als Ablauf aus Karten, „Dann“ und „Sonst“ nebeneinander; nur lesen: Klick auf eine Karte zeigt rechts die Eigenschaften des Schritts, Doppelklick fuehrt zum Schritt in der Liste) und **📊 Excel**.
+- **📊 Excel**: die Zeilen der Datei aus dem ersten Schritt „Fuer jede Excel-Zeile“, mit Status und Minute im Video. Beim Ausfuehren einer Routine mit Excel oeffnet sich diese Ansicht von selbst und zeigt die Zeile in Arbeit. Waehle eine Zeile: rechts stehen ihre Schritte, der Fehler und sein Screenshot; **↻ Zeile wiederholen** fuehrt nur diese Zeile erneut aus (plus die Schritte vor der Schleife, z. B. Browser oeffnen), **🎬 Im Video ansehen** oeffnet das Video des Laufs an der Minute der Zeile (wenn die Aufnahme beim Ausfuehren unter Einstellungen → Video aktiv ist).
+- **⏱ Zeitachse** (unten, neben dem Log): eine Karte fuer jeden fertigen Schritt, mit ✓ / ✕, Excel-Zeile, Dauer und bei Fehlern Meldung und Screenshot (Doppelklick auf den Screenshot oeffnet ihn gross). Klick auf eine Karte zeigt den Schritt in der Routine.
+- **🎬 Videos**: die gespeicherten Videos, die neuesten zuerst; Doppelklick oeffnet sie mit der App aus 🌐 Studio-Einstellungen → 🎬 Videos.
+
+> Beispiel: Oeffne **Beispiele → 03 Web + Excel** und druecke ▶ Ausfuehren. Die Mitte wechselt zu 📊 Excel und faerbt jede Zeile (gruen OK, rot Fehler). Waehle eine rote Zeile, lies rechts den Fehler und druecke ↻ Zeile wiederholen.

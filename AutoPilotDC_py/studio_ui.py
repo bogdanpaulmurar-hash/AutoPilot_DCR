@@ -51,6 +51,7 @@ from rpr import scan as rpr_scan
 from rpr import subroutine as rpr_sub
 from rpr.storage import Examples, ExcelInfo, RepositoryStore, RoutineStore, RprPaths, RunLogExporter
 import ui_theme   # v4.14: contrast automat, texte care se rup dupa latime
+import studio_views   # v4.15: bara de activitati, tab-uri, cronologie, ecranul Excel, fluxul
 
 try:
     from i18n import tr   # limba interfetei (listele de mai jos se traduc doar la afisare)
@@ -424,10 +425,13 @@ class StudioRunHost(RunHost):
     def row_started(self, row, sheet):
         if self._p.video is not None:
             self._p.video.row_started(row, sheet)   # fara Tk: poate rula pe firul motorului
+        film, sec = self.video_position()           # v4.15: minutul randului, pentru ecranul Excel
+        self._p.post("row_started", (row, sheet, film, sec))
 
     def row_finished(self, row, status):
         if self._p.video is not None:
             self._p.video.row_finished(row, status)
+        self._p.post("row_finished", (row, status))
 
     @property
     def video_recorder(self):
@@ -543,6 +547,9 @@ class StudioPanel(tk.Frame):
         self._items: Dict[str, Tuple[str, Optional[RprNode], List[RprNode]]] = {}
         self._running_iid: Optional[str] = None
         self._log_entries: List[RunLogEntry] = []
+        self._step_t0: Dict[str, float] = {}                # v4.15: cronologia rularii
+        self._step_errors: Dict[str, Tuple[str, str]] = {}
+        self._cur_row = 0
 
         self._last_folder = ("", "")   # v4.11: ultimul folder ales la scanare; il folosesc si capturile 3 s
         self._prep_runner = None    # pregatirea care ruleaza (📂 Manager de rutine)
@@ -552,6 +559,7 @@ class StudioPanel(tk.Frame):
         self._build()
         self.load_repository(self.studio_settings.library_path or RprPaths.default_repository())
         self.new_routine(ask=False)
+        self._restore_side()
         self.after(50, self._poll)
         self.after(400, lambda: ui_theme.fix_contrast(self))   # v4.14: niciun text greu de citit
         # 📂 rutinele din folderul setat se citesc in fundal (Managerul de rutine le are gata)
@@ -628,39 +636,58 @@ class StudioPanel(tk.Frame):
 
     def _build(self):
         C = self.C
+        # v4.15: bara de activitati in stanga; fiecare iconita schimba doar panoul lateral
+        self._rail = studio_views.ActivityBar(self, C, [
+            ("steps", "🧱", "Pasi", "panel"), ("library", "📚", "Biblioteca", "panel"),
+            ("routines", "📋", "Rutine", "panel"), ("films", "🎬", "Filme", "panel"), None,
+            ("settings", "🌐", "Setari", "action"), ("guide", "❓", "Ghid", "action")],
+            on_panel=self._on_rail, on_action=self._on_rail_action)
+        self._rail.pack(side="left", fill="y")
         vpaned = ttk.PanedWindow(self, orient="vertical", style="Studio.TPanedwindow")
         vpaned.pack(fill="both", expand=True, padx=6, pady=6)
         hpaned = ttk.PanedWindow(vpaned, orient="horizontal", style="Studio.TPanedwindow")
         vpaned.add(hpaned, weight=4)
         self._vpaned, self._hpaned = vpaned, hpaned
 
-        # ── Stanga: blocuri + obiecte ──
+        # ── Stanga: panoul activitatii alese (blocuri, obiecte, rutine, filme) ──
         left = tk.Frame(hpaned, bg=C["bg_main"], width=260)
         hpaned.add(left, weight=1)
-        nb = ttk.Notebook(left, style="Studio.TNotebook")
-        nb.pack(fill="both", expand=True)
-        tb = ScrollFrame(nb, C["bg_main"])
-        nb.add(tb, text="🧱 Pasi")
+        self._side, self._side_shown = left, True
+        tb = ScrollFrame(left, C["bg_main"])
         self._build_toolbox(tb.inner)
-        ob = tk.Frame(nb, bg=C["bg_main"])
-        nb.add(ob, text="📚 Biblioteca")
+        ob = tk.Frame(left, bg=C["bg_main"])
         self._build_objects(ob)
-        rt = tk.Frame(nb, bg=C["bg_main"])
-        nb.add(rt, text="📋 Rutine")
+        rt = tk.Frame(left, bg=C["bg_main"])
         self._build_routines_tab(rt)
-        self._left_nb = nb
-        nb.bind("<<NotebookTabChanged>>", lambda e: self._on_left_tab(), add="+")
+        self._films = studio_views.FilmsPanel(left, self)
+        self._side_pages = {"steps": tb, "library": ob, "routines": rt, "films": self._films}
 
-        # ── Centru: arborele rutinei ──
+        # ── Centru: tab-urile rutinelor + pasii / fluxul / ecranul Excel ──
         center = tk.Frame(hpaned, bg=C["bg_main"])
         hpaned.add(center, weight=3)
-        head = tk.Frame(center, bg=C["bg_main"])
-        head.pack(fill="x", pady=(0, 4))
-        self._title = self._label(head, "Rutina noua", 12, True, C["primary"], anchor="w")
-        self._title.pack(side="top", fill="x", padx=4)
+        top = tk.Frame(center, bg=C["bg_main"])
+        top.pack(fill="x", pady=(0, 2))
+        views = tk.Frame(top, bg=C["bg_main"])
+        views.pack(side="right")
+        self._view_btns: Dict[str, tk.Button] = {}
+        for key, text, tip in [("steps", "✎ Pasi", "Pasii rutinei, ca lista (editare)"),
+                               ("flow", "🔀 Flux", "Rutina ca flux de carduri: ramurile una langa alta (doar citire)"),
+                               ("excel", "📊 Excel", "Randurile Excel ale rutinei: status, film, reia randul")]:
+            b = self._btn(views, text, lambda k=key: self.show_center(k), tip=tip)
+            b.configure(padx=8)
+            b.pack(side="left", padx=1)
+            self._view_btns[key] = b
+        self._doc_tabs = studio_views.DocTabs(top, C, on_switch=self.switch_doc, on_close=self.close_doc,
+                                              on_new=lambda: self.new_routine())
+        self._doc_tabs.pack(side="left", fill="x", expand=True)
+        self._doc_tabs.bind("<Configure>", lambda e: self._render_tabs(), add="+")
+        self._docs: List[Dict[str, Any]] = []
+        self._doc_i = 0
+        self._tabs_sig = None
         # butoanele pe rand separat: un nume lung de rutina nu le mai impinge in afara ecranului
-        bar = tk.Frame(head, bg=C["bg_main"])
-        bar.pack(side="top", fill="x", pady=(2, 0))
+        bar = tk.Frame(center, bg=C["bg_main"])
+        bar.pack(side="top", fill="x", pady=(2, 4))
+        self._edit_bar = bar
         for text, cmd, tip in [("▲", lambda: self.move(-1), "Muta sus (Ctrl+Sus)"),
                                ("▼", lambda: self.move(1), "Muta jos (Ctrl+Jos)"),
                                ("Duplica", self.duplicate, "Duplica pasul cu tot ce contine (Ctrl+D)"),
@@ -669,8 +696,15 @@ class StudioPanel(tk.Frame):
                                ("⚙ Rutina", self.show_routine_settings, "Setarile rutinei si variabilele")]:
             self._btn(bar, text, cmd, tip=tip).pack(side="left", padx=1)
 
-        tree_box = tk.Frame(center, bg=C["bg_main"])
+        stack = tk.Frame(center, bg=C["bg_main"])
+        stack.pack(fill="both", expand=True)
+        tree_box = tk.Frame(stack, bg=C["bg_main"])
+        self._flow = studio_views.FlowView(stack, self)
+        self._excel = studio_views.ExcelRunView(stack, self)
+        self._center_views = {"steps": tree_box, "flow": self._flow, "excel": self._excel}
+        self._view = "steps"
         tree_box.pack(fill="both", expand=True)
+        self._paint_view_btns()
         self.tree = ttk.Treeview(tree_box, show="tree", style="Studio.Treeview", selectmode="browse")
         vsb = ttk.Scrollbar(tree_box, orient="vertical", command=self.tree.yview)
         self.tree.configure(yscrollcommand=vsb.set)
@@ -708,6 +742,9 @@ class StudioPanel(tk.Frame):
             pw.bind("<ButtonRelease-1>", lambda e: self.after(50, self._save_layout), add="+")
         hpaned.bind("<Configure>", lambda e: self._layout_later(), add="+")
         self.after(150, self._apply_layout)
+        self._bottom = bottom
+        self._timeline = studio_views.RunTimeline(bottom, C, on_pick=self._timeline_pick, on_open=self.open_path)
+        bottom.add(self._timeline, text="⏱ Cronologie")
         logf = tk.Frame(bottom, bg=C["bg_main"])
         bottom.add(logf, text="📋 Log rulare")
         lbar = tk.Frame(logf, bg=C["bg_main"])
@@ -753,8 +790,11 @@ class StudioPanel(tk.Frame):
             lw = max(180, int(avail * left / (left + right)))
             rw = max(220, avail - lw)
         try:
-            hp.sashpos(0, lw)
-            hp.sashpos(1, W - rw)
+            if self._side_shown:
+                hp.sashpos(0, lw)
+                hp.sashpos(1, W - rw)
+            else:                             # v4.15: panoul lateral strans din bara de activitati
+                hp.sashpos(0, W - min(rw, W - 280))
             vp.sashpos(0, max(200, int(H * (1 - min(0.5, max(0.1, bottom))))))
         except tk.TclError:
             pass
@@ -773,9 +813,13 @@ class StudioPanel(tk.Frame):
         W, H = hp.winfo_width(), vp.winfo_height()
         if W < 200 or H < 200:
             return
+        lay = dict(getattr(self.studio_settings, "layout", None) or {})
         try:
-            lay = {"left": round(hp.sashpos(0) / W, 3), "right": round((W - hp.sashpos(1)) / W, 3),
-                   "bottom": round((H - vp.sashpos(0)) / H, 3)}
+            if self._side_shown:
+                lay.update(left=round(hp.sashpos(0) / W, 3), right=round((W - hp.sashpos(1)) / W, 3))
+            else:
+                lay.update(right=round((W - hp.sashpos(0)) / W, 3))
+            lay["bottom"] = round((H - vp.sashpos(0)) / H, 3)
         except tk.TclError:
             return
         self._layout_w = W
@@ -1124,12 +1168,214 @@ class StudioPanel(tk.Frame):
         self._rt_loaded_at = 0.0
         self._update_routines_label()
 
-    def _on_left_tab(self):
+    # =========================================================================
+    # v4.15: bara de activitati + panoul lateral
+    # =========================================================================
+    def _on_rail(self, key: Optional[str]):
+        """key=None: panoul lateral se strange (click pe iconita activa); altfel se arata pagina aleasa."""
+        hp = self._hpaned
+        if key is None:
+            if self._side_shown:
+                self._save_layout()
+                hp.forget(self._side)
+                self._side_shown = False
+                self.after(30, self._apply_layout)
+            ui_theme.save(side_collapsed=True)
+            return
+        for k, page in self._side_pages.items():
+            if k != key:
+                page.pack_forget()
+        self._side_pages[key].pack(fill="both", expand=True)
+        if not self._side_shown:
+            hp.insert(0, self._side, weight=1)
+            self._side_shown = True
+            self.after(30, self._apply_layout)
+        if key == "routines" and time.time() - self._rt_loaded_at > 30:
+            self.refresh_routines()
+        elif key == "films" and time.time() - self._films.loaded_at > 30:
+            self._films.refresh()
+        ui_theme.save(side_panel=key, side_collapsed=False)
+
+    def _on_rail_action(self, key: str):
+        if key == "settings":
+            self.show_settings()
+        elif key == "guide":
+            self.show_guide()
+
+    def show_side(self, key: str):
+        """Deschide o pagina din panoul lateral (si din cod: ex. Biblioteca dupa o captura)."""
+        self._rail.select(key)
+
+    def _restore_side(self):
+        a = ui_theme.load()
+        key = str(a.get("side_panel") or "steps")
+        if key not in self._side_pages:
+            key = "steps"
+        self._rail.select(key)
+        if a.get("side_collapsed"):
+            self._rail.collapsed = True
+            self._rail._paint()
+            self._on_rail(None)
+
+    def open_path(self, path: str):
+        """Deschide un fisier / folder cu aplicatia din Windows."""
         try:
-            if "Rutine" in self._left_nb.tab(self._left_nb.select(), "text") and time.time() - self._rt_loaded_at > 30:
-                self.refresh_routines()
-        except Exception:  # noqa: BLE001
-            pass
+            os.startfile(path)  # type: ignore[attr-defined]
+        except AttributeError:
+            subprocess.Popen(["xdg-open", path])
+        except OSError as ex:
+            messagebox.showerror("Studio RPR", str(ex), parent=self)
+
+    # =========================================================================
+    # v4.15: centrul — pasi (lista) / flux / ecranul Excel
+    # =========================================================================
+    def _paint_view_btns(self):
+        C = self.C
+        for k, b in self._view_btns.items():
+            on = k == self._view
+            bg = C["primary"] if on else C["bg_input"]
+            b.configure(bg=bg, fg=ui_theme.text_on(bg, self) if on else C["text"])
+
+    def show_center(self, view: str, select: Optional[str] = None):
+        if view not in self._center_views:
+            return
+        if view != self._view:
+            self._center_views[self._view].pack_forget()
+            self._view = view
+            self._center_views[view].pack(fill="both", expand=True)
+            self._paint_view_btns()
+        if view == "steps":
+            if not self._edit_bar.winfo_ismapped():
+                self._edit_bar.pack(side="top", fill="x", pady=(2, 4), before=self._center_views["steps"].master)
+        else:
+            self._edit_bar.pack_forget()
+        self._refresh_center()
+        if select:
+            self.select_node(select)
+
+    def _refresh_center(self):
+        view = getattr(self, "_view", "steps")
+        if view == "flow":
+            self._flow.refresh()
+            sel = self.tree.selection()
+            if sel and sel[0] in self._flow.cards:
+                self._flow.select(sel[0])
+        elif view == "excel":
+            self._bind_excel()
+
+    def first_for_each(self, routine: Optional[Routine] = None) -> Optional[ForEachRowNode]:
+        for n in (routine or self.routine).all_nodes():
+            if isinstance(n, ForEachRowNode) and n.enabled:
+                return n
+        return None
+
+    def _bind_excel(self):
+        f = self.first_for_each()
+        path = ""
+        if f is not None:
+            from rpr.variables import VariableStore
+            vs = VariableStore()
+            for k, v in self.routine.variables.items():
+                vs.set(k, v)
+            path = vs.resolve(f.file_path).strip().strip('"')
+        self._excel.bind_node(f, path)
+
+    def select_node(self, node_id: str):
+        if self.tree.exists(node_id):
+            self.tree.see(node_id)
+            self.tree.selection_set(node_id)
+            self.tree.focus(node_id)
+
+    def _timeline_pick(self, node_id: str):
+        self.select_node(node_id)
+        if self._view == "flow":
+            self._flow.select(node_id)
+
+    def rerun_excel_row(self, f: ForEachRowNode, row: int):
+        """Ruleaza din nou doar randul ales: o copie a rutinei, cu bucla Excel limitata la acel rand."""
+        if self.busy:
+            return
+        r = copy.deepcopy(self.routine)
+        target = next((n for n in r.all_nodes() if n.id == f.id), None)
+        if target is None:
+            return
+        if not messagebox.askyesno("Reia randul", f"Rulez din nou randul {row}?\n"
+                                                  "Pasii de dinaintea buclei Excel (ex. deschiderea browserului) "
+                                                  "ruleaza si ei.", parent=self):
+            return
+        target.start_row = target.end_row = row
+        target.skip_completed_rows = False
+        self.run(routine=r)
+
+    # =========================================================================
+    # v4.15: mai multe rutine deschise (tab-uri)
+    # =========================================================================
+    def _store_doc(self):
+        d = {"routine": self.routine, "path": self.routine_path, "dirty": self.dirty}
+        if not self._docs:
+            self._docs.append(d)
+            self._doc_i = 0
+        else:
+            self._docs[self._doc_i] = d
+
+    def _render_tabs(self):
+        docs = [(d["routine"].name, d["dirty"], d["path"] or "") for d in self._docs]
+        sig = (tuple(docs), self._doc_i, self._doc_tabs.winfo_width() // 80)
+        if sig == self._tabs_sig:
+            return
+        self._tabs_sig = sig
+        self._doc_tabs.render(docs, self._doc_i)
+
+    def _pristine(self) -> bool:
+        return not self.dirty and not self.routine_path and not self.routine.steps
+
+    def _new_doc_slot(self):
+        """Tab-ul in care intra o rutina noua / deschisa: cel curent daca e gol, altfel unul nou."""
+        if self._docs and self._pristine():
+            return
+        if self._docs:
+            self._store_doc()
+        self._docs.append({"routine": Routine(), "path": None, "dirty": False})
+        self._doc_i = len(self._docs) - 1
+
+    def _busy_block(self) -> bool:
+        if self.busy:
+            messagebox.showinfo("Studio RPR", "Rutina ruleaza. Asteapta sa se termine (sau apasa ⏹ Stop), apoi "
+                                              "schimba rutina.", parent=self)
+            return True
+        return False
+
+    def _activate_doc(self, i: int):
+        d = self._docs[i]
+        self._doc_i = i
+        self.routine, self.routine_path, self.dirty = d["routine"], d["path"], d["dirty"]
+        self._load_routine_library(self.routine)
+        self.rebuild_tree()
+        self.show_routine_settings()
+        self._update_title()
+
+    def switch_doc(self, i: int):
+        if i == self._doc_i or not 0 <= i < len(self._docs) or self._busy_block():
+            return
+        self._store_doc()
+        self._activate_doc(i)
+
+    def close_doc(self, i: int):
+        if not 0 <= i < len(self._docs) or self._busy_block():
+            return
+        if i != self._doc_i:
+            self.switch_doc(i)
+        if not self._confirm_current():
+            return
+        del self._docs[self._doc_i]
+        if not self._docs:
+            self.new_routine(ask=False)
+            return
+        self._activate_doc(min(self._doc_i, len(self._docs) - 1))
+
+    def next_doc(self, step: int = 1):
+        if len(self._docs) > 1:
+            self.switch_doc((self._doc_i + step) % len(self._docs))
 
     def _update_routines_label(self):
         folder = self.studio_settings.effective_routines_folder()
@@ -1387,10 +1633,12 @@ class StudioPanel(tk.Frame):
         self._update_title()
 
     def _update_title(self):
-        name = self.routine.name or "Rutina noua"
-        self._title.configure(text=f"{name}{'  •  nesalvat' if self.dirty else ''}")
+        if not hasattr(self, "_doc_tabs"):
+            return
+        self._store_doc()      # v4.15: numele si "nesalvat" apar pe tab-ul rutinei
+        self._render_tabs()
 
-    def confirm_discard(self) -> bool:
+    def _confirm_current(self) -> bool:
         if not self.dirty:
             return True
         ans = messagebox.askyesnocancel("Studio RPR", f"Rutina \"{self.routine.name}\" are modificari nesalvate.\n"
@@ -1399,9 +1647,24 @@ class StudioPanel(tk.Frame):
             return False
         return self.save_routine() if ans else True
 
+    def confirm_discard(self) -> bool:
+        """La inchiderea aplicatiei: fiecare tab cu modificari nesalvate e intrebat."""
+        self._store_doc()
+        for i in range(len(self._docs)):
+            if not self._docs[i]["dirty"]:
+                continue
+            if i != self._doc_i:
+                self._store_doc()
+                self._activate_doc(i)
+            if not self._confirm_current():
+                return False
+        return True
+
     def new_routine(self, ask=True):
-        if ask and not self.confirm_discard():
+        """v4.15: rutina noua intr-un tab nou (tab-ul curent ramane deschis cu rutina lui)."""
+        if ask and self._busy_block():
             return
+        self._new_doc_slot()
         self.routine = Routine(name="Rutina noua")
         self.routine.repository_path = "" if self._is_default_library() else self.repo_path
         self.routine_path = None
@@ -1410,19 +1673,32 @@ class StudioPanel(tk.Frame):
         self.show_routine_settings()
         self._update_title()
 
+    def _find_doc(self, path: str) -> int:
+        key = os.path.normcase(os.path.abspath(path))
+        self._store_doc()
+        for i, d in enumerate(self._docs):
+            if d["path"] and os.path.normcase(os.path.abspath(d["path"])) == key:
+                return i
+        return -1
+
     def open_routine(self, path: Optional[str] = None):
-        if not self.confirm_discard():
+        if self._busy_block():
             return
         path = path or filedialog.askopenfilename(
             parent=self, title="Deschide rutina", initialdir=RprPaths.routines(),
             filetypes=[("Rutine AutoPilot", "*.rpr.json *.json"), ("Toate fisierele", "*.*")])
         if not path:
             return
+        i = self._find_doc(path)
+        if i >= 0:                 # v4.15: rutina e deja deschisa intr-un tab: doar il aratam
+            self.switch_doc(i)
+            return
         try:
             r = RoutineStore.load(path, self.repo)
         except Exception as ex:  # noqa: BLE001
             messagebox.showerror("Studio RPR", f"Rutina nu poate fi deschisa:\n{ex}", parent=self)
             return
+        self._new_doc_slot()
         self.routine = r
         self._load_routine_library(r)
         converted = not path.lower().endswith(".rpr.json")
@@ -1967,6 +2243,8 @@ class StudioPanel(tk.Frame):
             self.tree.selection_set(select.id)
             self.tree.focus(select.id)
         self._update_title()
+        if getattr(self, "_view", "steps") != "steps":
+            self._refresh_center()
 
     def _node_text(self, node: RprNode) -> str:
         return f"{icon_for(node)}  {node.title}{'   💬' if node.comment.strip() else ''}"
@@ -3013,6 +3291,16 @@ class StudioPanel(tk.Frame):
                 if self.tree.exists(node.id):
                     tags = [t for t in self.tree.item(node.id, "tags") if t not in ("running", "ok", "error")]
                     self.tree.item(node.id, tags=tags + ["ok" if ok else "error"])
+                self._step_finished(node, ok)
+            elif kind == "row_started":
+                row, sheet, film, sec = p
+                self._cur_row = row
+                self._excel.row_started(row, film, sec)
+                self._timeline.set_summary(f"Rulare in curs · randul {row}")
+            elif kind == "row_finished":
+                self._excel.row_finished(*p)
+            elif kind == "ui":
+                p()
             elif kind == "status":
                 self.set_status(p)
                 if isinstance(p, str) and p.startswith("Inregistrare oprita"):
@@ -3056,6 +3344,8 @@ class StudioPanel(tk.Frame):
 
     def _add_log(self, e: RunLogEntry):
         self._log_entries.append(e)
+        if str(e.level) == "Error" and e.node_id:   # captura si mesajul ajung pe cardul pasului din cronologie
+            self._step_errors[e.node_id] = (e.screenshot, e.message)
         iid = self.log.insert("", "end", values=(e.time.strftime("%H:%M:%S"), level_label(e.level),
                                                  e.excel_row or "", e.node_title[:60], e.message.replace("\n", " ")),
                               tags=(str(e.level),))
@@ -3065,6 +3355,8 @@ class StudioPanel(tk.Frame):
         self.log.see(iid)
 
     def _mark_running(self, node: RprNode):
+        self._step_t0[node.id] = time.monotonic()
+        prev = self._running_iid
         if self._running_iid and self.tree.exists(self._running_iid):
             tags = [t for t in self.tree.item(self._running_iid, "tags") if t != "running"]
             self.tree.item(self._running_iid, tags=tags)
@@ -3073,6 +3365,10 @@ class StudioPanel(tk.Frame):
             self.tree.item(node.id, tags=tags + ["running"])
             self.tree.see(node.id)
             self._running_iid = node.id
+        if self._view == "flow":
+            if prev:
+                self._flow.set_state(prev)
+            self._flow.set_state(node.id)
         if self._run_control:
             self._run_control.set_status(node.title)
         self.set_status("▶ " + node.title)
@@ -3095,12 +3391,16 @@ class StudioPanel(tk.Frame):
             except Exception as ex:  # noqa: BLE001
                 messagebox.showerror("Studio RPR", str(ex), parent=self)
 
-    def run(self, step_mode: bool = False, variables: Optional[Dict[str, str]] = None):
+    def run(self, step_mode: bool = False, variables: Optional[Dict[str, str]] = None,
+            routine: Optional[Routine] = None):
+        """routine: o copie de rulat in locul rutinei din editor (v4.15: Reia randul din ecranul Excel)."""
         if self.busy:
             if step_mode:
                 self.step_once()
             return
-        if not self.routine.steps:
+        override = routine is not None
+        routine = routine or self.routine
+        if not routine.steps:
             messagebox.showinfo("Rutina goala", "Rutina nu are pasi. Adauga pasi din stanga sau deschide un exemplu "
                                                 "(📚 Exemple).", parent=self)
             return
@@ -3109,6 +3409,7 @@ class StudioPanel(tk.Frame):
             if self.tree.exists(iid):
                 self.tree.item(iid, tags=[t for t in self.tree.item(iid, "tags") if t not in ("running", "ok", "error")])
         self.clear_log()
+        self._run_started_ui(routine, step_mode)
         self.engine = RprEngine(self.repo, self.drivers, StudioRunHost(self), RprPaths.output())
         self.engine.step_mode = step_mode
         self.engine.guard = StudioGuard() if safety else None
@@ -3120,7 +3421,7 @@ class StudioPanel(tk.Frame):
         if self.studio_settings.minimize_on_run and not step_mode:
             self.winfo_toplevel().iconify()
         self.set_status("PAS CU PAS: apasa ⏭ Pas pentru fiecare pas." if step_mode else "Rulez...")
-        engine, routine = self.engine, self.routine
+        engine = self.engine
         if self.video is not None and not step_mode:
             try:
                 self.video.run_started(routine.name, folder=rpr_report.video_folder(routine))   # 🎥 daca e activ in Setari → Video
@@ -3131,8 +3432,9 @@ class StudioPanel(tk.Frame):
         if dnd:
             safety.DoNotDisturb.enable(wait=False)   # cererea se inregistreaza imediat, pe firul interfetei
         if not step_mode:   # daca aplicatia se inchide brusc, la pornire se ofera reluarea
-            unsaved = self.dirty or not self.routine_path
-            self._resume_state = rpr_resume.begin(rpr_resume.KIND_ROUTINE, self.routine_path or "", routine.name,
+            unsaved = self.dirty or not self.routine_path or override
+            self._resume_state = rpr_resume.begin(rpr_resume.KIND_ROUTINE, "" if override else self.routine_path or "",
+                                                  routine.name,
                                                   routine=routine.to_dict() if unsaved else None, variables=variables)
 
         def work():
@@ -3152,6 +3454,36 @@ class StudioPanel(tk.Frame):
                 self.post("done", (result,))
 
         threading.Thread(target=work, daemon=True, name="StudioRun").start()
+
+    # ── v4.15: cronologia si ecranul Excel in timpul rularii ──
+    def _run_started_ui(self, routine: Routine, step_mode: bool):
+        self._step_t0.clear()
+        self._step_errors.clear()
+        self._cur_row = 0
+        self._timeline.clear()
+        self._timeline.set_summary(tr("Rulare in curs:") + f" {routine.name}")
+        try:
+            self._bottom.select(self._timeline)
+        except tk.TclError:
+            pass
+        f = self.first_for_each(routine)
+        if f is not None:
+            self._excel.reset_run()
+            if not step_mode:      # rutina cu Excel: ecranul de rulare pe randuri se deschide singur
+                self.show_center("excel")
+            self._excel.reload()
+
+    def _step_finished(self, node: RprNode, ok: bool):
+        if self._view == "flow":
+            self._flow.set_state(node.id)
+        if isinstance(node, ForEachRowNode):
+            self._cur_row = 0
+        if node.branches():         # in cronologie intra doar pasii propriu-zisi, nu blocurile
+            return
+        t0 = self._step_t0.pop(node.id, None)
+        ms = (time.monotonic() - t0) * 1000 if t0 else 0.0
+        shot, msg = self._step_errors.pop(node.id, ("", "")) if not ok else ("", "")
+        self._timeline.add(node.id, node.title, ok, self._cur_row, ms, shot, msg)
 
     def _run_finished(self, result):
         self.busy = False
@@ -3174,6 +3506,9 @@ class StudioPanel(tk.Frame):
         for k, v in sorted((self.engine.last_variables if self.engine else {}).items(), key=lambda kv: kv[0].lower()):
             self.vars.insert("", "end", values=(k, v))
         mark = "✔ " if result.success else "⏹ " if result.cancelled else "✖ "
+        self._timeline.set_summary(f"{mark}{tr(result.message)}  ·  {studio_views.fmt_time(self._timeline.elapsed())}")
+        if self._view == "flow":
+            self._flow.sync_states()
         report = getattr(result, "report_path", "")
         self.set_status(mark + result.message + (f"  📊 {report}" if report else ""))
         self.winfo_toplevel().deiconify()
@@ -3329,13 +3664,12 @@ class StudioPanel(tk.Frame):
             self.run_preparation(prep, start_index=int(state.done_items or 0))
             return True
         if state.routine:   # rutina avea modificari nesalvate: o refacem din copia salvata la pornire
-            if not self.confirm_discard():
-                return False
             try:
                 r = Routine.from_dict(state.routine)
             except Exception as ex:  # noqa: BLE001
                 messagebox.showerror("Studio RPR", f"Rutina nu poate fi refacuta:\n{ex}", parent=self)
                 return False
+            self._new_doc_slot()
             self.routine = r
             self._load_routine_library(r)
             self.routine_path = state.path or None
