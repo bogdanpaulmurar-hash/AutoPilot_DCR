@@ -348,5 +348,7 @@ Sometimes messages or errors show up that you know about in advance (e.g. "Are y
 - The error message is in the variable `{EroareRegula}`. With several rules, the one closest to the step is checked first.
 - Rules are checked only when a step fails; if the message does not come, nothing happens. The rule's own steps do not trigger other rules.
 - Browser: alert / confirm dialogs of the page are accepted automatically (the "Handle dialog" step chooses "dismiss"). A message inside the application page is an element: handle it with **If it appears** or a rule.
+- For messages choose the condition **The object is visible** (a hidden message "exists" in the page but cannot be seen).
+- **Demo**: the **Examples** button → **06 Demo - Daca apare si reguli la mesaj** (a local page, no internet): press "Porneste", "Are you sure?" appears, the rule closes it by itself, and "If it appears" carries on when the message is missing. Run it with **⏭ Step by step** to see every step.
 
 > Example: at the start of the routine, a **🧯 Rule** with "Sure" and the step Click on "Yes, close", then *retry the step*; if the message does not appear, the routine runs as before.

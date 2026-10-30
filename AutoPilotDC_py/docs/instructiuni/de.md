@@ -348,5 +348,7 @@ Manchmal erscheinen Meldungen oder Fehler, die Sie vorher kennen (z. B. „Wirkl
 - Die Fehlermeldung steht in der Variablen `{EroareRegula}`. Bei mehreren Regeln wird zuerst die dem Schritt naechste geprueft.
 - Regeln werden nur geprueft, wenn ein Schritt scheitert; kommt die Meldung nicht, passiert nichts. Die Schritte einer Regel loesen keine anderen Regeln aus.
 - Browser: alert-/confirm-Dialoge der Seite werden automatisch akzeptiert (der Schritt „Handle dialog“ waehlt „dismiss“). Eine Meldung innerhalb der Anwendungsseite ist ein Element: behandeln Sie sie mit **Falls es erscheint** oder einer Regel.
+- Waehlen Sie fuer Meldungen die Bedingung **Das Objekt ist sichtbar** (eine versteckte Meldung „existiert“ in der Seite, ist aber nicht zu sehen).
+- **Demo**: Schaltflaeche **Beispiele** → **06 Demo - Daca apare si reguli la mesaj** (lokale Seite, ohne Internet): Sie druecken „Porneste“, „Wirklich fortfahren?“ erscheint, die Regel schliesst es selbst, und „Falls es erscheint“ laeuft weiter, wenn die Meldung fehlt. Starten Sie es mit **⏭ Schritt fuer Schritt**, um jeden Schritt zu sehen.
 
 > Beispiel: am Anfang der Routine eine **🧯 Regel** mit „Sicher“ und dem Schritt Klick auf „Ja, schliessen“, dann *Schritt wiederholen*; erscheint die Meldung nicht, laeuft die Routine wie bisher.

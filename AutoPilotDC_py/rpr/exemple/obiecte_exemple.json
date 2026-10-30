@@ -208,6 +208,141 @@
       "attributes": {},
       "description": "Obiect din rutinele exemplu",
       "captured_at": "2026-10-15T15:22:33.3599552+03:00"
+    },
+    {
+      "name": "Demo2_Porneste",
+      "technology": "Web",
+      "locators": [
+        {
+          "kind": "Css",
+          "value": "#start",
+          "score": 70,
+          "enabled": true
+        }
+      ],
+      "context": "",
+      "frame_path": [],
+      "element_type": "",
+      "captured_text": "",
+      "screenshot": "",
+      "attributes": {},
+      "description": "Obiect din rutinele exemplu",
+      "captured_at": "2026-10-30T11:40:11.953941+00:00",
+      "object_type": "",
+      "site": "",
+      "page": "",
+      "parent": "",
+      "folder": "",
+      "url_patterns": [],
+      "tags": []
+    },
+    {
+      "name": "Demo2_Final",
+      "technology": "Web",
+      "locators": [
+        {
+          "kind": "Css",
+          "value": "#final",
+          "score": 70,
+          "enabled": true
+        }
+      ],
+      "context": "",
+      "frame_path": [],
+      "element_type": "",
+      "captured_text": "",
+      "screenshot": "",
+      "attributes": {},
+      "description": "Obiect din rutinele exemplu",
+      "captured_at": "2026-10-30T11:40:11.954029+00:00",
+      "object_type": "",
+      "site": "",
+      "page": "",
+      "parent": "",
+      "folder": "",
+      "url_patterns": [],
+      "tags": []
+    },
+    {
+      "name": "Demo2_Rezultat",
+      "technology": "Web",
+      "locators": [
+        {
+          "kind": "Css",
+          "value": "#res",
+          "score": 70,
+          "enabled": true
+        }
+      ],
+      "context": "",
+      "frame_path": [],
+      "element_type": "",
+      "captured_text": "",
+      "screenshot": "",
+      "attributes": {},
+      "description": "Obiect din rutinele exemplu",
+      "captured_at": "2026-10-30T11:40:11.954077+00:00",
+      "object_type": "",
+      "site": "",
+      "page": "",
+      "parent": "",
+      "folder": "",
+      "url_patterns": [],
+      "tags": []
+    },
+    {
+      "name": "Demo2_Mesaj",
+      "technology": "Web",
+      "locators": [
+        {
+          "kind": "Css",
+          "value": "#dlg",
+          "score": 70,
+          "enabled": true
+        }
+      ],
+      "context": "",
+      "frame_path": [],
+      "element_type": "",
+      "captured_text": "",
+      "screenshot": "",
+      "attributes": {},
+      "description": "Obiect din rutinele exemplu",
+      "captured_at": "2026-10-30T11:40:11.954123+00:00",
+      "object_type": "",
+      "site": "",
+      "page": "",
+      "parent": "",
+      "folder": "",
+      "url_patterns": [],
+      "tags": []
+    },
+    {
+      "name": "Demo2_Da",
+      "technology": "Web",
+      "locators": [
+        {
+          "kind": "Css",
+          "value": "#da",
+          "score": 70,
+          "enabled": true
+        }
+      ],
+      "context": "",
+      "frame_path": [],
+      "element_type": "",
+      "captured_text": "",
+      "screenshot": "",
+      "attributes": {},
+      "description": "Obiect din rutinele exemplu",
+      "captured_at": "2026-10-30T11:40:11.954163+00:00",
+      "object_type": "",
+      "site": "",
+      "page": "",
+      "parent": "",
+      "folder": "",
+      "url_patterns": [],
+      "tags": []
     }
   ]
 }

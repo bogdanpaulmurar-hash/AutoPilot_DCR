@@ -346,5 +346,7 @@ Uneori apar mesaje sau erori pe care le știi dinainte (ex. „Sigur vrei să î
 - Mesajul erorii e în variabila `{EroareRegula}`. Mai multe reguli: se verifică întâi cea mai apropiată de pas.
 - Regulile se verifică doar când un pas pică; dacă mesajul nu vine, nu se întâmplă nimic. Pașii din regulă nu declanșează alte reguli.
 - Browserul: ferestrele de tip alert / confirm ale paginii se acceptă automat (pasul „Handle dialog” alege „dismiss”). Un mesaj din pagina aplicației e un element: îl tratezi cu **Daca apare** sau cu o regulă.
+- Pentru mesaje alege condiția **Obiectul e vizibil** (un mesaj ascuns „există” în pagină, dar nu se vede).
+- **Demo**: butonul **Exemple** → **06 Demo - Daca apare si reguli la mesaj** (o pagină locală, fără internet): apeși „Porneste”, apare „Sigur vrei să continui?”, regula îl închide singură, iar „Daca apare” trece mai departe când mesajul lipsește. Rulează-l cu **⏭ Pas cu pas** ca să vezi fiecare pas.
 
 > Exemplu: la începutul rutinei, **🧯 Regula** cu „Sigur” și pasul Click pe „Da, închide”, apoi *reia pasul*; dacă mesajul nu apare, rutina rulează ca până acum.

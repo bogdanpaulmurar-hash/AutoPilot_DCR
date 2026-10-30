@@ -27,6 +27,7 @@ import re
 import subprocess
 import sys
 import threading
+import time
 import uuid
 from tkinter import filedialog, messagebox, ttk
 import tkinter as tk
@@ -189,7 +190,7 @@ TOOLBOX: List[Tuple[str, List[Tuple[str, str, Callable[[], RprNode]]]]] = [
         ("⏱  Asteapta", "Secunde sau pana apare / dispare ceva", WaitNode),
         ("🔀  Daca / Altfel", "Ramuri diferite dupa o conditie", IfNode),
         ("👁  Daca apare (optional)", "Asteapta scurt un mesaj / element; daca nu apare, rutina merge mai departe",
-         lambda: IfNode(optional=True, condition=Condition(kind=ConditionKind.ElementExists, timeout_ms=1500))),
+         lambda: IfNode(optional=True, condition=Condition(kind=ConditionKind.ElementVisible, timeout_ms=1500))),
         ("🧯  Regula la mesaj / eroare", "Pasi care ruleaza doar daca un pas esueaza cu un anumit mesaj (arma regula inainte)",
          RuleNode),
         ("🔁  Repeta", "De N ori, cat timp sau pana cand", LoopNode),
@@ -237,6 +238,32 @@ class ToolTip:
             self._tip = None
 
 
+_wheel_installed = False
+
+
+def _install_wheel(widget):
+    """O singura legare pe toata aplicatia: roata mouse-ului deruleaza cadrul de sub cursor, oriunde ar fi
+    cursorul in el (v4.13.1: inainte mergea doar deasupra barei, pentru ca Enter/Leave se pierdeau pe widgeturile din cadru)."""
+    global _wheel_installed
+    if _wheel_installed:
+        return
+    _wheel_installed = True
+
+    def handler(e):
+        try:
+            w = widget.winfo_containing(e.x_root, e.y_root)
+        except Exception:  # noqa: BLE001  (ex. lista deschisa a unui combobox)
+            return
+        while w is not None:
+            if isinstance(w, (ttk.Treeview, tk.Text, tk.Listbox, ttk.Combobox)):
+                return   # acestea se deruleaza singure
+            if isinstance(w, ScrollFrame):
+                w._wheel(e)
+                return
+            w = getattr(w, "master", None)
+    widget.winfo_toplevel().bind_all("<MouseWheel>", handler, add="+")
+
+
 class ScrollFrame(tk.Frame):
     """Cadru cu bara de derulare verticala; continutul se pune in .inner."""
 
@@ -251,13 +278,11 @@ class ScrollFrame(tk.Frame):
         self.canvas.pack(side="left", fill="both", expand=True)
         self.inner.bind("<Configure>", lambda e: self.canvas.configure(scrollregion=self.canvas.bbox("all")))
         self.canvas.bind("<Configure>", lambda e: self.canvas.itemconfigure(self._win, width=e.width))
-        for w in (self.canvas, self.inner):
-            w.bind("<Enter>", lambda e: self.canvas.bind_all("<MouseWheel>", self._wheel))
-            w.bind("<Leave>", lambda e: self.canvas.unbind_all("<MouseWheel>"))
+        _install_wheel(self)
 
     def _wheel(self, e):
         if self.canvas.winfo_height() < self.inner.winfo_height():
-            self.canvas.yview_scroll(int(-e.delta / 120), "units")
+            self.canvas.yview_scroll(int(-e.delta / 120) or (-1 if e.delta > 0 else 1), "units")
 
     def clear(self):
         for w in self.inner.winfo_children():
@@ -849,7 +874,7 @@ class StudioPanel(tk.Frame):
 
     def _on_left_tab(self):
         try:
-            if "Rutine" in self._left_nb.tab(self._left_nb.select(), "text"):
+            if "Rutine" in self._left_nb.tab(self._left_nb.select(), "text") and time.time() - self._rt_loaded_at > 30:
                 self.refresh_routines()
         except Exception:  # noqa: BLE001
             pass
@@ -880,6 +905,7 @@ class StudioPanel(tk.Frame):
                 shared_library().scan(folder)
             except Exception:  # noqa: BLE001
                 pass
+            self._rt_loaded_at = time.time()
             self.post("routines_ready", None)
         threading.Thread(target=work, daemon=True, name="RoutinesScan").start()
 
