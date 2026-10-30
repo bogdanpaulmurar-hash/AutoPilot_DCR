@@ -663,7 +663,7 @@ class RuleNode(RprNode):
     KIND_LABEL = "Regula la mesaj / eroare"
     error_contains: str = ""     # textul erorii (fara diferenta mare/mica); gol = nu conteaza
     use_element: bool = False    # sau: un element apare pe ecran (conditia de mai jos)
-    condition: Condition = field(default_factory=Condition)
+    condition: Condition = field(default_factory=lambda: Condition(kind=ConditionKind.ElementVisible))
     after: RuleAfter = RuleAfter.Retry
     body: List[RprNode] = field(default_factory=list)
 

@@ -130,3 +130,62 @@ class OptionalIfTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+def _playwright_ok():
+    try:
+        import playwright  # noqa: F401
+        return True
+    except ImportError:
+        return False
+
+
+class DemoRoutineTests(unittest.TestCase):
+    """Rutina demo 06 (pagina locala, fara internet): regula inchide mesajul, „Daca apare” trece mai departe."""
+
+    def _load(self):
+        import json
+        from rpr.model import ObjectRepository, Routine
+        base = os.path.join(APP, "rpr", "exemple")
+        with open(os.path.join(base, "obiecte_exemple.json"), encoding="utf-8") as f:
+            repo = ObjectRepository.from_dict(json.load(f))
+        with open(os.path.join(base, "06_Web_Mesaje_reguli_demo.rpr.json"), encoding="utf-8") as f:
+            return Routine.from_dict(json.load(f)), repo
+
+    def test_demo_references_known_objects(self):
+        r, repo = self._load()
+        missing = [n for n in r.referenced_objects() if repo.find(n) is None]
+        self.assertEqual([], missing)
+
+    @unittest.skipUnless(_playwright_ok(), "playwright nu e instalat")
+    def test_demo_runs_in_browser(self):
+        import tempfile
+        from rpr import DriverProvider, RprEngine, RunHost, UiTechnology
+        from rpr.drivers.web import PlaywrightDriver, WebSettings
+
+        class Host(RunHost):
+            def __init__(self):
+                self.lines = []
+
+            def log(self, e):
+                self.lines.append(str(e))
+
+        r, repo = self._load()
+        driver = PlaywrightDriver(WebSettings(browser=os.environ.get("APDC_TEST_BROWSER", "Edge"), headless=True))
+        try:
+            driver.open("about:blank")
+        except Exception as ex:  # noqa: BLE001
+            raise unittest.SkipTest(f"browserul nu porneste: {ex}")
+        try:
+            r.settings.step_delay_ms = 0
+            r.settings.highlight_before_action = False
+            r.settings.guard_enabled = False
+            host = Host()
+            engine = RprEngine(repo, DriverProvider({UiTechnology.Web: lambda: driver}), host, tempfile.mkdtemp())
+            result = engine.run(r)
+            self.assertTrue(result.success, result.message + "\n" + "\n".join(host.lines))
+            self.assertEqual("Gata", result.final_variables["Rezultat"])
+            self.assertTrue(any("Mesaj gasit" in x for x in host.lines), host.lines)
+            self.assertTrue(any("Nu a aparut" in x for x in host.lines), host.lines)
+        finally:
+            driver.close()
