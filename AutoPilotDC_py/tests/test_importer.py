@@ -91,6 +91,62 @@ class ImporterTests(unittest.TestCase):
         cond = [n for n in res.routine.steps if isinstance(n, IfNode)][0].condition
         self.assertEqual(len(cond.children), 2)
 
+    def test_if_else_nested_and_if_appears(self):
+        """v4.16.1: ALTFEL dupa DACA APARE, DACA in DACA, ALTFEL DACA, mesaj pentru SFARSIT pus inainte de ALTFEL."""
+        text = ('FOR EACH ROW {File}\n'
+                '  IF visible text "Contract"\n'
+                '    IF APPEARS button "OK"\n'
+                '      CLICK button "OK"\n'
+                '    END\n'
+                '    CLICK button "Save"\n'
+                '  ELSE\n'
+                '    LOG "fara contract"\n'
+                '  END\n'
+                '  IF APPEARS text "Error"\n'
+                '    WRITE EXCEL Result = Error\n'
+                '  ELSE\n'
+                '    WRITE EXCEL Result = OK\n'
+                '  END\n'
+                '  IF {Rand.Tip} = "A"\n'
+                '    LOG "A"\n'
+                '  ELSE IF {Rand.Tip} = "B"\n'
+                '    LOG "B"\n'
+                '  ELSE IF APPEARS text "C"\n'
+                '    LOG "C"\n'
+                '  ELSE\n'
+                '    LOG "altul"\n'
+                '  END\n'
+                'END\n'
+                'LOG "gata"')
+        res = StepImporter().parse(text)
+        self.assertEqual(res.errors, [], [(i.line, i.message) for i in res.issues])
+        self.assertFalse(any("SFARSIT" in i.message for i in res.issues))
+        loop = res.routine.steps[0]
+        self.assertIsInstance(loop, ForEachRowNode)
+        self.assertEqual(len(res.routine.steps), 2)   # LOG "gata" e in afara buclei
+        first, appears, chain = loop.body
+        self.assertEqual(len(first.then), 2)
+        self.assertTrue(first.then[0].optional)
+        self.assertEqual(len(first.else_), 1)
+        self.assertTrue(appears.optional)
+        self.assertEqual((len(appears.then), len(appears.else_)), (1, 1))
+        b = chain.else_[0]
+        self.assertIsInstance(b, IfNode)
+        c = b.else_[0]
+        self.assertTrue(c.optional)
+        self.assertEqual(len(c.else_), 1)
+
+    def test_else_after_end_explains(self):
+        res = StepImporter().parse('IF visible text "A"\n  LOG "a"\nEND\nELSE\n  LOG "b"\nEND')
+        msgs = [(i.line, i.message) for i in res.errors]
+        self.assertEqual(msgs[0][0], 4)
+        self.assertIn("randul 3", msgs[0][1])
+        res = StepImporter().parse('IF visible text "A"\nELSE\nELSE\nEND')
+        self.assertEqual(res.errors[0].line, 3)
+        i18n.load("en")
+        res = StepImporter().parse('IF visible text "A"\nEND\nELSE\nEND')
+        self.assertTrue(res.errors[0].message.startswith("ELSE after END"), res.errors[0].message)
+
     def test_prompt_lists_every_command(self):
         for lang in ("ro", "en"):
             i18n.load(lang)

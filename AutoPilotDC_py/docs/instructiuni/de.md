@@ -391,6 +391,7 @@ Das Format (Schlüsselwörter auf Englisch oder Rumänisch, Groß- oder Kleinsch
 - Kopf: `ROUTINE: <Name>`, `DESCRIPTION: <Text>`, `VARIABLE: Name = Wert`.
 - Schritte: `OPEN BROWSER <url>`, `GO TO <url>`, `CLICK <Objekt>`, `TYPE <Objekt> = <Text>`, `SELECT <Objekt> = <Option>`, `CHECK <Objekt>`, `PRESS Enter`, `READ <Objekt> -> {Var}`, `WAIT 2` oder `WAIT <Objekt> MAX 15`, `LOG "Text"`, `ASK "Text"`, `MANUAL "was der Mensch tut"`, `SAP TRANSACTION /nVA03`, `START APP notepad.exe`.
 - Blöcke: `IF <Bedingung>` … `ELSE` … `END`, `REPEAT 3` … `END`, `FOR EACH ROW {File} SHEET Daten` … `END` (Werte: `{Rand.Spalte}`, Schreiben: `WRITE EXCEL Ergebnis = OK`), `TRY` … `ON ERROR` … `END`.
+- `IF` … `ELSE` … `END` hat **nur ein** `END`, nach dem `ELSE`-Zweig. Ein `IF` (oder `IF APPEARS`) innerhalb eines anderen `IF` wird mit seinem eigenen `END` geschlossen. Mehrere Fälle: `ELSE IF <Bedingung>`, weiterhin mit nur einem `END` am Ende. `IF APPEARS <Objekt>` akzeptiert ebenfalls `ELSE`. Der Fehler „ELSE nach END“ nennt die Zeile des zu löschenden `END`.
 - Objekte: `button "Speichern"`, `field "Benutzer"`, `link "..."`, `list "Land"`, `checkbox "..."`, `text "..."`, `css "#id"`, `sap "wnd[0]/usr/..."`, `desktop "Name"` oder `[Name]` aus der Bibliothek.
 - Bedingungen: `{Var} = "x"`, `{Var} contains "x"`, `visible button "OK"`, `exists [Name]`, verknüpft mit `AND` / `OR`.
 - Eine vollständige `.rpr.json`-Routine wird ebenfalls angenommen. Was nicht automatisierbar ist, wird `MANUAL`: Die Routine hält an und wartet auf Weiter.

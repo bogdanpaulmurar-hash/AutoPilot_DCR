@@ -72,7 +72,7 @@ class ImportDialog(tk.Toplevel):
         tbox = tk.Frame(left, bg=C["bg_main"])
         tbox.pack(fill="both", expand=True)
         self.text = tk.Text(tbox, wrap="none", undo=True, bg=C["bg_input"], fg=C["text"], insertbackground=C["text"],
-                            font=("Consolas", 10), relief="flat", padx=6, pady=4)
+                            font=("Consolas", 10), relief="flat", padx=6, pady=4, height=8)
         ys = ttk.Scrollbar(tbox, orient="vertical", command=self.text.yview)
         self.text.configure(yscrollcommand=ys.set)
         ys.pack(side="right", fill="y")
@@ -86,22 +86,24 @@ class ImportDialog(tk.Toplevel):
         self.summary = tk.Label(right, text="", bg=C["bg_main"], fg=C["text"], font=(FONT, 10, "bold"), anchor="w",
                                 justify="left")
         self.summary.pack(fill="x")
-        self.tree = ttk.Treeview(right, show="tree", style="Studio.Treeview", selectmode="browse")
+        self.tree = ttk.Treeview(right, show="tree", style="Studio.Treeview", selectmode="browse", height=6)
         self.tree.pack(fill="both", expand=True, pady=(2, 6))
         tk.Label(right, text="Probleme (click = randul din text)", bg=C["bg_main"], fg=C["text_dim"],
                  font=(FONT, 10, "bold"), anchor="w").pack(fill="x")
-        self.issues = tk.Listbox(right, height=7, bg=C["bg_input"], fg=C["text"], relief="flat", font=(FONT, 10),
+        self.issues = tk.Listbox(right, height=5, bg=C["bg_input"], fg=C["text"], relief="flat", font=(FONT, 10),
                                  selectbackground=C["primary"], activestyle="none")
         self.issues.pack(fill="x")
         self.issues.bind("<<ListboxSelect>>", self._goto_issue)
         self._issue_lines = []
 
+        # jos, pus inaintea panourilor: pe un ecran mic se micsoreaza textul, nu dispare butonul
         foot = tk.Frame(self, bg=C["bg_main"])
-        foot.pack(fill="x", padx=12, pady=(0, 12))
+        foot.pack(side="bottom", fill="x", padx=12, pady=(0, 12), before=body)
         self.btn_create = self._b(foot, "✅ Creeaza rutina", self.create, C["success"])
         self.btn_create.pack(side="right", padx=2)
         self._b(foot, "Inchide", self.destroy).pack(side="right", padx=2)
         self.btn_create.configure(state="disabled")
+        self.bind("<Control-Return>", lambda e: self.create() if str(self.btn_create.cget("state")) != "disabled" else None)
         self.check()
         self.text.focus_set()
 

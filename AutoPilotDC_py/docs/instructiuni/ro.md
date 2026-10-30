@@ -389,6 +389,7 @@ Formatul (cuvinte cheie în română sau engleză, fără diferență mare / mic
 - Antet: `RUTINA: <nume>`, `DESCRIERE: <text>`, `VARIABILA: Nume = valoare`.
 - Pași: `DESCHIDE BROWSER <url>`, `MERGI LA <url>`, `CLICK <obiect>`, `SCRIE <obiect> = <text>`, `ALEGE <obiect> = <opțiune>`, `BIFEAZA <obiect>`, `APASA Enter`, `CITESTE <obiect> -> {Var}`, `ASTEAPTA 2` sau `ASTEAPTA <obiect> MAX 15`, `LOG "text"`, `INTREABA "text"`, `MANUAL "ce face omul"`, `SAP TRANZACTIE /nVA03`, `PORNESTE APLICATIE notepad.exe`.
 - Blocuri: `DACA <condiție>` … `ALTFEL` … `SFARSIT`, `REPETA 3` … `SFARSIT`, `PENTRU FIECARE RAND {Fisier} FOAIE Date` … `SFARSIT` (valori: `{Rand.Coloana}`, scriere: `SCRIE IN EXCEL Rezultat = OK`), `INCEARCA` … `LA EROARE` … `SFARSIT`.
+- `DACA` … `ALTFEL` … `SFARSIT` are **un singur** `SFARSIT`, după ramura `ALTFEL`. Un `DACA` (sau `DACA APARE`) din interiorul altui `DACA` se închide cu propriul `SFARSIT`. Mai multe variante: `ALTFEL DACA <condiție>`, tot cu un singur `SFARSIT` la final. `DACA APARE <obiect>` acceptă și `ALTFEL`. Eroarea „ALTFEL după SFARSIT” spune rândul `SFARSIT`-ului de șters.
 - Obiecte: `buton "Salvează"`, `camp "Utilizator"`, `link "..."`, `lista "Țara"`, `bifa "..."`, `text "..."`, `css "#id"`, `sap "wnd[0]/usr/..."`, `desktop "Nume"` sau `[Nume]` din bibliotecă.
 - Condiții: `{Var} = "x"`, `{Var} contine "x"`, `vizibil buton "OK"`, `exista [Nume]`, combinate cu `SI` / `SAU`.
 - Se acceptă și o rutină completă `.rpr.json`. Ce nu se poate automatiza devine `MANUAL`: rutina se oprește și așteaptă Continuă.

@@ -176,11 +176,12 @@ COMMANDS: List[Command] = [
             "Citeste textul unui obiect intr-o variabila."),
     Command("wait", ("asteapta",), ("wait",), "ASTEAPTA <secunde> | ASTEAPTA <obiect> [MAX <secunde>]",
             "WAIT <seconds> | WAIT <object> [MAX <seconds>]", "Asteapta secunde sau pana apare un obiect."),
-    Command("if_appears", ("daca apare",), ("if appears",), "DACA APARE <obiect> ... SFARSIT",
-            "IF APPEARS <object> ... END", "Pasii din interior ruleaza doar daca obiectul apare (fara eroare altfel)."),
+    Command("if_appears", ("daca apare",), ("if appears",), "DACA APARE <obiect> ... [ALTFEL ...] SFARSIT",
+            "IF APPEARS <object> ... [ELSE ...] END", "Pasii din interior ruleaza doar daca obiectul apare (fara eroare altfel)."),
     Command("if", ("daca",), ("if",), "DACA <conditie> ... [ALTFEL ...] SFARSIT", "IF <condition> ... [ELSE ...] END",
             "Ramuri dupa o conditie."),
-    Command("else", ("altfel",), ("else",), "ALTFEL", "ELSE", "Ramura cand conditia nu e adevarata."),
+    Command("else", ("altfel",), ("else",), "ALTFEL [DACA <conditie>]", "ELSE [IF <condition>]",
+            "Ramura cand conditia nu e adevarata."),
     Command("repeat", ("repeta",), ("repeat",), "REPETA <n> ... SFARSIT", "REPEAT <n> ... END",
             "Repeta pasii de n ori ({Repetare} = 1, 2, 3...)."),
     Command("for_each_row", ("pentru fiecare rand",), ("for each row",),
@@ -309,6 +310,9 @@ class StepImporter:
         self._url = ""
         # stiva: (nod, lista curenta, randul unde a inceput)
         self._stack: List[Tuple[Optional[RprNode], List[RprNode], int]] = [(None, res.routine.steps, 0)]
+        self._chained: set = set()          # DACA-urile deschise de ALTFEL DACA
+        self._end_if = 0                    # randul SFARSIT-ului care tocmai a inchis un DACA fara ALTFEL
+        self._prev_end_if = 0
         for no, raw in enumerate(text.split("\n"), 1):
             line = _clean_line(raw)
             if not line:
@@ -346,6 +350,7 @@ class StepImporter:
         if cmd is None:
             raise _LineError(_t("Comanda necunoscuta. Randul trebuie sa inceapa cu o comanda (ex: CLICK, SCRIE, "
                                 "DACA). Pentru un pas facut de om foloseste MANUAL \"...\"."))
+        self._prev_end_if, self._end_if = self._end_if, 0
         getattr(self, "_c_" + cmd.key)(no, rest)
 
     # ── antet ──
@@ -483,11 +488,32 @@ class StepImporter:
         self._open(node, node.then, no)
 
     def _c_else(self, no, rest):
-        node = self._stack[-1][0]
-        if not isinstance(node, IfNode) or node.optional:
+        node, lst, start = self._stack[-1]
+        if not isinstance(node, IfNode):
+            if self._prev_end_if:
+                raise _LineError(_t("ALTFEL dupa SFARSIT: SFARSIT-ul de pe randul {0} a inchis deja DACA. "
+                                    "Sterge acel SFARSIT (DACA ... ALTFEL ... SFARSIT are un singur SFARSIT).")
+                                 .format(self._prev_end_if))
             raise _LineError(_t("ALTFEL fara DACA deschis."))
-        _, _, start = self._stack.pop()
+        if lst is node.else_:
+            raise _LineError(_t("Al doilea ALTFEL in acelasi DACA. Inchide primul DACA cu SFARSIT sau "
+                                "foloseste ALTFEL DACA <conditie>."))
+        self._stack.pop()
         self._stack.append((node, node.else_, start))
+        r = rest.strip()
+        if not r:
+            return
+        m = re.match(r"(?:dac[aă]|if)\b\s*(.*)$", r, re.I | re.S)
+        if not m:
+            raise _LineError(_t("Dupa ALTFEL nu urmeaza nimic pe acelasi rand (doar ALTFEL DACA <conditie>)."))
+        # ALTFEL DACA: un DACA nou in ramura Altfel, inchis de acelasi SFARSIT
+        cond = m.group(1)
+        ma = re.match(r"(?:apare|appears)\b\s*(.*)$", cond, re.I | re.S)
+        if ma:
+            self._c_if_appears(no, ma.group(1))
+        else:
+            self._c_if(no, cond)
+        self._chained.add(id(self._stack[-1][0]))
 
     def _c_repeat(self, no, rest):
         m = re.match(r"(\{?\w[\w.]*\}?)\s*(?:ori|times|x)?\s*$", rest.strip(), re.I)
@@ -518,7 +544,11 @@ class StepImporter:
     def _c_end(self, no, rest):
         if len(self._stack) == 1:
             raise _LineError(_t("SFARSIT fara bloc deschis."))
-        self._stack.pop()
+        node, lst, _ = self._stack.pop()
+        while id(node) in self._chained and len(self._stack) > 1:   # ALTFEL DACA: inchide si DACA-ul de deasupra
+            node, lst, _ = self._stack.pop()
+        if isinstance(node, IfNode) and lst is node.then:
+            self._end_if = no
 
     # ── variabile, mesaje ──
     def _c_set(self, no, rest):
@@ -759,6 +789,10 @@ def ai_prompt(lang: str = "ro") -> str:
         t("- Nu inventa adrese, coduri sau texte care nu sunt in document; daca lipsesc, pune o variabila si un "
           "comentariu # pe randul de deasupra."),
         t("- Blocurile DACA / REPETA / PENTRU FIECARE RAND / INCEARCA se inchid cu SFARSIT."),
+        t("- DACA ... ALTFEL ... SFARSIT are un singur SFARSIT, dupa ramura ALTFEL; nu pune SFARSIT inainte de "
+          "ALTFEL. Un DACA in interiorul altui DACA se inchide cu propriul SFARSIT. Pentru mai multe variante "
+          "foloseste ALTFEL DACA <conditie> (tot un singur SFARSIT la final)."),
+        t("- Indenteaza cu 2 spatii pasii din interiorul unui bloc, ca sa se vada unde se inchide fiecare."),
         t("- Randurile care incep cu # sunt comentarii."),
         "",
         t("COMENZI:"),

@@ -1942,5 +1942,10 @@
  "✅ Rutina s-a terminat cu succes": "✅ Die Routine wurde erfolgreich beendet",
  "❌ Rutina s-a oprit cu eroare": "❌ Die Routine wurde mit einem Fehler beendet",
  "Randuri Excel: {0} OK, {1} cu eroare": "Excel-Zeilen: {0} OK, {1} mit Fehler",
- "Inregistreaza automat un film la fiecare rulare de rutina (Studio)": "Bei jeder Ausführung einer Routine automatisch ein Video aufnehmen (Studio)"
+ "Inregistreaza automat un film la fiecare rulare de rutina (Studio)": "Bei jeder Ausführung einer Routine automatisch ein Video aufnehmen (Studio)",
+ "ALTFEL dupa SFARSIT: SFARSIT-ul de pe randul {0} a inchis deja DACA. Sterge acel SFARSIT (DACA ... ALTFEL ... SFARSIT are un singur SFARSIT).": "ELSE nach END: Das END in Zeile {0} hat das IF bereits geschlossen. Dieses END löschen (IF ... ELSE ... END hat nur ein END).",
+ "Al doilea ALTFEL in acelasi DACA. Inchide primul DACA cu SFARSIT sau foloseste ALTFEL DACA <conditie>.": "Ein zweites ELSE im selben IF. Das erste IF mit END schließen oder ELSE IF <Bedingung> verwenden.",
+ "Dupa ALTFEL nu urmeaza nimic pe acelasi rand (doar ALTFEL DACA <conditie>).": "Nach ELSE darf in derselben Zeile nichts folgen (nur ELSE IF <Bedingung>).",
+ "- DACA ... ALTFEL ... SFARSIT are un singur SFARSIT, dupa ramura ALTFEL; nu pune SFARSIT inainte de ALTFEL. Un DACA in interiorul altui DACA se inchide cu propriul SFARSIT. Pentru mai multe variante foloseste ALTFEL DACA <conditie> (tot un singur SFARSIT la final).": "- IF ... ELSE ... END has a single END, after the ELSE branch; never put END before ELSE. An IF inside another IF is closed with its own END. For several cases use ELSE IF <condition> (still a single END at the end).",
+ "- Indenteaza cu 2 spatii pasii din interiorul unui bloc, ca sa se vada unde se inchide fiecare.": "- Indent the steps inside a block by 2 spaces, so it is clear where each block ends."
 }
