@@ -37,7 +37,7 @@ _FILLS = {
 }
 
 
-# v4.22: coloana cheie se gaseste si sub alt nume (fisierul are "UEID", rutina cere "Id").
+# v4.23: coloana cheie se gaseste si sub alt nume (fisierul are "UEID", rutina cere "Id").
 # Se folosesc doar daca titlul exact nu exista; spatiile, "_", "-", "." si literele mari nu conteaza.
 ID_ALIASES = ("id", "ueid", "cod", "code", "nr", "numar", "number", "nummer", "cheie", "key", "schluessel")
 
@@ -226,7 +226,7 @@ class ExcelTable:
             variables.set(f"{prefix}.{get_column_letter(col)}", self._text(row, col))
         for key, col in self.headers.items():
             variables.set(f"{prefix}.{self._titles[key]}", self._text(row, col))
-        # v4.22: rutina scrie {Rand.Id}, fisierul are "UEID" -> {Rand.Id} exista si el
+        # v4.23: rutina scrie {Rand.Id}, fisierul are "UEID" -> {Rand.Id} exista si el
         name = (key_column or "").strip()
         is_letter = re.fullmatch(r"[A-Za-z]{1,3}", name) and _compact(name) not in ID_ALIASES   # "Id" e titlu, nu litera
         if name and not is_letter and name.lower() not in self.headers:

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # ============================================================
-# AutoPilot DC v4.22 — Teste: 📤 sablon Excel, coloana Id sub alt nume, verificarea Id-urilor.
+# AutoPilot DC v4.23 — Teste: 📤 sablon Excel, coloana Id sub alt nume, verificarea Id-urilor.
 #   Rulare:  py -m unittest tests.test_template
 # ============================================================
 

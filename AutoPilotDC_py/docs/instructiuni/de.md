@@ -91,6 +91,9 @@ Jedes Kapitel erklärt kurz einen Ablauf, Schritt für Schritt, mit einem Beispi
 5. **🎯 SAP**: Maus über das Feld (roter Rahmen) und **F2**. Lässt sich die Position nicht bestimmen, ins Feld klicken und F2 drücken.
 6. **🟦 SAP: Taste** (Enter, F3, F8, Shift+F4, Ctrl+S) und **🟦 SAP: Statusleiste** (`S:` Erfolg, `E:` Fehler, `W:` Warnung).
 7. Tabellen: **SAP: Tabellenzelle lesen** mit `Zeile|Spalte` (z. B. `0|MATNR`); die Tabelle scrollt selbst zur Zeile.
+8. **🟦 SAP: Tabelle blättern**: Tabelle wählen (🎯 SAP auf der Tabelle) und die Zeile eingeben (`1` = erste, oder `{Repetare}` in einer Schleife), `+1` / `-1`, `start` oder `end`. Die Zeile rückt so weit wie möglich nach oben, ihre Position auf dem Bildschirm (`0` = erste sichtbare Zeile) kommt in `{Pozitie}`. Diese setzt du in die Zell-ID: `btnDEL[5,{Pozitie}]` (in 📚 Bibliothek, im Id-Lokator des Objekts; den Ersatz-Lokator Name|Typ abwählen, sonst findet er eventuell den Papierkorb einer anderen Zeile). Am Ende der Liste blättert die Tabelle nicht mehr, die Position wächst aber weiter, so erreicht die Schleife die letzte Zeile ohne Scrollpfeil.
+
+> Beispiel (Zeilen bleiben nach dem Löschen in der Liste): **🔁 Wiederholen** so oft wie Zeilen; darin: SAP: Tabelle blättern = `{Repetare}`, Klick auf den Papierkorb `...btnDEL[5,{Pozitie}]`, Klick auf „Yes“ im ersten Fenster, Klick auf „Yes“ im zweiten.
 
 > Beispiel: Routine 04 „SAP VA03“ liest die Auftragsnummern aus Excel und schreibt den Status in die Spalte Status.
 

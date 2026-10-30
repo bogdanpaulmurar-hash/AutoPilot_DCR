@@ -26,6 +26,7 @@ from ..model import Locator, LocatorKind, RprAction, UiObject, UiTechnology
 from .base import ActionRequest, ElementNotFound, ElementState, NOT_FOUND, RprStepException, UiDriver
 from .desktop import clean_name, _first_line
 from . import winutil
+from .sap_table import scroll_table
 
 _PREFIX = {"GuiButton": "Buton", "GuiTextField": "Camp", "GuiCTextField": "Camp", "GuiPasswordField": "Camp",
            "GuiComboBox": "Lista", "GuiCheckBox": "Bifa", "GuiRadioButton": "Optiune", "GuiTab": "Tab",
@@ -334,6 +335,10 @@ class SapDriver(UiDriver):
             return str(el.GetCellValue(row_i, col.strip()))
         elif a == RprAction.SapGridRowCount:
             return str(int(el.RowCount))
+        elif a == RprAction.SapScrollTable:
+            table_id = str(el.Id)
+            return scroll_table(el, r.value, lambda: self._wait_busy(r.timeout_ms),
+                                lambda: self.session.FindById(table_id))
         elif a == RprAction.Highlight:
             el.Visualize(True)
             time.sleep(0.8)
@@ -472,3 +477,4 @@ class SapDriver(UiDriver):
     def close(self):
         self._session = None
         self._w.stop()
+

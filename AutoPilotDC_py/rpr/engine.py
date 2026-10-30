@@ -82,12 +82,13 @@ class _RowContext:
 
 
 UNFINISHED_BUTTONS = ("Refac randul", "E facut, marchez OK", "Opresc rutina")
-KEY_CHECK_BUTTONS = ("Continui", "Opresc rutina")   # v4.22: Id lipsa / duplicat inainte de primul click
+KEY_CHECK_BUTTONS = ("Continui", "Opresc rutina")   # v4.23: Id lipsa / duplicat inainte de primul click
 VIDEO_COLUMN_KEY = "video_column"   # ForEachRowNode.extra: coloana cu linkul filmului ("" = fara); implicit "Film"
 
 _SAP_NO_STATUS_CHECK = {RprAction.SapReadStatusBar, RprAction.SapConnect, RprAction.Highlight,
                         RprAction.ReadText, RprAction.ReadValue, RprAction.ReadAttribute,
-                        RprAction.SapGridReadCell, RprAction.SapGridRowCount}
+                        RprAction.SapGridReadCell, RprAction.SapGridRowCount,
+                        RprAction.SapScrollTable}
 
 
 def matches_expected(actual: str, expected: str) -> bool:
@@ -685,7 +686,7 @@ class RprEngine:
 
     # ── Pentru fiecare rand Excel ──────────────────────────────
     def _check_keys(self, f: ForEachRowNode, table: ExcelTable, first: int) -> None:
-        """v4.22: inainte de primul click, coloana cheie (Id) se verifica pe tot fisierul:
+        """v4.23: inainte de primul click, coloana cheie (Id) se verifica pe tot fisierul:
         randuri cu date dar fara Id (fara "Ultimul rand", lista se opreste la primul) si Id-uri repetate."""
         if not f.key_column.strip() or table.header_row <= 0:
             return

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # ============================================================
-# AutoPilot DC v4.22 — RPR (Python)
+# AutoPilot DC v4.23 — RPR (Python)
 # template.py — 📤 Exporta sablon Excel pentru o rutina cu "Pentru fiecare rand Excel"
 #
 # Sablonul are exact coloanele pe care le asteapta rutina:

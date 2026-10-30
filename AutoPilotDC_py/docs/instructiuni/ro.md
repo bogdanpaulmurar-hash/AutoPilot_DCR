@@ -89,6 +89,9 @@ Fiecare capitol explică pe scurt o procedură, pas cu pas, cu un exemplu. Alege
 5. **🎯 SAP**: mouse-ul peste câmp (contur roșu) și **F2**. Dacă poziția nu se poate determina, dă click în câmp și apasă F2.
 6. **🟦 SAP: tastă** (Enter, F3, F8, Shift+F4, Ctrl+S) și **🟦 SAP: bara de stare** (`S:` succes, `E:` eroare, `W:` avertisment).
 7. Tabele: **SAP: citește celula** cu `rând|coloană` (ex. `0|MATNR`); tabelul se derulează singur până la rând.
+8. **🟦 SAP: derulează tabelul**: alegi tabelul (🎯 SAP pe tabel) și scrii rândul (`1` = primul, sau `{Repetare}` într-o buclă), `+1` / `-1`, `inceput` sau `sfarsit`. Rândul urcă sus cât se poate, iar poziția lui pe ecran (`0` = primul rând vizibil) intră în `{Pozitie}`. O pui în ID-ul celulei: `btnDEL[5,{Pozitie}]` (în 📚 Bibliotecă, la locatorul Id al obiectului; debifează locatorul de rezervă Nume|Tip, altfel poate găsi coșul de pe alt rând). La capătul listei tabelul nu mai coboară, dar poziția crește, deci bucla merge până la ultimul rând, fără săgeata de scroll.
+
+> Exemplu (rânduri care rămân în listă după ștergere): **🔁 Repetă** de câte rânduri ai; în buclă: SAP: derulează tabelul = `{Repetare}`, Click pe coșul `...btnDEL[5,{Pozitie}]`, Click pe „Yes” din prima fereastră, Click pe „Yes” din a doua.
 
 > Exemplu: rutina 04 „SAP VA03” citește numerele de comandă din Excel și scrie starea în coloana Status.
 

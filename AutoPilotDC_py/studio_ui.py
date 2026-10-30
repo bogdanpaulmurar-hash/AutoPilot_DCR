@@ -140,7 +140,7 @@ LOG_LEVELS = [(RprLogLevel.Info, "Informatie"), (RprLogLevel.Warning, "Atentiona
 _WEB_ACTIONS = {RprAction.OpenBrowser, RprAction.Navigate, RprAction.Back, RprAction.Refresh, RprAction.SwitchTab,
                 RprAction.CloseBrowser, RprAction.HandleDialog, RprAction.ScreenshotPage}
 _SAP_ACTIONS = {RprAction.SapConnect, RprAction.SapTransaction, RprAction.SapSendKey, RprAction.SapReadStatusBar,
-                RprAction.SapGridReadCell, RprAction.SapGridRowCount}
+                RprAction.SapGridReadCell, RprAction.SapGridRowCount, RprAction.SapScrollTable}
 _DESK_ACTIONS = {RprAction.LaunchApp, RprAction.AttachWindow, RprAction.CloseWindow}
 
 
@@ -186,6 +186,9 @@ TOOLBOX: List[Tuple[str, List[Tuple[str, str, Callable[[], RprNode]]]]] = [
          lambda: ActionNode(action=RprAction.SapSendKey, technology=UiTechnology.Sap, value="Enter")),
         ("🟦  SAP: bara de stare", "Citeste mesajul din bara de stare SAP",
          lambda: ActionNode(action=RprAction.SapReadStatusBar, technology=UiTechnology.Sap, output_variable="StareSAP")),
+        ("🟦  SAP: deruleaza tabelul", "Aduce un rand din tabel pe ecran (ex: {Repetare}); pozitia lui intra in {Pozitie}",
+         lambda: ActionNode(action=RprAction.SapScrollTable, technology=UiTechnology.Sap, value="{Repetare}",
+                            output_variable="Pozitie")),
         ("🖥  Porneste aplicatie", "Porneste un program Windows",
          lambda: ActionNode(action=RprAction.LaunchApp, technology=UiTechnology.Desktop)),
         ("🖥  Ataseaza fereastra", "Lucreaza intr-o fereastra deja deschisa",
@@ -3681,7 +3684,7 @@ class StudioPanel(tk.Frame):
         self._log_entries.clear()
 
     def export_excel_template(self):
-        """v4.22: 📤 sablon Excel pentru bucla Excel a rutinei (Id + coloanele scrise + status)."""
+        """v4.23: 📤 sablon Excel pentru bucla Excel a rutinei (Id + coloanele scrise + status)."""
         from rpr import template
         f = template.first_loop(self.routine)
         if f is None:
@@ -4471,6 +4474,8 @@ class PropertyEditor:
                 RprAction.SapSendKey: "Exemple: Enter, F3 (Inapoi), F8 (Executa), Ctrl+S (Salvare), Shift+F4.",
                 RprAction.SapTransaction: "Ex: VA03. Cu /n in fata (/nVA03) se inchide tranzactia curenta.",
                 RprAction.SapGridReadCell: "Ex: 0|MATNR (rand 0, coloana tehnica MATNR) sau 0|2 pentru tabele clasice.",
+                RprAction.SapScrollTable: "Ex: {Repetare} intr-o bucla. Pozitia randului pe ecran (0 = sus) intra in "
+                                          "variabila; o pui in ID-ul celulei, ex: btnDEL[5,{Pozitie}].",
                 RprAction.SwitchTab: "0 = primul tab, -1 = ultimul tab, sau un text din titlu / adresa.",
                 RprAction.AttachWindow: "Ex: proces:notepad.exe  sau  ^Calculator$ (titlu, expresie regulata).",
                 RprAction.LaunchApp: "Ex: notepad.exe  sau  \"C:\\Program Files\\App\\app.exe\" /param",
