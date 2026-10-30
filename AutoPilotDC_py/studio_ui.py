@@ -467,8 +467,21 @@ class StudioRunHost(RunHost):
 
     def ask_on_error(self, node, error, inside_excel_loop):
         btns = ["Reincearca", "Sari pasul"] + (["Sari randul"] if inside_excel_loop else []) + ["Opreste"]
-        ans = self._p.call_ui(lambda: self._p.paused_dialog(
-            "Pasul a esuat", f"Pasul \"{node.title}\" a esuat.", btns, error))
+        # v4.17 ▶ Ruleaza si marcheaza: obiectul pasului se poate marca pe loc, apoi pasul se reia
+        obj = self._p.learn_object_of(node) if getattr(self._p, "_learn_run", False) else None
+        mark = "🎯 Marcheaza acum"
+        detail = error
+        if obj is not None:
+            btns = [mark] + btns
+            detail = tr_template("🎯 Marcheaza acum [{0}] pe pagina, apoi pasul se reia.").format(obj.name) + \
+                "\n\n" + error
+        while True:
+            ans = self._p.call_ui(lambda: self._p.paused_dialog(
+                "Pasul a esuat", f"Pasul \"{node.title}\" a esuat.", btns, detail))
+            if ans != mark:
+                break
+            if self._p.learn_mark(obj):
+                return ErrorDecision.RETRY
         return {"Reincearca": ErrorDecision.RETRY, "Sari pasul": ErrorDecision.SKIP,
                 "Sari randul": ErrorDecision.SKIP_ROW}.get(ans, ErrorDecision.STOP)
 
@@ -600,6 +613,55 @@ class StudioPanel(tk.Frame):
         except ImportError:
             pass
         return provider
+
+    # ── v4.17 ▶ Ruleaza si marcheaza ──
+    def learn_object_of(self, node) -> Optional[UiObject]:
+        """Obiectul din biblioteca folosit de pas (Click, Scrie, Citeste... sau Asteapta obiectul), daca se poate marca."""
+        name = ""
+        if isinstance(node, ActionNode):
+            name = node.target
+        elif isinstance(node, WaitNode) and node.mode != WaitMode.Seconds:
+            name = node.condition.target
+        obj = self.repo.find(name.strip()) if name and name.strip() else None
+        if obj is None or obj.technology not in (UiTechnology.Web, UiTechnology.WebSelenium, UiTechnology.Sap,
+                                                 UiTechnology.Desktop):
+            return None
+        return obj
+
+    def learn_mark(self, obj: UiObject) -> bool:
+        """Pe firul rularii: Spy pentru obiect, locatoarele capturate intra in obiect, biblioteca se salveaza."""
+        from complete_ui import merge_captured
+        web = obj.technology in (UiTechnology.Web, UiTechnology.WebSelenium)
+        driver = self.web() if web else self.drivers.get(obj.technology)
+
+        def show():
+            self._spy_driver = None if web else driver
+            self._show_spy_hint(tr_template("🎯 [{0}]: du mouse-ul peste element si da CLICK (SAP / Desktop: F2). "
+                                            "Esc = anuleaza.").format(obj.name))
+        self.call_ui(show)
+        try:
+            hint = "Click = captureaza · Esc = anuleaza" if web else "F2 = captureaza · Esc = anuleaza"
+            captured = driver.capture_object(hint, RprPaths.object_images())
+        except Exception as ex:  # noqa: BLE001
+            self.post("status", f"🎯 {ex}")
+            captured = None
+        finally:
+            self.call_ui(self._hide_spy_hint)
+        if captured is None:
+            return False
+
+        def apply():
+            n = merge_captured(obj, captured)
+            if obj.context:
+                self.repo.classify(obj)
+            self.save_repository()
+            self.refresh_objects()
+            win = getattr(self, "_complete_win", None)
+            if win is not None and win.winfo_exists():
+                win.object_marked(obj, n)
+            self.set_status(tr_template("🎯 [{0}] are acum {1} locatoare.").format(obj.name, len(obj.locators)))
+        self.call_ui(apply)
+        return True
 
     def web(self):
         """Driverul Web (acelasi browser pentru Spy, inregistrare si rulare)."""
@@ -3495,8 +3557,9 @@ class StudioPanel(tk.Frame):
                 messagebox.showerror("Studio RPR", str(ex), parent=self)
 
     def run(self, step_mode: bool = False, variables: Optional[Dict[str, str]] = None,
-            routine: Optional[Routine] = None):
-        """routine: o copie de rulat in locul rutinei din editor (v4.15: Reia randul din ecranul Excel)."""
+            routine: Optional[Routine] = None, learn: bool = False):
+        """routine: o copie de rulat in locul rutinei din editor (v4.15: Reia randul din ecranul Excel).
+        learn: ▶ Ruleaza si marcheaza (v4.17): doar primul rand Excel; la un obiect negasit se poate marca pe loc."""
         if self.busy:
             if step_mode:
                 self.step_once()
@@ -3515,6 +3578,10 @@ class StudioPanel(tk.Frame):
         self._run_started_ui(routine, step_mode)
         self.engine = RprEngine(self.repo, self.drivers, StudioRunHost(self), RprPaths.output())
         self.engine.step_mode = step_mode
+        self._learn_run = learn
+        if learn:
+            self.engine.ask_on_every_error = True
+            self.engine.max_rows = 1
         self.engine.guard = StudioGuard() if safety else None
         if self._recording:
             self.record_web()   # oprim inregistrarea inainte de rulare
@@ -3595,6 +3662,15 @@ class StudioPanel(tk.Frame):
 
     def _run_finished(self, result):
         self.busy = False
+        learned = getattr(self, "_learn_run", False)
+        self._learn_run = False
+        win = getattr(self, "_complete_win", None)
+        if learned and win is not None:
+            try:
+                if win.winfo_exists():
+                    win.learn_finished(result)
+            except tk.TclError:
+                pass
         rpr_resume.end(self._resume_state)
         self._resume_state = None
         if self.video is not None:

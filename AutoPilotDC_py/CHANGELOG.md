@@ -2,6 +2,16 @@
 
 Pornirea aplicației: **`AutoPilot_DC.pyw`** (sau scurtătura „AutoPilot DC” de pe Desktop). Numele fișierelor nu se mai schimbă de la o versiune la alta, deci scurtăturile și pornirea cu Windows rămân valabile.
 
+## 4.17.0 — 2026-10-30
+- **🎯 Completează obiectele → ▶ Rulează și marchează** (nou): obiectele de pe alte tab-uri sau secțiuni (ex. General, Contracts) nu se văd pe pagina deschisă, deci 🧪 Verifică toate le dădea ✖. Acum rutina însăși face navigarea:
+  - rulează de la început, **doar pe primul rând din Excel**;
+  - orice pas eșuat întreabă (chiar dacă rutina are „Oprește” la eroare), iar când pasul folosește un obiect Web / SAP / Desktop apare **🎯 Marchează acum**: click pe element (SAP / Desktop: F2), obiectul primește locatoarele, biblioteca se salvează și pasul se reia. Esc = întrebarea revine;
+  - în INCEARCA eroarea merge în continuare la „La eroare”, ca în rularea normală;
+  - înainte de pornire avertizează că pașii se fac de-adevăratelea (Save, Trigger…): folosește un rând de test.
+- Motor: `ask_on_every_error` și `max_rows` (doar în rularea din Studio, nu se salvează în rutină; formatul `.rpr.json` nu se schimbă).
+- Instrucțiuni: capitolul 33, pasul 5, în RO / EN / DE; texte noi în i18n.
+- Teste (Linux, Python 3.12, Xvfb): `test_learn_run` nou (9: doar primul rând, întreabă și cu politica Oprește, fără steag nu întreabă, INCEARCA neschimbat, 🎯 Marchează acum → reia, Esc → întreabă din nou, fără buton în rularea normală, obiectul pasului inclusiv Așteaptă, locatoarele capturate + salvare). Suita întreagă: 217 rulate, aceleași eșecuri vechi ca înainte (2 failures, 2 errors care cer Windows). Netestat pe Windows: Spy-ul real în timpul rulării.
+
 ## 4.16.4 — 2026-10-30
 - **📥 Import AI: Ctrl+V lipea promptul în loc de răspunsul AI-ului.** După 📋 Copiază promptul, fereastra Tk rămânea „proprietarul” clipboard-ului și, la lipire în chenar, punea tot promptul, chiar dacă între timp copiai textul din AI. Acum promptul se pune direct în clipboard-ul Windows, iar Ctrl+V / Shift+Insert în chenar citește clipboard-ul Windows (și înlocuiește textul selectat). Pe alte sisteme rămâne clipboard-ul Tk.
 - Teste (Linux, Python 3.12, Xvfb): `test_import_paste` nou (5: lipirea ia clipboard-ul sistemului, nu promptul; înlocuiește selecția; revine la Tk; Copiază promptul nu mai trece prin Tk; pe Linux funcțiile Windows răspund „nu”). Fără corecție, 2 dintre ele cad. Suita întreagă: aceleași eșecuri vechi (3 failures; erorile sunt modulele care cer Windows/Playwright). Netestat pe Windows: apelurile reale la clipboard.

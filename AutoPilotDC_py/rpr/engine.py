@@ -127,6 +127,9 @@ class RprEngine:
         self._gate.set()
         self.is_running = False
         self.step_mode = False           # pas cu pas: se opreste inainte de fiecare pas
+        # v4.17 ▶ Ruleaza si marcheaza: orice pas esuat intreaba (si ofera 🎯), doar primele N randuri Excel
+        self.ask_on_every_error = False
+        self.max_rows = 0                # 0 = toate randurile
         self.last_variables: Dict[str, str] = {}
         self._conditions: Optional[ConditionEvaluator] = None
         self._report: Optional[RunReport] = None
@@ -397,6 +400,8 @@ class RprEngine:
 
                 # 3. Politica de eroare
                 policy = node.on_error
+                if self.ask_on_every_error and not is_container and self._try_depth == 0:
+                    policy = ErrorPolicy.Ask
                 if policy == ErrorPolicy.Inherit:
                     if self._try_depth > 0:  # in "Incearca" eroarea merge la "La eroare"
                         raise _PropagatedStepError(message)
@@ -688,6 +693,7 @@ class RprEngine:
             last = f.end_row if f.end_row > 0 else table.last_data_row(f.key_column)
             self._log(RprLogLevel.Info, f, f"Excel {os.path.basename(path)} / {table.sheet_name}: randurile {first}-{last}")
 
+            rows_run = 0
             for row in range(first, last + 1):
                 self._check_stop()
                 ctx.row = row
@@ -719,6 +725,10 @@ class RprEngine:
                     if answer == UNFINISHED_BUTTONS[2]:
                         raise _StopSignal(f"Oprit la randul {row} (neterminat anterior).", False)
 
+                if self.max_rows > 0 and rows_run >= self.max_rows:
+                    self._log(RprLogLevel.Info, f, f"Oprit dupa {rows_run} rand(uri), cum s-a cerut.")
+                    break
+                rows_run += 1
                 table.load_row_into(self._vars, f.row_variable, row)
                 self._log(RprLogLevel.Info, f, f"Rand {row}")
                 try:
