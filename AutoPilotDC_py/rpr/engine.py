@@ -35,9 +35,10 @@ from .excel import ExcelTable
 from .lang import IN_PROGRESS, ft, is_in_progress, is_ok   # v4.8.5: statusurile in limba fisierelor
 from .report import RunReport
 from .host import AlertDecision, ErrorDecision, RunAlert, RunGuard, RunHost, RunLogEntry, RunResult
+from . import subroutine
 from .model import (ActionNode, BreakNode, CellColor, ErrorPolicy, ForEachRowNode, GroupNode, IfNode,
                     LegacyStepNode, LogNode, LoopMode, LoopNode, ObjectRepository, QuestionNode, Routine,
-                    RoutineSettings, RprAction, RprLogLevel, RprNode, SetVariableNode, StopNode, TryNode,
+                    RoutineSettings, RprAction, RprLogLevel, RprNode, RunRoutineNode, SetVariableNode, StopNode, TryNode,
                     UiTechnology, VariableOperation, WaitMode, WaitNode, WriteExcelNode, action_info)
 from .variables import VariableStore
 
@@ -128,6 +129,8 @@ class RprEngine:
         self._conditions: Optional[ConditionEvaluator] = None
         self._report: Optional[RunReport] = None
         self._depth = 0                  # adancimea pasului curent (pentru raport)
+        self._call_stack: List[str] = []   # v4.12: calupurile (rutine apelate ca pas) in curs
+        self._call_names: List[str] = []
 
     # =========================================================
     # Control: pauza / reluare / pas / stop (de pe orice fir)
@@ -186,6 +189,7 @@ class RprEngine:
         self._vars = VariableStore()
         self._conditions = ConditionEvaluator(self._repo, self._drivers, self._vars, self._stop)
         self._depth = 0
+        self._call_stack, self._call_names = [], []
         self._report = None
         try:
             self._report = RunReport.create(routine, self._output)   # 📊 raportul Excel al rularii (daca e pornit)
@@ -211,6 +215,14 @@ class RprEngine:
                 self._result.success = False
                 self._result.message = ("Obiecte lipsa din Object Repository: " + ", ".join(missing) +
                                         ". Marcheaza-le cu Spy sau corecteaza numele in pasi.")
+                self._log(RprLogLevel.Error, None, self._result.message)
+                return self._result
+
+            # 2b. Rutinele apelate ca pasi (calupuri): fisier lipsa, bucle, obiecte lipsa
+            call_problems = subroutine.check(routine, self._repo)
+            if call_problems:
+                self._result.success = False
+                self._result.message = "Calupuri care nu pot rula: " + " ".join(call_problems)
                 self._log(RprLogLevel.Error, None, self._result.message)
                 return self._result
 
@@ -404,6 +416,8 @@ class RprEngine:
             self._execute_try(node)
         elif isinstance(node, GroupNode):
             self._execute_list(node.body)
+        elif isinstance(node, RunRoutineNode):
+            self._execute_run_routine(node)
         elif isinstance(node, LogNode):
             self._log(node.level, node, self._vars.resolve(node.message))
         elif isinstance(node, BreakNode):
@@ -766,6 +780,38 @@ class RprEngine:
             self._log(RprLogLevel.Warning, t, "Eroare prinsa → ramura \"La eroare\"")
             self._execute_list(t.catch)
 
+    # ── Rutina ca pas (calup) ──────────────────────────────────
+    def _execute_run_routine(self, n: RunRoutineNode) -> None:
+        raw = self._vars.resolve(n.path)
+        path = subroutine.resolve_path(raw)
+        if not path or not os.path.isfile(path):
+            raise RprStepException(f"Rutina nu a fost gasita: {raw or '(cale goala)'}")
+        key = os.path.normcase(os.path.abspath(path))
+        if key in self._call_stack:
+            raise RprStepException("Rutinele se apeleaza una pe alta in cerc.")
+        if len(self._call_stack) >= subroutine.MAX_DEPTH:
+            raise RprStepException(f"Prea multe calupuri unul in altul (maxim {subroutine.MAX_DEPTH}).")
+        try:
+            sub = subroutine.load_routine(path, self._repo)
+        except Exception as ex:  # noqa: BLE001
+            raise RprStepException(f"Rutina nu poate fi citita: {ex}")
+        missing = sorted({o for o in sub.referenced_objects() if self._repo.find(o) is None}, key=str.lower)
+        if missing:
+            raise RprStepException("Obiecte lipsa din biblioteca pentru calupul \"" + sub.name + "\": " + ", ".join(missing))
+        for k, v in sub.variables.items():   # valorile implicite ale calupului, doar pentru ce nu exista deja
+            if not self._vars.try_get(k)[0]:
+                self._vars.set(k, v)
+        name = n.name.strip() or sub.name
+        self._log(RprLogLevel.Info, n, f"Calup \"{name}\": start ({subroutine.count_steps(sub)} pasi)")
+        self._call_stack.append(key)
+        self._call_names.append(name)
+        try:
+            self._execute_list(sub.steps)
+        finally:
+            self._call_stack.pop()
+            self._call_names.pop()
+        self._log(RprLogLevel.Info, n, f"Calup \"{name}\": terminat")
+
     # ── Pas vechi (coordonate) ─────────────────────────────────
     def _execute_legacy(self, ls: LegacyStepNode) -> None:
         execu = self._host.legacy_executor
@@ -842,7 +888,8 @@ class RprEngine:
         self._host.log(RunLogEntry(
             level=level,
             node_id=node.id if node else "",
-            node_title=node.title if node else self._routine.name,
+            node_title=(f"[{self._call_names[-1]}] " if self._call_names else "")
+            + (node.title if node else self._routine.name),
             message=message,
             excel_row=self._rows[-1].row if self._rows else 0,
             duration_ms=duration_ms,

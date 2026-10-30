@@ -321,3 +321,16 @@ Manche Web-Anwendungen wechseln ihre „Ordner“ (Menü, Baum links), ohne die 
 - Fenster (Objekt, Scan, Prüfung, Zeitplan) scrollen mit dem Mausrad, und die Schaltflächen **Speichern / Hinzufügen / Schließen** bleiben unten fest, sodass Sie die Fenster nicht mehr vergrößern müssen.
 
 > Beispiel: In der Bestellanwendung hat der Ordner `Bestellungen/Import` die Schaltflächen „Datei hochladen“ und „Validieren“, und `Bestellungen/Export` hat „Excel exportieren“. Sie öffnen den Ordner in der Anwendung, scannen, wählen den Ordner, und die Schaltflächen landen am richtigen Platz.
+
+## 29. Gespeicherte Routinen als Schritt (Tab 📋 Routinen)
+
+Sie haben schon eine Routine mit 2–3 Schritten (z. B. die Anmeldung) und wollen sie in anderen nutzen, ohne die Schritte neu zu bauen:
+
+1. Im **Studio RPR** oeffnen Sie neben **📚 Bibliothek** den Tab **📋 Routinen**: er zeigt die Routinen Ihres Ordners (derselbe wie im **📂 Routinen-Manager**; **📁 Ordner** aendert ihn, **↻** liest neu, das Feld oben sucht).
+2. Waehlen Sie eine Routine und druecken Sie **➕ Als Schritt** (oder Doppelklick): der Schritt **📋 Routine ausfuehren** wird eingefuegt und **folgt der Datei**. Sie aendern die Routine einmal, und es gilt ueberall, wo sie verwendet wird.
+3. Setzen Sie Ihre eigenen Schritte davor und danach. Routine ausfuehren nutzt **dieselben Variablen, dasselbe Excel und dieselbe Objektbibliothek**; die Einstellungen der Hauptroutine (Fehler, Pausen) gelten auch dafuer. Standardwerte der Variablen der aufgerufenen Routine werden nur uebernommen, wenn es sie noch nicht gibt.
+4. **📥 Als Schritte** kopiert die Schritte in die aktuelle Routine (bearbeitbar; sie folgen dem Original nicht mehr). Bei einem vorhandenen Schritt macht **📥 Durch ihre Schritte ersetzen** dieselbe Kopie.
+- Vor dem Start werden Datei, Schleifen (A ruft B, B ruft A), Tiefe (maximal 8) und fehlende Objekte geprueft; stimmt etwas nicht, startet die Routine nicht und Sie erfahren, welcher Schritt betroffen ist. Im Log erscheinen die Schritte des Blocks mit seinem Namen davor.
+- Wenn Sie die Routinendatei verschieben, muss der Schritt neu darauf zeigen (Dateifeld des Schritts).
+
+> Beispiel: `Login SAP` (2 Schritte) liegt im Routinenordner. In der Berichtsroutine: ➕ Als Schritt „Login SAP“, danach die Berichtsschritte.

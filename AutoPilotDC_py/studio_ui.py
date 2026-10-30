@@ -39,13 +39,14 @@ from rpr.lang import level_label
 from rpr.legacy import execute_legacy_step
 from rpr.model import (ACTIONS, ActionNode, BreakNode, CellColor, CompareOperator, Condition, ConditionKind,
                        ErrorPolicy, ForEachRowNode, GroupNode, IfNode, LegacyStepNode, Locator, LocatorKind,
-                       LogNode, LoopMode, LoopNode, ObjectRepository, QuestionNode, Routine, RprAction, RprLogLevel,
+                       LogNode, LoopMode, LoopNode, ObjectRepository, QuestionNode, Routine, RprAction, RprLogLevel, RunRoutineNode,
                        RprNode, SetVariableNode, StopNode, TryNode, UiObject, UiTechnology, VariableOperation,
                        WaitMode, WaitNode, WriteExcelNode, action_info, flatten, sanitize_name,
                        OBJECT_TYPES, CONTAINER_TYPES, SiteGroup)
 from rpr import report as rpr_report
 from rpr import resume as rpr_resume
 from rpr import scan as rpr_scan
+from rpr import subroutine as rpr_sub
 from rpr.storage import Examples, ExcelInfo, RepositoryStore, RoutineStore, RprPaths, RunLogExporter
 
 try:
@@ -147,7 +148,7 @@ def icon_for(node: RprNode) -> str:
             return "👁"
         return "👆"
     return {WaitNode: "⏱", SetVariableNode: "✎", IfNode: "🔀", LoopNode: "🔁", ForEachRowNode: "📊",
-            WriteExcelNode: "📝", QuestionNode: "💬", TryNode: "🛡", GroupNode: "📁", LogNode: "🗒",
+            WriteExcelNode: "📝", QuestionNode: "💬", TryNode: "🛡", GroupNode: "📁", LogNode: "🗒", RunRoutineNode: "📋",
             BreakNode: "⏏", StopNode: "⛔", LegacyStepNode: "🖱"}.get(type(node), "•")
 
 
@@ -193,6 +194,7 @@ TOOLBOX: List[Tuple[str, List[Tuple[str, str, Callable[[], RprNode]]]]] = [
     ]),
     ("Organizare", [
         ("📁  Grup", "Grupeaza pasi (doar pentru ordine)", GroupNode),
+        ("📋  Ruleaza rutina", "Ruleaza o rutina salvata ca pas (mai simplu: tab-ul 📋 Rutine)", RunRoutineNode),
         ("🗒  Log", "Scrie un mesaj in log", LogNode),
     ]),
 ]
@@ -516,7 +518,8 @@ class StudioPanel(tk.Frame):
         # 📂 rutinele din folderul setat se citesc in fundal (Managerul de rutine le are gata)
         from rpr.batch import preload, shared_library
         if shared_library().scanned_at is None:
-            preload(self.studio_settings.effective_routines_folder())
+            preload(self.studio_settings.effective_routines_folder(),
+                    on_done=lambda lib: self.post("routines_ready", None))
 
     # ── drivere (se completeaza in etapele 2-3) ─────────────────────────────
     def _build_drivers(self) -> DriverProvider:
@@ -598,6 +601,11 @@ class StudioPanel(tk.Frame):
         ob = tk.Frame(nb, bg=C["bg_main"])
         nb.add(ob, text="📚 Biblioteca")
         self._build_objects(ob)
+        rt = tk.Frame(nb, bg=C["bg_main"])
+        nb.add(rt, text="📋 Rutine")
+        self._build_routines_tab(rt)
+        self._left_nb = nb
+        nb.bind("<<NotebookTabChanged>>", lambda e: self._on_left_tab(), add="+")
 
         # ── Centru: arborele rutinei ──
         center = tk.Frame(hpaned, bg=C["bg_main"])
@@ -762,6 +770,248 @@ class StudioPanel(tk.Frame):
                         bg=C["bg_main"], fg=C["text_dim"], font=("Segoe UI", 8), justify="left", wraplength=220)
         hint.pack(anchor="w", padx=6, pady=(0, 6))
         host.bind("<Configure>", lambda e: hint.configure(wraplength=max(120, e.width - 20)), add="+")
+
+    # =========================================================================
+    # v4.12: 📋 tab-ul Rutine — rutinele salvate, de adaugat ca pas sau ca pasi
+    # =========================================================================
+    def _build_routines_tab(self, host):
+        C = self.C
+        head = tk.Frame(host, bg=C["bg_card"])
+        head.pack(fill="x", padx=4, pady=(4, 2))
+        self._rt_folder = tk.Label(head, text="", bg=C["bg_card"], fg=C["text"], font=("Segoe UI", 9, "bold"),
+                                   anchor="w", justify="left", wraplength=230)
+        self._rt_folder.pack(fill="x", padx=6, pady=(3, 1))
+        hr = tk.Frame(head, bg=C["bg_card"])
+        hr.pack(fill="x", padx=2, pady=(0, 3))
+        self._btn(hr, "📁 Folder", self.choose_routines_folder,
+                  tip="Alege folderul cu rutinele (ca in 📂 Manager rutine)").pack(side="left", padx=1)
+        self._btn(hr, "↻", self.refresh_routines, tip="Citeste din nou folderul").pack(side="left", padx=1)
+        self._rt_filter = tk.StringVar()
+        e = tk.Entry(host, textvariable=self._rt_filter, bg=C["bg_input"], fg=C["text"], relief="flat",
+                     insertbackground=C["text"], font=("Segoe UI", 9))
+        e.pack(fill="x", padx=4, pady=(2, 2), ipady=2)
+        ToolTip(e, "Cauta dupa nume, descriere sau folder")
+        self._rt_filter.trace_add("write", lambda *a: self.refresh_routines_view())
+        box = tk.Frame(host, bg=C["bg_main"])
+        box.pack(fill="both", expand=True, padx=4)
+        self.routines_tree = ttk.Treeview(box, columns=("pasi",), show="tree headings", style="Studio.Treeview",
+                                          selectmode="browse")
+        self.routines_tree.heading("#0", text="Rutina", anchor="w")
+        self.routines_tree.heading("pasi", text="Pasi", anchor="w")
+        self.routines_tree.column("#0", width=190)
+        self.routines_tree.column("pasi", width=48, stretch=False)
+        vsb = ttk.Scrollbar(box, orient="vertical", command=self.routines_tree.yview)
+        self.routines_tree.configure(yscrollcommand=vsb.set)
+        vsb.pack(side="right", fill="y")
+        self.routines_tree.pack(fill="both", expand=True)
+        self.routines_tree.tag_configure("dir", foreground=C["accent"], font=("Segoe UI", 9, "bold"))
+        self.routines_tree.tag_configure("bad", foreground=C["danger"] if "danger" in C else "#FF6B6B")
+        self.routines_tree.bind("<Double-1>", lambda e: self.add_routine_step())
+        self.routines_tree.bind("<<TreeviewSelect>>", lambda e: self._routine_detail())
+        self.routines_tree.bind("<Button-3>", self._routine_menu)
+        self._rt_info = tk.Label(host, text="", bg=C["bg_main"], fg=C["text_dim"], font=("Segoe UI", 8), anchor="w",
+                                 justify="left", wraplength=230)
+        self._rt_info.pack(fill="x", padx=6)
+        row = tk.Frame(host, bg=C["bg_main"])
+        row.pack(fill="x", padx=4, pady=4)
+        for text, cmd, tip in [("➕ Ca pas", self.add_routine_step,
+                                "Adauga un pas „Ruleaza rutina”: ruleaza rutina salvata, cu variabilele si Excel-ul comune "
+                                "(dublu-click)"),
+                               ("📥 Ca pasi", self.insert_routine_steps,
+                                "Copiaza pasii rutinei in rutina curenta (ii poti edita; nu mai urmaresc originalul)"),
+                               ("📂 Deschide", self.open_selected_routine, "Deschide rutina pentru editare")]:
+            self._btn(row, text, cmd, tip=tip).pack(side="left", padx=1)
+        hint = tk.Label(host, text="Ai deja o rutina de cativa pasi? Adaug-o aici ca pas si pune intre ele doar pasii "
+                                   "tai. „Ca pas” urmareste fisierul (o schimbi o data, merge peste tot); „Ca pasi” face o copie.",
+                        bg=C["bg_main"], fg=C["text_dim"], font=("Segoe UI", 8), justify="left", wraplength=220)
+        hint.pack(anchor="w", padx=6, pady=(0, 6))
+        host.bind("<Configure>", lambda e: (hint.configure(wraplength=max(120, e.width - 20)),
+                                            self._rt_info.configure(wraplength=max(120, e.width - 20))), add="+")
+        self._rt_loaded_at = 0.0
+        self._update_routines_label()
+
+    def _on_left_tab(self):
+        try:
+            if "Rutine" in self._left_nb.tab(self._left_nb.select(), "text"):
+                self.refresh_routines()
+        except Exception:  # noqa: BLE001
+            pass
+
+    def _update_routines_label(self):
+        folder = self.studio_settings.effective_routines_folder()
+        self._rt_folder.configure(text=f"📋 {os.path.basename(folder.rstrip(chr(92) + '/')) or folder}")
+        ToolTip(self._rt_folder, folder)
+
+    def choose_routines_folder(self):
+        d = filedialog.askdirectory(parent=self, title="Folderul cu rutinele",
+                                    initialdir=self.studio_settings.effective_routines_folder())
+        if not d:
+            return
+        self.studio_settings.routines_folder = os.path.normpath(d)
+        self.studio_settings.save()
+        self._update_routines_label()
+        self.refresh_routines()
+
+    def refresh_routines(self):
+        """Citeste folderul rutinelor pe un fir separat (aplicatia ramane fluida), apoi reface lista."""
+        from rpr.batch import shared_library
+        folder = self.studio_settings.effective_routines_folder()
+        self._update_routines_label()
+
+        def work():
+            try:
+                shared_library().scan(folder)
+            except Exception:  # noqa: BLE001
+                pass
+            self.post("routines_ready", None)
+        threading.Thread(target=work, daemon=True, name="RoutinesScan").start()
+
+    def refresh_routines_view(self):
+        if not hasattr(self, "routines_tree"):
+            return
+        from rpr.batch import shared_library
+        lib = shared_library()
+        flt = self._rt_filter.get().strip().lower()
+        tree = self.routines_tree
+        open_state = {i: tree.item(i, "open") for i in self._all_tree_iids(tree)}
+        sel = tree.selection()
+        tree.delete(*tree.get_children())
+        base = (lib.folder or "").rstrip("\\/")
+        n = 0
+        for r in sorted(lib.routines, key=lambda x: (os.path.dirname(x.path).lower(), x.name.lower())):
+            rel = os.path.relpath(os.path.dirname(r.path), base) if base else ""
+            rel = "" if rel in (".", "") else rel.replace("\\", "/")
+            if flt and flt not in f"{r.name} {r.description} {rel}".lower():
+                continue
+            parent = ""
+            path_so_far = ""
+            for part in [x for x in rel.split("/") if x]:
+                path_so_far += "/" + part
+                did = "d:" + path_so_far
+                if not tree.exists(did):
+                    tree.insert(parent, "end", iid=did, text=f"📁 {part}", open=open_state.get(did, True), tags=("dir",))
+                parent = did
+            tree.insert(parent, "end", iid="r:" + r.path, text=("⚠ " if r.error else "📋 ") + r.name,
+                        values=("" if r.error else str(r.steps),), tags=("bad",) if r.error else ())
+            n += 1
+        for i in sel:
+            if tree.exists(i):
+                tree.selection_set(i)
+        if not n:
+            tree.insert("", "end", iid="none", text="(nicio rutina in acest folder)" if not flt else "(nimic gasit)")
+        self._routine_detail()
+
+    @staticmethod
+    def _all_tree_iids(tree):
+        out, stack = [], list(tree.get_children())
+        while stack:
+            i = stack.pop()
+            out.append(i)
+            stack.extend(tree.get_children(i))
+        return out
+
+    def _sel_routine_entry(self):
+        sel = self.routines_tree.selection()
+        if not sel or not sel[0].startswith("r:"):
+            return None
+        from rpr.batch import shared_library
+        return shared_library().find(sel[0][2:])
+
+    def _routine_detail(self):
+        e = self._sel_routine_entry()
+        if e is None:
+            self._rt_info.configure(text="")
+            return
+        t = e.error and f"⚠ {e.error}" or (f"{e.steps} pasi · {e.modified:%d.%m.%Y %H:%M}"
+                                          + (f"\n{e.description}" if e.description else ""))
+        self._rt_info.configure(text=t)
+
+    def _routine_menu(self, ev):
+        iid = self.routines_tree.identify_row(ev.y)
+        if not iid or not iid.startswith("r:"):
+            return
+        self.routines_tree.selection_set(iid)
+        C = self.C
+        m = tk.Menu(self, tearoff=0, bg=C["bg_card"], fg=C["text"], activebackground=C["primary"])
+        m.add_command(label="➕ Adauga ca pas („Ruleaza rutina”)", command=self.add_routine_step)
+        m.add_command(label="📥 Insereaza ca pasi (copie)", command=self.insert_routine_steps)
+        m.add_separator()
+        m.add_command(label="📂 Deschide pentru editare", command=self.open_selected_routine)
+        m.tk_popup(ev.x_root, ev.y_root)
+
+    def _is_current_routine(self, path: str) -> bool:
+        try:
+            return bool(self.routine_path) and os.path.samefile(self.routine_path, path)
+        except OSError:
+            return False
+
+    def add_routine_step(self):
+        e = self._sel_routine_entry()
+        if e is None:
+            self.set_status("Alege o rutina din lista.")
+            return
+        if e.error:
+            messagebox.showerror("Rutine", f"Rutina nu poate fi citita:\n{e.error}", parent=self)
+            return
+        if self._is_current_routine(e.path):
+            messagebox.showwarning("Rutine", "Aceasta e rutina deschisa acum: nu se poate apela pe ea insasi.", parent=self)
+            return
+        self.insert_node(RunRoutineNode(path=e.path, name=e.name))
+        self.set_status(f"Pas adaugat: ruleaza rutina [{e.name}] ({e.steps} pasi).")
+
+    def _load_for_copy(self, path: str):
+        try:
+            return RoutineStore.load(path, self.repo)
+        except Exception as ex:  # noqa: BLE001
+            messagebox.showerror("Rutine", f"Rutina nu poate fi citita:\n{ex}", parent=self)
+            return None
+
+    def _missing_objects(self, r: Routine) -> List[str]:
+        return sorted({n for n in r.referenced_objects() if self.repo.find(n) is None}, key=str.lower)
+
+    def insert_routine_steps(self):
+        e = self._sel_routine_entry()
+        if e is None:
+            self.set_status("Alege o rutina din lista.")
+            return
+        sub = self._load_for_copy(e.path)
+        if sub is None:
+            return
+        steps = rpr_sub.steps_copy(sub)
+        if not steps:
+            self.set_status(f"Rutina [{e.name}] nu are pasi.")
+            return
+        for node in steps:
+            self.insert_node(node)
+        added = rpr_sub.merge_variables(self.routine, sub)
+        miss = self._missing_objects(sub)
+        msg = f"Am copiat {len(steps)} pasi din [{e.name}]" + (f" si {added} variabile" if added else "") + "."
+        if miss:
+            msg += f" ⚠ Obiecte lipsa din biblioteca curenta: {', '.join(miss[:5])}."
+        self.set_status(msg)
+
+    def expand_run_routine(self, node: RunRoutineNode):
+        """Transforma un pas „Ruleaza rutina” in pasii rutinei (copie)."""
+        path = rpr_sub.resolve_path(node.path)
+        if not path or not os.path.isfile(path):
+            messagebox.showwarning("Rutine", "Fisierul rutinei nu exista.", parent=self)
+            return
+        sub = self._load_for_copy(path)
+        owner = self.routine.find_parent_list(node)
+        if sub is None or owner is None:
+            return
+        steps = rpr_sub.steps_copy(sub)
+        i = next(k for k, x in enumerate(owner) if x is node)
+        owner[i:i + 1] = steps
+        rpr_sub.merge_variables(self.routine, sub)
+        self.mark_dirty()
+        self.rebuild_tree(steps[0] if steps else None)
+        self.set_status(f"Pasul a fost inlocuit cu cei {len(steps)} pasi ai rutinei [{sub.name}].")
+
+    def open_selected_routine(self):
+        e = self._sel_routine_entry()
+        if e is not None:
+            self.open_routine(e.path)
 
     # =========================================================================
     # Rutina: nou / deschide / salveaza
@@ -2266,6 +2516,8 @@ class StudioPanel(tk.Frame):
                 self._hover_finished(p)
             elif kind == "test_result":
                 self._test_finished(*p)
+            elif kind == "routines_ready":
+                self.refresh_routines_view()
             elif kind == "check_progress":
                 self.set_status(p)
             elif kind == "check_done":
@@ -2795,7 +3047,7 @@ class PropertyEditor:
             self._hint(f"⚠ Obiectul [{get()}] nu exista in Object Repository.", host, self.C["warning"])
         return cb
 
-    def file_picker(self, node, label, get, set_, structural=True):
+    def file_picker(self, node, label, get, set_, structural=True, filetypes=None, initialdir=None, on_pick=None):
         self._caption(label)
         row = tk.Frame(self._host, bg=self._host["bg"])
         row.pack(fill="x", padx=10)
@@ -2804,12 +3056,41 @@ class PropertyEditor:
         var.trace_add("write", lambda *a: (set_(var.get()), self._changed(node)))
 
         def browse():
-            p = filedialog.askopenfilename(parent=self.p, title=label, filetypes=[("Excel", "*.xlsx *.xlsm")])
+            kw = {"initialdir": initialdir} if initialdir else {}
+            p = filedialog.askopenfilename(parent=self.p, title=label,
+                                           filetypes=filetypes or [("Excel", "*.xlsx *.xlsm")], **kw)
             if p:
                 var.set(os.path.normpath(p))
+                if on_pick:
+                    on_pick(os.path.normpath(p))
                 if structural:
                     self._later_rebuild()
         self.p._btn(row, "📂", browse, tip="Alege fisierul").pack(side="left", padx=(4, 0))
+
+    def _build_run_routine(self, node: RunRoutineNode):
+        """Pasul 📋 Ruleaza rutina: alegi rutina salvata; ruleaza in locul pasului, cu variabilele si Excel-ul comune."""
+        self._hint("Ruleaza o rutina salvata in locul acestui pas, cu aceleasi variabile, acelasi Excel si aceeasi "
+                   "biblioteca de obiecte. Setarile rutinei principale (erori, pauze) se aplica si calupului. "
+                   "Fisierul se verifica inainte de start.")
+
+        def picked(path):
+            try:
+                node.name = RoutineStore.load(path, self.p.repo).name
+            except Exception:  # noqa: BLE001
+                node.name = ""
+        self.file_picker(node, "Rutina (fisier .rpr.json; poate contine {variabile})", lambda: node.path,
+                         lambda v: setattr(node, "path", v), structural=True,
+                         filetypes=[("Rutine AutoPilot", "*.rpr.json *.json")],
+                         initialdir=self.p.studio_settings.effective_routines_folder(), on_pick=picked)
+        self.text(node, "Nume afisat (optional)", lambda: node.name, lambda v: setattr(node, "name", v), vars_=False)
+        path = rpr_sub.resolve_path(node.path) if "{" not in node.path else ""
+        if node.path.strip() and "{" not in node.path and not os.path.isfile(path):
+            self._hint(f"⚠ Fisierul nu exista: {node.path}", None, self.C["warning"])
+        self.button_row([
+            ("📂 Deschide rutina", lambda: self.p.open_routine(path), None, "Deschide rutina apelata pentru editare"),
+            ("📥 Inlocuieste cu pasii ei", lambda: self.p.expand_run_routine(node), None,
+             "Copiaza pasii rutinei aici (nu mai urmaresc fisierul original)"),
+        ])
 
     def button_row(self, buttons):
         row = tk.Frame(self._host, bg=self._host["bg"])
@@ -2882,6 +3163,8 @@ class PropertyEditor:
                       lambda v: setattr(node, "error_variable", v), vars_=False)
         elif isinstance(node, GroupNode):
             self._hint("Grupul doar organizeaza pasii (il poti dezactiva cu totul sau redenumi).")
+        elif isinstance(node, RunRoutineNode):
+            self._build_run_routine(node)
         elif isinstance(node, LogNode):
             self.text(node, "Mesaj", lambda: node.message, lambda v: setattr(node, "message", v), multiline=True)
             self.combo(node, "Nivel", LOG_LEVELS, lambda: node.level, lambda v: setattr(node, "level", v))
