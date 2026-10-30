@@ -29,6 +29,7 @@ import sys
 import threading
 import time
 import uuid
+from types import SimpleNamespace
 from tkinter import filedialog, messagebox, ttk
 import tkinter as tk
 import tkinter.font as tkfont
@@ -54,10 +55,11 @@ import ui_theme   # v4.14: contrast automat, texte care se rup dupa latime
 import studio_views   # v4.15: bara de activitati, tab-uri, cronologie, ecranul Excel, fluxul
 
 try:
-    from i18n import tr   # limba interfetei (listele de mai jos se traduc doar la afisare)
+    from i18n import tr, tr_template   # limba interfetei (listele de mai jos se traduc doar la afisare)
 except ImportError:       # pragma: no cover
     def tr(text):
         return text
+    tr_template = tr
 
 try:
     import autopilot_safety as safety
@@ -392,6 +394,22 @@ class StudioGuard(RunGuard):
         if self._w:
             self._w.accept_current()
 
+    def check_before_legacy(self, node):
+        """v4.16: pasii pe ecran (coordonate): ca la actiuni + click / taste in aplicatia de la inregistrare."""
+        a = self.check_before_action(node)
+        if a or not safety:
+            return a
+        if getattr(self, "_sg", None) is None:
+            self._sg = safety.SafetyGuard()
+        s = dict(getattr(node, "step", {}) or {})
+        step = SimpleNamespace(step_type=str(s.get("step_type", "")).upper(), x=int(s.get("x", 0) or 0),
+                               y=int(s.get("y", 0) or 0), window_title=s.get("window_title", "") or "",
+                               window_process=s.get("window_process", "") or "",
+                               screen_signature=s.get("screen_signature", "") or "",
+                               guard_ignore=bool(s.get("guard_ignore", False)), step_id=node.id)
+        g = self._sg.check_recorded(step)
+        return RunAlert(g.title, g.details, g.key) if g else None
+
     def check_before_action(self, node):
         if not self._w:
             return None
@@ -521,9 +539,11 @@ class RunControlWindow(tk.Toplevel):
 class StudioPanel(tk.Frame):
     def __init__(self, master, colors: Dict[str, str], run_frame=None,
                  on_status: Optional[Callable[[str], None]] = None,
-                 dnd_allowed: Optional[Callable[[], bool]] = None, video=None):
+                 dnd_allowed: Optional[Callable[[], bool]] = None, video=None,
+                 on_help: Optional[Callable[[], None]] = None):
         super().__init__(master, bg=colors["bg_main"])
         self.C = colors
+        self._on_help = on_help     # v4.16: ❓ deschide 📖 Instructiuni (RO / EN / DE)
         self.video = video          # VideoController (🎥 film la rulare) sau None
         self._dnd_allowed = dnd_allowed or (lambda: True)
         self._run_frame = run_frame
@@ -639,7 +659,8 @@ class StudioPanel(tk.Frame):
         # v4.15: bara de activitati in stanga; fiecare iconita schimba doar panoul lateral
         self._rail = studio_views.ActivityBar(self, C, [
             ("steps", "🧱", "Pasi", "panel"), ("library", "📚", "Biblioteca", "panel"),
-            ("routines", "📋", "Rutine", "panel"), ("films", "🎬", "Filme", "panel"), None,
+            ("routines", "📋", "Rutine", "panel"), ("films", "🎬", "Filme", "panel"),
+            ("import", "📥", "Import AI", "action"), None,
             ("settings", "🌐", "Setari", "action"), ("guide", "❓", "Ghid", "action")],
             on_panel=self._on_rail, on_action=self._on_rail_action)
         self._rail.pack(side="left", fill="y")
@@ -1201,6 +1222,47 @@ class StudioPanel(tk.Frame):
             self.show_settings()
         elif key == "guide":
             self.show_guide()
+        elif key == "import":
+            self.show_import()
+
+    # =========================================================================
+    # v4.16: 📥 Import AI — pasi scrisi de un AI (dintr-un document Word) -> rutina
+    # =========================================================================
+    def show_import(self):
+        w = getattr(self, "_import_win", None)
+        if w is not None and w.winfo_exists():
+            w.deiconify()
+            w.lift()
+            return
+        from import_ui import ImportDialog
+        self._import_win = ImportDialog(self)
+
+    def open_imported(self, routine: Routine, new_objects: List[UiObject]) -> bool:
+        """Rutina importata intr-un tab nou (nesalvata); obiectele noi intra in biblioteca curenta."""
+        if self._busy_block():
+            return False
+        added = 0
+        for o in new_objects:
+            if any(x is o for x in self.repo.objects) or self.repo.find(o.name) is not None:
+                continue
+            if o.context:
+                self.repo.classify(o)
+            self.repo.objects.append(o)
+            added += 1
+        if added:
+            self.save_repository()
+            self.refresh_objects()
+        self._new_doc_slot()
+        routine.repository_path = "" if self._is_default_library() else self.repo_path
+        self.routine = routine
+        self.routine_path = None
+        self.dirty = True
+        self.rebuild_tree()
+        self.show_routine_settings()
+        self._update_title()
+        self.set_status(tr_template("📥 Rutina \"{0}\" importata: {1} pasi, {2} obiecte noi. Verifica obiectele cu 🧪 Test, "
+                           "apoi salveaz-o (💾).").format(routine.name, sum(1 for _ in routine.all_nodes()), added))
+        return True
 
     def show_side(self, key: str):
         """Deschide o pagina din panoul lateral (si din cod: ex. Biblioteca dupa o captura)."""
@@ -1488,7 +1550,7 @@ class StudioPanel(tk.Frame):
             for name, lst in br:
                 par = iid
                 if len(br) > 1:
-                    par = tv.insert(iid, "end", text=f"▸ {name}", open=True, tags=("branch",))
+                    par = tv.insert(iid, "end", text=f"▸ {tr(name)}", open=True, tags=("branch",))
                 for ch in lst:
                     add(ch, par)
         for n in sub.steps:
@@ -2189,6 +2251,9 @@ class StudioPanel(tk.Frame):
         self._btn(dlg, "📂 Folderul cu exemple", lambda: os.startfile(RprPaths.examples())).pack(anchor="w", padx=16, pady=10)
 
     def show_guide(self):
+        if self._on_help is not None:   # v4.16: ghidul vechi era doar in romana; Instructiunile au toate limbile
+            self._on_help()
+            return
         C = self.C
         dlg = tk.Toplevel(self)
         dlg.title("Ghid Studio RPR")
@@ -2260,7 +2325,7 @@ class StudioPanel(tk.Frame):
         if len(branches) > 1:
             for name, lst in branches:
                 biid = f"{iid}#{name}"
-                self.tree.insert(iid, "end", iid=biid, text=f"▸ {name}", open=biid not in collapsed, tags=("branch",))
+                self.tree.insert(iid, "end", iid=biid, text=f"▸ {tr(name)}", open=biid not in collapsed, tags=("branch",))
                 self._items[biid] = ("branch", None, lst)
                 for ch in lst:
                     self._add_tree_node(ch, lst, biid, collapsed)
@@ -2268,7 +2333,7 @@ class StudioPanel(tk.Frame):
             name, lst = branches[0]
             if not lst:  # ramura goala ramane selectabila
                 biid = f"{iid}#{name}"
-                self.tree.insert(iid, "end", iid=biid, text=f"▸ {name} (gol)", tags=("branch",))
+                self.tree.insert(iid, "end", iid=biid, text=f"▸ {tr(name)} " + tr("(gol)"), tags=("branch",))
                 self._items[biid] = ("branch", None, lst)
             for ch in lst:
                 self._add_tree_node(ch, lst, iid, collapsed)
@@ -2295,6 +2360,15 @@ class StudioPanel(tk.Frame):
             if not node.enabled:
                 tags.append("disabled")
             self.tree.item(node.id, text=self._node_text(node), tags=tags)
+
+    def insert_recorded(self, nodes: List[RprNode], title: str) -> Optional[GroupNode]:
+        """v4.16: pasii inregistrati pe ecran (mouse / tastatura) intra intr-un grup, dupa pasul selectat."""
+        if not nodes:
+            return None
+        group = GroupNode(label=title, body=list(nodes))
+        self.insert_node(group)
+        self.editor.show(group)
+        return group
 
     def insert_node(self, node: RprNode):
         at, self._insert_at = getattr(self, "_insert_at", None), None
@@ -2501,11 +2575,11 @@ class StudioPanel(tk.Frame):
         for site in sorted(tree, key=str.lower):
             sid = "site:" + site
             n = sum(len(v) for v in tree[site].values())
-            self.objects.insert("", "end", iid=sid, text=f"🌐 {site}", values=(f"{n} ob.",), open=open_state.get(sid, True),
+            self.objects.insert("", "end", iid=sid, text=f"🌐 {tr(site)}", values=(f"{n} ob.",), open=open_state.get(sid, True),
                                 tags=("site",))
             for page in sorted(tree[site], key=str.lower):
                 pid = f"page:{site}|{page}"
-                self.objects.insert(sid, "end", iid=pid, text=f"📄 {page}", open=open_state.get(pid, True), tags=("page",))
+                self.objects.insert(sid, "end", iid=pid, text=f"📄 {tr(page)}", open=open_state.get(pid, True), tags=("page",))
                 add_group(pid, tree[site][page], 0, site, page)
         for iid in sel:
             if self.objects.exists(iid):
@@ -3087,7 +3161,7 @@ class StudioPanel(tk.Frame):
         pg = page("🌐 Browser")
         from rpr.drivers.web import BROWSERS
         caption(pg, "Browser pentru pasii Web")
-        browser = ttk.Combobox(pg, values=[l for _, l in BROWSERS], state="readonly", width=40,
+        browser = ttk.Combobox(pg, values=[tr(l) for _, l in BROWSERS], state="readonly", width=40,
                                style="Studio.TCombobox")
         browser.current(next((i for i, (v, _) in enumerate(BROWSERS) if v.lower() == st.browser.lower()), 0))
         browser.pack(anchor="w", padx=12, pady=(0, 8))
@@ -3449,6 +3523,11 @@ class StudioPanel(tk.Frame):
                 from rpr.host import RunResult
                 result = RunResult(success=False, message=str(ex))
             finally:
+                if self.video is not None:
+                    try:
+                        self.video.settle()   # 🎥 filmul mai prinde cateva secunde: rezultatul ultimului pas
+                    except Exception:  # noqa: BLE001
+                        pass
                 if dnd:
                     safety.DoNotDisturb.restore()
                 self.post("done", (result,))
@@ -3491,7 +3570,7 @@ class StudioPanel(tk.Frame):
         self._resume_state = None
         if self.video is not None:
             try:
-                self.video.run_finished()
+                self.video.run_finished(result)
             except Exception:  # noqa: BLE001
                 pass
         if self._run_control:
@@ -3582,13 +3661,15 @@ class StudioPanel(tk.Frame):
                                                                          folder=rpr_report.video_folder(routine))))
                 except Exception:  # noqa: BLE001 — filmul nu are voie sa opreasca pregatirea
                     filmed = False
+            result = None
             try:
                 result = engine.run(routine)
             finally:
                 film = ""
                 if filmed:
                     try:
-                        film = self.call_ui(self.video.run_finished) or ""
+                        self.video.settle()
+                        film = self.call_ui(lambda: self.video.run_finished(result)) or ""
                     except Exception:  # noqa: BLE001
                         film = ""
             return result, film
@@ -3956,7 +4037,7 @@ class PropertyEditor:
 
     # ── pas ──
     def _build_node(self, node: RprNode):
-        self._title(f"{icon_for(node)}  {node.KIND_LABEL}")
+        self._title(f"{icon_for(node)}  {tr(node.KIND_LABEL)}")
         if isinstance(node, ActionNode):
             self._build_action(node)
         elif isinstance(node, WaitNode):
@@ -4050,7 +4131,7 @@ class PropertyEditor:
             self.check(node, "Opreste ca EROARE (randul Excel curent va fi marcat cu rosu)",
                        lambda: node.as_error, lambda v: setattr(node, "as_error", v))
         elif isinstance(node, LegacyStepNode):
-            self._hint("Pas pe coordonate de ecran (din recorder). Functioneaza, dar e fragil: daca fereastra se muta "
+            self._hint("Pas pe coordonate de ecran (inregistrat cu ⏺ Ecran). Functioneaza, dar e fragil: daca fereastra se muta "
                        "sau rezolutia se schimba, click-ul nimereste altundeva. Recomandat: un pas \"Actiune\" pe un obiect.")
             s = node.step
             self.text(node, "Descriere", lambda: s.get("description", ""), lambda v: s.__setitem__("description", v), vars_=False)
@@ -4081,7 +4162,7 @@ class PropertyEditor:
         for ai in ACTIONS:
             grp = "Pe obiect" if len(ai.technologies) == 4 else "SAP" if UiTechnology.Sap in ai.technologies else \
                 "Desktop" if UiTechnology.Desktop in ai.technologies else "Browser"
-            options.append((ai.action, f"{grp}  ·  {ai.label}"))
+            options.append((ai.action, f"{tr(grp)}  ·  {tr(ai.label)}"))
 
         def set_action(v):
             a.action = v
@@ -4172,8 +4253,8 @@ class PropertyEditor:
         if info.error:
             self._hint(info.error, color=self.C["warning"])
         elif info.headers:
-            self._hint(f"Coloane gasite ({info.data_rows} randuri cu date): " +
-                       ", ".join("{" + f.row_variable + "." + h + "}" for h in info.headers))
+            self._hint(tr_template("Coloane gasite ({0} randuri cu date): {1}").format(info.data_rows,
+                       ", ".join("{" + f.row_variable + "." + h + "}" for h in info.headers)))
 
     # ── conditie (recursiv pentru SI / SAU) ──
     def condition(self, c: Condition, node: RprNode, host=None, depth=0):
@@ -4461,7 +4542,7 @@ class ObjectDialog(DialogBase):
         self.name = tk.StringVar(value=obj.name)
         tk.Entry(self.body, textvariable=self.name, **es).pack(fill="x", padx=14, ipady=3)
         cap("Tehnologie")
-        self.tech = ttk.Combobox(self.body, values=[l for _, l in TECHNOLOGIES], state="readonly")
+        self.tech = ttk.Combobox(self.body, values=[tr(l) for _, l in TECHNOLOGIES], state="readonly")
         self.tech.current(next((i for i, (v, _) in enumerate(TECHNOLOGIES) if v == obj.technology), 0))
         self.tech.pack(fill="x", padx=14)
         cap("Context (Web: link-ul paginii · Desktop: proces:nume.exe sau titlu · SAP: wnd[0])")

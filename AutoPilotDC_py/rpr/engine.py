@@ -874,6 +874,10 @@ class RprEngine:
         execu = self._host.legacy_executor
         if execu is None:
             raise RprStepException("Pasii vechi (coordonate) nu pot rula in acest mod.")
+        # v4.16: si pasii pe ecran trec prin preventie (ferestre de eroare, click in alta aplicatie, ecran diferit)
+        if self._routine.settings.guard_enabled and self.guard is not None:
+            check = getattr(self.guard, "check_before_legacy", None)
+            self._handle_alert(ls, check(ls) if check is not None else self.guard.check_before_action(ls))
         ok, err = execu(ls.step)
         if not ok:
             raise RprStepException(err or "Pasul vechi a esuat.")

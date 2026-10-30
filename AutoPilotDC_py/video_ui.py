@@ -10,6 +10,7 @@
 from __future__ import annotations
 
 import ctypes
+import datetime as _dt
 import os
 import threading
 import time
@@ -22,10 +23,11 @@ from PIL import ImageTk
 import screen_recorder as sr
 
 try:
-    from i18n import tr, LANG as _LANG
+    from i18n import tr, tr_template, LANG as _LANG
 except ImportError:   # pragma: no cover
     def tr(t):
         return t
+    tr_template = tr
     _LANG = "ro"
 
 
@@ -121,14 +123,57 @@ class VideoController:
         self.mode = "run"
         self._run_name = routine_name
         self._run_files = []
+        self._run_t0 = time.monotonic()
+        self._last_row = ""
         self.rec = sr.ScreenRecorder(s)
+        intro = self._intro()
         if s.area == "window":   # doar fereastra in care lucreaza rutina (fara AutoPilot si alte aplicatii)
             self.rec.ignore_hwnds = {self._app_hwnd()}
-            self.rec.start(routine_name, folder=folder, follow=True)
+            self.rec.start(routine_name, folder=folder, follow=True, intro=intro)
         else:
-            self.rec.start(routine_name, folder=folder)
+            self.rec.start(routine_name, folder=folder, intro=intro)
         self._show_bar()
         return True
+
+    @staticmethod
+    def _intro(extra: str = "") -> List[str]:
+        """Randurile introducerii: ce se ruleaza si cand."""
+        now = _dt.datetime.now().strftime("%d.%m.%Y  %H:%M:%S")
+        lines = [tr("▶ Rulare automata"), f"{tr('Inceput')}: {now}"]
+        return lines + ([extra] if extra else [])
+
+    def _outro(self, result=None, extra: str = "") -> List[str]:
+        """Randurile iesirii: rezultatul rularii, durata, pasii, randurile Excel."""
+        lines = []
+        if result is None:
+            lines.append(tr("■ Sfarsitul filmului"))
+        elif getattr(result, "cancelled", False):
+            lines.append(tr("⛔ Rulare oprita"))
+        elif getattr(result, "success", False):
+            lines.append(tr("✅ Rutina s-a terminat cu succes"))
+        else:
+            msg = str(getattr(result, "message", "") or "")[:120]
+            lines.append(tr("❌ Rutina s-a oprit cu eroare") + (f": {msg}" if msg else ""))
+        if extra:
+            lines.append(extra)
+        secs = time.monotonic() - getattr(self, "_run_t0", time.monotonic())
+        lines.append(f"{tr('Durata')}: {_fmt(secs)}   ·   {tr('Sfarsit')}: {_dt.datetime.now().strftime('%H:%M:%S')}")
+        if result is not None:
+            info = tr_template("{0} pasi, {1} erori").format(getattr(result, "steps_executed", 0),
+                                                            getattr(result, "errors", 0))
+            rows = getattr(result, "rows_ok", 0) + getattr(result, "rows_failed", 0)
+            if rows:
+                info += "   ·   " + tr_template("Randuri Excel: {0} OK, {1} cu eroare").format(
+                    result.rows_ok, result.rows_failed)
+            lines.append(info)
+        return lines
+
+    def settle(self):
+        """Apelat pe firul rularii, dupa ultimul pas: filmul mai merge putin, ca sa prinda rezultatul ultimului pas."""
+        if self.mode == "run" and self.active:
+            tail = self.settings.tail_s
+            if tail > 0:
+                time.sleep(tail)
 
     def marker(self, text: str):
         if self.active:
@@ -138,18 +183,22 @@ class VideoController:
         if not self.active:
             return
         if self.mode == "run" and self.settings.per_row:
-            old = self.rec.split(f"{self._run_name}_rand{row}")
+            label = f"{tr('Rand')} {row}" + (f" ({sheet})" if sheet else "")
+            last = getattr(self, "_last_row", "")
+            old = self.rec.split(f"{self._run_name}_rand{row}", outro=self._outro(None, last),
+                                 intro=self._intro(label))
             if old:
                 self._run_files.append(old)
         self.rec.marker(f"{tr('Rand')} {row}")
 
     def row_finished(self, row: int, status: str):
-        self.marker(f"{tr('Rand')} {row}: {status[:60]}")
+        self._last_row = f"{tr('Rand')} {row}: {status[:60]}"
+        self.marker(self._last_row)
 
-    def run_finished(self) -> str:
-        """Opreste filmul rularii; intoarce primul fisier (la film pe rand: primul rand)."""
+    def run_finished(self, result=None) -> str:
+        """Opreste filmul rularii (cu iesirea: rezultat, durata); intoarce primul fisier (la film pe rand: primul rand)."""
         if self.mode == "run" and self.active:
-            path = self.stop(open_editor=False)
+            path = self.stop(open_editor=False, outro=self._outro(result))
             files = self._run_files + ([path] if path else [])
             if files:
                 self.on_status(tr("🎥 Filmul rularii a fost salvat: ") + os.path.basename(files[-1]) +
@@ -157,10 +206,10 @@ class VideoController:
                 return files[0]
         return ""
 
-    def stop(self, open_editor: bool = True) -> str:
+    def stop(self, open_editor: bool = True, outro: Optional[List[str]] = None) -> str:
         if self.rec is None:
             return ""
-        path = self.rec.stop()
+        path = self.rec.stop(outro)
         self.rec = None
         if self.bar is not None:
             self.bar.destroy()
@@ -669,7 +718,7 @@ class VideoEditor(tk.Toplevel):
                 fn(path, lang=lang, progress=prog)
                 self.after(0, lambda: self.info.configure(text=tr("Exportat: ") + os.path.basename(path)))
             except Exception as ex:  # noqa: BLE001
-                self.after(0, lambda: messagebox.showerror(tr("Video"), str(ex), parent=self))
+                self.after(0, lambda e=str(ex): messagebox.showerror(tr("Video"), e, parent=self))
         threading.Thread(target=work, daemon=True).start()
 
     def _close(self):
@@ -902,7 +951,7 @@ def build_settings_section(parent: tk.Frame, C: Dict[str, str]) -> Callable[[], 
                   relief="flat", bg=C["bg_input"], fg=C["text"], padx=6).pack(side="left")
 
     row(tr("Folderul pentru filme:"), folder_row)
-    check(tr("Inregistreaza automat un film la fiecare rulare de rutina (Studio si Recorder)"), "record_on_run")
+    check(tr("Inregistreaza automat un film la fiecare rulare de rutina (Studio)"), "record_on_run")
     check(tr("   ... in bucla Excel: cate un film pentru fiecare rand"), "per_row")
     check(tr("   ... si la rularile programate"), "on_schedule")
     row(tr("Capturi pe secunda (1-10):"), lambda r: entry(r, "fps"))
@@ -918,6 +967,11 @@ def build_settings_section(parent: tk.Frame, C: Dict[str, str]) -> Callable[[], 
         ttk.Combobox(r, textvariable=v, values=[n for _, n in areas], state="readonly", width=26).pack(side="left")
     row(tr("Ce se inregistreaza:"), area_row)
     row(tr("Scurteaza automat pauzele mai lungi de (s):"), lambda r: entry(r, "idle_compress_s"))
+    check(tr("Filmele rularilor: introducere (rutina, data) la inceput si iesire (rezultat, durata) la final"),
+          "intro_outro")
+    row(tr("Introducere / iesire (s):"), lambda r: (entry(r, "intro_s"), tk.Label(r, text=" / ", bg=bg, fg=C["text"]).pack(
+        side="left"), entry(r, "outro_s")))
+    row(tr("Dupa ultimul pas se mai filmeaza (s):"), lambda r: entry(r, "tail_s"))
     tk.Label(parent, text=tr("Deschide filmele cu:"), bg=bg, fg=C["text_dim"], font=("Segoe UI", 10),
              anchor="w").pack(fill="x", padx=12, pady=(6, 0))
     player_value = build_player_chooser(parent, C, s.player)
@@ -932,9 +986,10 @@ def build_settings_section(parent: tk.Frame, C: Dict[str, str]) -> Callable[[], 
     def save():
         n = sr.VideoSettings.load()
         n.folder = vars_["folder"].get().strip() or n.folder
-        for key in ("record_on_run", "per_row", "on_schedule"):
+        for key in ("record_on_run", "per_row", "on_schedule", "intro_outro"):
             setattr(n, key, bool(vars_[key].get()))
-        for key, cast in (("fps", int), ("scale", float), ("quality", int), ("idle_compress_s", float)):
+        for key, cast in (("fps", int), ("scale", float), ("quality", int), ("idle_compress_s", float),
+                          ("intro_s", float), ("outro_s", float), ("tail_s", float)):
             try:
                 setattr(n, key, cast(str(vars_[key].get()).replace(",", ".")))
             except ValueError:

@@ -21,6 +21,18 @@ from enum import Enum
 from typing import Any, Dict, Iterable, Iterator, List, Optional, Tuple, Type
 
 
+def _t(text: str) -> str:
+    """Textul in limba aplicatiei (v4.16). Titlurile pasilor se compun din bucati traduse, ca sa nu ramana
+    cuvinte romanesti in interfata in engleza. Fara i18n incarcat (teste, C#) textul ramane romanesc."""
+    import sys
+    m = sys.modules.get("i18n")
+    if m is None or not hasattr(m, "tr"):
+        return text
+    if "{" in text and hasattr(m, "tr_template"):   # sablon completat apoi cu .format()
+        return m.tr_template(text)
+    return m.tr(text)
+
+
 # ─────────────────────────────────────────────────────────────
 # Enum-uri (valoarea = numele din C#, scris asa in JSON)
 # ─────────────────────────────────────────────────────────────
@@ -329,7 +341,7 @@ _OP_TEXT = {
 
 
 def op_text(op: CompareOperator) -> str:
-    return _OP_TEXT.get(CompareOperator.parse(op).value, str(op))
+    return _t(_OP_TEXT.get(CompareOperator.parse(op).value, str(op)))
 
 
 @dataclass
@@ -356,24 +368,24 @@ class Condition(_Json):
     def describe(self) -> str:
         k = self.kind
         if k == ConditionKind.ElementExists:
-            core = f"[{self.target}] exista"
+            core = f"[{self.target}] " + _t("exista")
         elif k == ConditionKind.ElementNotExists:
-            core = f"[{self.target}] nu exista"
+            core = f"[{self.target}] " + _t("nu exista")
         elif k == ConditionKind.ElementVisible:
-            core = f"[{self.target}] e vizibil"
+            core = f"[{self.target}] " + _t("e vizibil")
         elif k == ConditionKind.ElementEnabled:
-            core = f"[{self.target}] e activ"
+            core = f"[{self.target}] " + _t("e activ")
         elif k == ConditionKind.ElementText:
             core = f"text [{self.target}] {op_text(self.operator)} \"{self.right}\""
         elif k == ConditionKind.Compare:
             core = f"{self.left} {op_text(self.operator)} \"{self.right}\""
         elif k == ConditionKind.AllOf:
-            core = "(" + " SI ".join(c.describe() for c in self.children) + ")"
+            core = "(" + (" %s " % _t("SI")).join(c.describe() for c in self.children) + ")"
         elif k == ConditionKind.AnyOf:
-            core = "(" + " SAU ".join(c.describe() for c in self.children) + ")"
+            core = "(" + (" %s " % _t("SAU")).join(c.describe() for c in self.children) + ")"
         else:
             core = str(k)
-        return f"NU {core}" if self.negate else core
+        return f"{_t('NU')} {core}" if self.negate else core
 
 
 # ─────────────────────────────────────────────────────────────
@@ -418,7 +430,7 @@ class RprNode(_Json):
         return self.label if self.label.strip() else self.auto_title()
 
     def auto_title(self) -> str:
-        return self.KIND_LABEL
+        return _t(self.KIND_LABEL)
 
     def to_dict(self) -> Dict[str, Any]:
         d = super().to_dict()
@@ -465,7 +477,7 @@ class ActionNode(RprNode):
 
     def auto_title(self) -> str:
         info = action_info(self.action)
-        s = info.label
+        s = _t(info.label)
         if self.target.strip():
             s += f" [{self.target}]"
         if info.value_label and self.value.strip():
@@ -489,8 +501,9 @@ class WaitNode(RprNode):
 
     def auto_title(self) -> str:
         if self.mode == WaitMode.Seconds:
-            return f"Asteapta {_num(self.seconds)} s"
-        return f"Asteapta pana cand {self.condition.describe()} (max {_num(self.timeout_ms / 1000.0, 1)} s)"
+            return _t("Asteapta {0} s").format(_num(self.seconds))
+        return _t("Asteapta pana cand {0} (max {1} s)").format(self.condition.describe(),
+                                                             _num(self.timeout_ms / 1000.0, 1))
 
 
 @_node("set_variable")
@@ -532,7 +545,7 @@ class IfNode(RprNode):
     _branch_names = ("Atunci", "Altfel")
 
     def auto_title(self) -> str:
-        return f"Daca apare {self.condition.describe()}" if self.optional else f"Daca {self.condition.describe()}"
+        return (_t("Daca apare {0}") if self.optional else _t("Daca {0}")).format(self.condition.describe())
 
     # "else" e cuvant rezervat in Python -> campul se numeste else_, in JSON "else"
     def to_dict(self):
@@ -567,10 +580,10 @@ class LoopNode(RprNode):
 
     def auto_title(self) -> str:
         if self.mode == LoopMode.Times:
-            return f"Repeta de {self.count} ori"
+            return _t("Repeta de {0} ori").format(self.count)
         if self.mode == LoopMode.While:
-            return f"Repeta cat timp {self.condition.describe()}"
-        return f"Repeta pana cand {self.condition.describe()}"
+            return _t("Repeta cat timp {0}").format(self.condition.describe())
+        return _t("Repeta pana cand {0}").format(self.condition.describe())
 
 
 @_node("for_each_row")
@@ -594,9 +607,9 @@ class ForEachRowNode(RprNode):
     _branch_names = ("Pasi pentru fiecare rand",)
 
     def auto_title(self) -> str:
-        f = os.path.basename(self.file_path.replace("\\", "/")) if self.file_path.strip() else "(alege fisier)"
+        f = os.path.basename(self.file_path.replace("\\", "/")) if self.file_path.strip() else _t("(alege fisier)")
         sh = f" / {self.sheet}" if self.sheet.strip() else ""
-        return f"Pentru fiecare rand din {f}{sh} → {{{self.row_variable}.*}}"
+        return _t("Pentru fiecare rand din {0} → {1}").format(f + sh, "{%s.*}" % self.row_variable)
 
 
 @_node("write_excel")
@@ -624,7 +637,7 @@ class QuestionNode(RprNode):
     skip_button: str = "Sari"
 
     def auto_title(self) -> str:
-        return f"Intreaba: \"{self.text}\" [{self.buttons}]"
+        return _t("Intreaba") + f": \"{self.text}\" [{self.buttons}]"
 
 
 @_node("try")
@@ -639,7 +652,7 @@ class TryNode(RprNode):
     _branch_names = ("Incearca", "La eroare")
 
     def auto_title(self) -> str:
-        return f"Incearca (eroarea → {{{self.error_variable}}})"
+        return _t("Incearca (eroarea → {{{0}}})").format(self.error_variable)
 
 
 @_node("group")
@@ -652,7 +665,7 @@ class GroupNode(RprNode):
     _branch_names = ("Pasi",)
 
     def auto_title(self) -> str:
-        return "Grup"
+        return _t("Grup")
 
 
 @_node("on_error_rule")
@@ -674,10 +687,10 @@ class RuleNode(RprNode):
     def auto_title(self) -> str:
         what = []
         if self.error_contains.strip():
-            what.append(f"eroarea contine \"{self.error_contains.strip()}\"")
+            what.append(_t("eroarea contine \"{0}\"").format(self.error_contains.strip()))
         if self.use_element:
-            what.append(f"apare {self.condition.describe()}")
-        return "Regula: " + (" sau ".join(what) if what else "(neconfigurata)")
+            what.append(_t("apare {0}").format(self.condition.describe()))
+        return _t("Regula") + ": " + ((" %s " % _t("sau")).join(what) if what else _t("(neconfigurata)"))
 
 
 @_node("run_routine")
@@ -694,7 +707,7 @@ class RunRoutineNode(RprNode):
         for ext in (".rpr.json", ".json"):
             if shown.lower().endswith(ext):
                 shown = shown[:-len(ext)]
-        return f"Ruleaza rutina [{shown}]" if shown else "Ruleaza rutina"
+        return _t("Ruleaza rutina") + (f" [{shown}]" if shown else "")
 
 
 @_node("log")
@@ -717,7 +730,7 @@ class BreakNode(RprNode):
     next_iteration: bool = False
 
     def auto_title(self) -> str:
-        return "Treci la urmatoarea repetare" if self.next_iteration else "Iesi din bucla"
+        return _t("Treci la urmatoarea repetare" if self.next_iteration else "Iesi din bucla")
 
 
 @_node("stop")
@@ -728,19 +741,35 @@ class StopNode(RprNode):
     as_error: bool = False
 
     def auto_title(self) -> str:
-        return f"Opreste cu eroare: \"{self.message}\"" if self.as_error else "Opreste rutina"
+        return _t("Opreste cu eroare") + f": \"{self.message}\"" if self.as_error else _t("Opreste rutina")
 
 
 @_node("legacy_step")
 @dataclass
 class LegacyStepNode(RprNode):
     """Pas din rutinele vechi (pe coordonate). `step` = dictionarul StepModel (chei snake_case)."""
-    KIND_LABEL = "Pas vechi (coordonate)"
+    KIND_LABEL = "Pas pe ecran (coordonate)"
     step: Dict[str, Any] = field(default_factory=dict)
+
+    _CLICKS = {"CLICK": "Click", "DBLCLICK": "Dublu click", "RIGHTCLICK": "Click dreapta"}
 
     def auto_title(self) -> str:
         s = self.step
-        return f"[v3.9] {s.get('step_type', '')} ({s.get('x', 0)},{s.get('y', 0)}) {s.get('description', '')}".strip()
+        t = str(s.get("step_type", "")).upper()
+        x, y = s.get("x", 0), s.get("y", 0)
+        win = str(s.get("window_title") or s.get("window_process") or "").strip()
+        where = f"  ·  {win[:40]}" if win else ""
+        if t in self._CLICKS:
+            return f"{_t(self._CLICKS[t])} ({x}, {y}){where}"
+        if t == "KEY":
+            return f"{_t('Tasta')} {s.get('key_combo', '')}{where}"
+        if t == "TYPE":
+            return f"{_t('Scrie')} \"{s.get('text_input', '')}\"{where}"
+        if t == "SCROLL":
+            return f"Scroll {s.get('scroll_dy', 0)} ({x}, {y}){where}"
+        if t == "MOVE":
+            return f"{_t('Mouse la')} ({x}, {y})"
+        return f"{t} ({x}, {y}) {s.get('description', '')}".strip()
 
 
 def _num(v: float, decimals: int = 2) -> str:

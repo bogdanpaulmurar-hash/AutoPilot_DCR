@@ -8,7 +8,7 @@
 from __future__ import annotations
 
 import time
-from typing import Any, Dict, Tuple
+from typing import Any, Dict, List, Tuple
 
 _KEY_MAP = {
     "ctrl": "ctrl", "shift": "shift", "alt": "alt",
@@ -97,3 +97,48 @@ def execute_legacy_step(step: Dict[str, Any]) -> Tuple[bool, str]:
         return True, ""
     except Exception as ex:  # noqa: BLE001
         return False, str(ex)
+
+
+# ─────────────────────────────────────────────────────────────
+# v4.16: inregistrarea pe ecran (fostul tab Recorder) -> pasi Studio
+# ─────────────────────────────────────────────────────────────
+_CHAR_NAMES = {"space": " "}
+
+
+def _typed_char(step: Dict[str, Any]):
+    """Caracterul scris de o tasta simpla (litera, cifra, semn; Shift+litera), altfel None."""
+    if str(step.get("step_type", "")).upper() != "KEY":
+        return None
+    combo = str(step.get("key_combo") or "")
+    if combo.startswith("Shift+") and len(combo) == 7:
+        combo = combo[6:].upper()   # pynput da de obicei deja "B"; "Shift+b" -> "B"
+    if combo in _CHAR_NAMES:
+        return _CHAR_NAMES[combo]
+    return combo if len(combo) == 1 and combo.isprintable() else None
+
+
+def merge_typing(steps: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Tastele simple apasate una dupa alta in aceeasi fereastra devin un singur pas "Scrie text"."""
+    out: List[Dict[str, Any]] = []
+    for s in steps:
+        ch = _typed_char(s)
+        prev = out[-1] if out else None
+        if ch is not None and prev is not None and prev.get("_typing") \
+                and prev.get("window_process", "") == s.get("window_process", "") \
+                and float(s.get("delay_before") or 0) < 3.0:
+            prev["text_input"] += ch
+            prev["description"] = "Scrie: " + prev["text_input"]
+            continue
+        s = dict(s)
+        if ch is not None:
+            s.update(step_type="TYPE", text_input=ch, key_combo="", description="Scrie: " + ch, _typing=True)
+        out.append(s)
+    for s in out:
+        s.pop("_typing", None)
+    return out
+
+
+def recorded_to_nodes(steps: List[Dict[str, Any]]) -> list:
+    """Pasii inregistrati (dict-uri StepModel) -> pasi Studio "pe ecran" (LegacyStepNode), cu asteptarile lor."""
+    from .storage import LegacyConverter
+    return LegacyConverter.convert("Inregistrare", merge_typing(steps)).steps

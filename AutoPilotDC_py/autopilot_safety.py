@@ -923,8 +923,13 @@ class SafetyGuard:
                               "Asteapta sa-si revina, apoi apasa Continua.",
                               "hung:" + fg.process, can_ignore_step=False)
 
-        if getattr(step, "guard_ignore", False):
+        return self.check_recorded(step)
+
+    def check_recorded(self, step) -> Optional[GuardAlert]:
+        """4-6: click-ul / tastele ajung unde erau la inregistrare (si pentru pasii pe ecran din Studio, v4.16)."""
+        if not self.enabled or not IS_WINDOWS or getattr(step, "guard_ignore", False):
             return None
+        fg = foreground()
 
         # 4-5. click
         if step.step_type in ("CLICK", "DBLCLICK", "RIGHTCLICK"):
