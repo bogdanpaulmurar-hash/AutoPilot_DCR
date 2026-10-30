@@ -2047,5 +2047,12 @@
  "Fereastra pe tot ecranul (F11; Esc = iesi)": "Fenster auf dem ganzen Bildschirm (F11; Esc = beenden)",
  "🗗 Fereastra separata": "🗗 Eigenes Fenster",
  "Fluxul in fereastra lui: o muti pe alt monitor si urmaresti rularea pe culori": "Der Ablauf in einem eigenen Fenster: auf einen anderen Monitor ziehen und den Lauf an den Farben verfolgen",
- "Flux": "Ablauf"
+ "Flux": "Ablauf",
+ "SAP: deruleaza tabelul": "SAP: Tabelle blättern",
+ "Randul (1 = primul) sau +1 / -1 / inceput / sfarsit": "Zeile (1 = erste) oder +1 / -1 / Anfang / Ende",
+ "🟦  SAP: deruleaza tabelul": "🟦  SAP: Tabelle blättern",
+ "Aduce un rand din tabel pe ecran (ex: {Repetare}); pozitia lui intra in {Pozitie}": "Holt eine Tabellenzeile auf den Bildschirm (z. B. {Repetare}); ihre Position kommt in {Pozitie}",
+ "Ex: {Repetare} intr-o bucla. Pozitia randului pe ecran (0 = sus) intra in variabila; o pui in ID-ul celulei, ex: btnDEL[5,{Pozitie}].": "Z. B. {Repetare} in einer Schleife. Die Position der Zeile auf dem Bildschirm (0 = oben) kommt in die Variable; setze sie in die Zell-ID, z. B. btnDEL[5,{Pozitie}].",
+ "Deruleaza un tabel SAP (randul 1 = primul); pozitia randului pe ecran intra in variabila (implicit {Pozitie}), pentru ID-ul celulei: btnDEL[5,{Pozitie}].": "Blättert eine SAP-Tabelle (Zeile 1 = erste); die Position der Zeile auf dem Bildschirm kommt in die Variable (Standard {Pozitie}), für die Zell-ID: btnDEL[5,{Pozitie}].",
+ "SAP DERULEAZA <tabel> = <rand>": "SAP SCROLL <Tabelle> = <Zeile>"
 }

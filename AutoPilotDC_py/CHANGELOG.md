@@ -2,6 +2,12 @@
 
 Pornirea aplicației: **`AutoPilot_DC.pyw`** (sau scurtătura „AutoPilot DC” de pe Desktop). Numele fișierelor nu se mai schimbă de la o versiune la alta, deci scurtăturile și pornirea cu Windows rămân valabile.
 
+## 4.22.0 — 2026-10-30
+- **🟦 SAP: derulează tabelul** (pas nou, în 🧱 Pași și în 📥 Import AI: `SAP DERULEAZA <tabel> = <rând> [-> {Variabila}]`). Valoarea: rândul (`1` = primul, sau `{Repetare}` într-o buclă), `+1` / `-1`, `inceput` / `sfarsit`. Rândul urcă sus cât se poate, iar poziția lui pe ecran (`0` = primul rând vizibil) intră în `{Pozitie}`, pentru ID-ul celulei (`btnDEL[5,{Pozitie}]`). La capătul listei tabelul nu mai coboară, dar poziția crește, deci aceeași buclă ajunge la ultimul rând. Înlocuiește săgeata de scroll pe ecran și rutina a doua pentru ultimele rânduri, la liste unde rândurile rămân după prelucrare (ex. roluri marcate „șters”). Merge pe tabele clasice (GuiTableControl) și ALV (GuiGridView).
+- Pas doar în Python (`SapScrollTable`); C# nu îl cunoaște.
+- Instrucțiuni: capitolul 8, punctul 8, în RO / EN / DE; textele noi în EN / DE.
+- Teste (Linux, Python 3.12, Xvfb): `test_sap_scroll` nou (9, tabele SAP simulate: bucla pe 100 de rânduri cu 40 vizibile atinge fiecare rând o dată, inclusiv ultimele 40; +N / −N / început / sfârșit; fără derulare inutilă; valori greșite și rând peste capăt; ALV; Import AI în RO / EN). Suita: 238 rulate, 20 sărite; aceleași 4 eșecuri vechi. Netestat pe Windows cu SAP GUI real.
+
 ## 4.21.0 — 2026-10-30
 - **🔀 Flux → 🗗 Fereastră separată**: fluxul în fereastra lui, pentru al doilea monitor (**⛶ Ecran complet** / F11, Esc = ieși). Urmărește rularea pe culori (galben = rulează, verde = reușit, roșu = eroare) și rămâne pe flux și când Studio trece singur pe 📊 Excel la o rutină cu buclă Excel. Se reface la fiecare modificare a rutinei sau la schimbarea tab-ului; zoom-ul, harta și restrângerea merg la fel ca în centru.
 - Instrucțiuni: capitolul 32, în RO / EN / DE; textele noi în EN / DE.

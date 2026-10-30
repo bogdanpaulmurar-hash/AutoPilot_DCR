@@ -86,7 +86,8 @@ VIDEO_COLUMN_KEY = "video_column"   # ForEachRowNode.extra: coloana cu linkul fi
 
 _SAP_NO_STATUS_CHECK = {RprAction.SapReadStatusBar, RprAction.SapConnect, RprAction.Highlight,
                         RprAction.ReadText, RprAction.ReadValue, RprAction.ReadAttribute,
-                        RprAction.SapGridReadCell, RprAction.SapGridRowCount}
+                        RprAction.SapGridReadCell, RprAction.SapGridRowCount,
+                        RprAction.SapScrollTable}
 
 
 def matches_expected(actual: str, expected: str) -> bool:
