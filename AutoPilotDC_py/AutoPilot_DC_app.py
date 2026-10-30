@@ -1126,6 +1126,7 @@ class MainWindow:
              "cu film, raport Excel si documentatie", short="🗂 Manager")
         more_btn(r, [("Salveaza ca…", st("save_routine", True)),
                      ("📥 Importa pasi (text / JSON de la AI)…", st("show_import")),
+                     ("🎯 Completeaza obiectele rutinei…", st("show_complete_objects")),
                      ("📚 Exemple", st("show_examples")),
                      ("-", None),
                      ("🕒 Programeaza", st("show_schedule"))])

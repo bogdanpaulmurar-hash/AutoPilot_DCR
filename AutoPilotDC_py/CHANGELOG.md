@@ -2,6 +2,15 @@
 
 Pornirea aplicației: **`AutoPilot_DC.pyw`** (sau scurtătura „AutoPilot DC” de pe Desktop). Numele fișierelor nu se mai schimbă de la o versiune la alta, deci scurtăturile și pornirea cu Windows rămân valabile.
 
+## 4.16.3 — 2026-10-30
+- **🎯 Completează obiectele** (nou): după 📥 Import AI, obiectele au doar locatoare deduse din text. Fereastra nouă le ia pe rând pe pagina reală, în ordinea pașilor rutinei:
+  - **🧪 Verifică toate**: pe pagina deschisă, fără click (aceleași verificări ca 🩺 Verifică): ✔ găsit, ⚠ mai multe elemente la fel, ✖ negăsit. SAP / Desktop: testul obișnuit.
+  - **🎯 Marchează în browser** (sau dublu-click): click pe element (SAP / Desktop: F2). Obiectul primește locatoarele capturate (id, css, xpath, frame), cele vechi rămân de rezervă; numele, deci și pașii rutinei, nu se schimbă. Biblioteca se salvează.
+  - **⏭ Următorul negăsit**; obiectele cu `{variabile}` în locator se verifică la rulare.
+  - Se propune singură după import (🎯 Acum / Mai târziu); oricând din 📚 Bibliotecă → 🎯 Completează sau ⋯ → 🎯 Completează obiectele rutinei. Modul nou `complete_ui.py`.
+- Instrucțiuni: capitolul 33, pasul 5, în RO / EN / DE.
+- Teste (Linux, Python 3.12, Xvfb): `test_complete` nou (4: locatoarele capturate + cele vechi de rezervă, obiectele rutinei în ordine, stările, fereastra cu Verifică toate + Marchează pe un browser fals). Verificat și cu Chromium fără interfață pe o pagină locală: ✔ / ⚠ 2 elemente / ✖ / variabilă. Netestat pe Windows: Spy-ul real din fereastră (click în Edge, F2 în SAP).
+
 ## 4.16.2 — 2026-10-30
 - **📥 Import AI: promptul nou** pentru surse mai mari. Sursa poate fi o procedură (cu sau fără poze) sau **cod** (C#, VBA, Python, Selenium, SilkTest, UiPath). AI-ul păstrează selectorii din cod (`id`, `css`, `xpath`, `sap`), traduce doar ce se face pe ecran și în Excel, folosește pozele doar pentru textele exacte și primește lista obiectelor din 📚 Bibliotecă (le folosește ca `[Nume]`). Răspunsul: blocul cu rutina și o listă „De verificat”. Un răspuns prea lung continuă în mesajul următor (`# CONTINUARE`); la import blocurile se unesc, iar numerele rândurilor rămân cele din text.
 - **`# TODO: …` = locurile unde intervii tu** (selector ghicit, valoare din alt sistem, decizie neclară). La import apar în galben în lista de probleme (click = rândul), nu blochează crearea și rămân în comentariul pasului (💬 în arbore).
