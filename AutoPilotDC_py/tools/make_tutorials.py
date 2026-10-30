@@ -178,49 +178,6 @@ def first_iid(pred):
 movies = []
 
 
-def recorder_movie():
-    m = Movie("01_recorder", "Recorder")
-    StepModel = mod.StepModel
-    m.do(lambda: app._set_mode("recorder"), 800).do(lambda: app._nb.select(app._tab_recorder), 600).snap()
-    m.say(L("Recorder: inregistrezi ce faci cu mouse-ul si tastatura, apoi rutina o repeta.",
-            "Recorder: you record what you do with the mouse and keyboard, then the routine repeats it.",
-            "Recorder: Sie zeichnen auf, was Sie mit Maus und Tastatur tun, dann wiederholt die Routine es."), 4)
-    m.point(lambda: find_text(app.root, "⏺ Inregistreaza") or find_text(app.root, "Inregistreaza"))
-    m.say(L("1. Apasa Inregistreaza (F5) si lucreaza normal. Pe margini apare chenarul verde REC.",
-            "1. Press Record (F5) and work normally. A green REC border appears around the screen.",
-            "1. Aufnehmen (F5) drücken und normal arbeiten. Ein grüner REC-Rahmen erscheint."), 4)
-
-    def fill():
-        steps = [StepModel(step_id=1, step_type="CLICK", description="Click pe Start", x=24, y=1060),
-                 StepModel(step_id=2, step_type="TYPE", description="Scrie: notepad", text_input="notepad"),
-                 StepModel(step_id=3, step_type="KEY", description="Tasta Enter", key_combo="enter"),
-                 StepModel(step_id=4, step_type="DELAY", description="Pauza 1.5 s", delay_after=1.5),
-                 StepModel(step_id=5, step_type="TYPE", description="Scrie: Raport zilnic", text_input="Raport zilnic"),
-                 StepModel(step_id=6, step_type="KEY", description="Ctrl+S", key_combo="ctrl+s")]
-        app._load_steps_to_ui(steps)
-    m.do(fill, 600).snap()
-    m.point(lambda: find_text(app.root, "⏹ Stop Rec") or find_text(app.root, "Stop Rec"))
-    m.say(L("2. Stop Rec (F6): pasii apar in lista. Dublu click pe un pas = il editezi.",
-            "2. Stop Rec (F6): the steps appear in the list. Double-click a step = edit it.",
-            "2. Aufnahme stopp (F6): Die Schritte erscheinen in der Liste. Doppelklick = bearbeiten."), 4.5)
-    m.point(lambda: app._entry_repeat if hasattr(app, "_entry_repeat") else None, click=False)
-    m.say(L("3. Alege de cate ori se repeta rutina.", "3. Choose how many times the routine repeats.",
-            "3. Wählen Sie, wie oft die Routine wiederholt wird."), 3)
-    m.point(lambda: find_text(app.root, "▶ Ruleaza"))
-    m.say(L("4. Ruleaza (F7). Pauza = F8, Stop = F9, STOP URGENTA = F12.",
-            "4. Run (F7). Pause = F8, Stop = F9, EMERGENCY STOP = F12.",
-            "4. Ausführen (F7). Pause = F8, Stopp = F9, NOT-STOPP = F12."), 4)
-    m.point(lambda: find_text(app.root, "💾 Salveaza") or find_text(app.root, "Salveaza"))
-    m.say(L("5. Salveaza rutina (Ctrl+S). O redeschizi din tab-ul Rutine.",
-            "5. Save the routine (Ctrl+S). Reopen it from the Routines tab.",
-            "5. Routine speichern (Ctrl+S). Im Tab Routinen wieder öffnen."), 4)
-    m.say(L("Sfat: pentru rutine stabile (care nu depind de pozitia ferestrelor) foloseste Studio RPR.",
-            "Tip: for stable routines (independent of window positions) use Studio RPR.",
-            "Tipp: Für stabile Routinen (unabhängig von Fensterpositionen) Studio RPR verwenden."), 4)
-    m.do(lambda: app._load_steps_to_ui([]), 100)
-    return m
-
-
 def web_movie():
     m = Movie("02_studio_web", "Studio: Web")
     m.do(lambda: app._set_mode("studio"), 1500).do(lambda: open_example("02_Web_Login_demo.rpr.json"), 1200).snap()
@@ -432,7 +389,7 @@ def video_movie():
     return m
 
 
-ALL = [recorder_movie, web_movie, excel_movie, desktop_movie, sap_movie, library_movie, schedule_movie, video_movie]
+ALL = [web_movie, excel_movie, desktop_movie, sap_movie, library_movie, schedule_movie, video_movie]
 
 
 def run_all():

@@ -8,37 +8,35 @@ Jedes Kapitel erklärt kurz einen Ablauf, Schritt für Schritt, mit einem Beispi
 
 - Starten Sie die Anwendung mit **AutoPilot_DC.pyw** im Ordner `AutoPilotDC_py` oder über die Desktop-Verknüpfung „AutoPilot DC“ (ohne CMD-Fenster).
 - Beim ersten Mal (oder auf einem neuen Laptop) **INSTALEAZA.bat** ausführen: installiert alles Nötige ohne Administratorrechte. Das Fenster bleibt offen, bis Sie eine Taste drücken.
-- Oben ist der Bereichsumschalter: **🎬 Recorder** (Bildschirmkoordinaten), **🧩 Studio RPR** (Objekte), **📖 Anleitung** (hier).
-- Die Schaltflächen darunter wechseln mit dem geöffneten Bereich und rücken in eine zweite Zeile, wenn das Fenster schmal ist.
-- **🚨 NOT-STOPP** (oder F12) beendet jede Ausführung sofort.
-- Tray-Symbol neben der Uhr: Klick = Anwendung öffnen; Rechtsklick = Recorder, Studio, NOT-STOPP, Beenden.
+- Die Anwendung hat einen Arbeitsbereich, **🧩 Studio RPR**. Der frühere Recorder ist jetzt in Studio (Schaltfläche **⏺ Bildschirm**, Kapitel 2).
+- Die obere Leiste ist einzeilig: die Studio-Befehle (Routine, Ausführung, Spy und Aufnahme) in der Mitte; bei schmalem Fenster bleiben nur die Symbole (der ganze Text steht im Tooltip). Rechts kleine Schaltflächen: **🎥** nimmt den Bildschirm auf, **🎬** öffnet ein Video, **📖 Anleitung** (hier, oder F1), **⚙ Einstellungen** der Anwendung, **✕**.
+- **🚨 NOT-STOPP** (oder F12) beendet jede Ausführung und Aufnahme sofort.
+- Tray-Symbol neben der Uhr: Klick = Anwendung öffnen; Rechtsklick = Studio, ⏺ Bildschirm, Video, NOT-STOPP, Beenden.
 
-> Beispiel: Anwendung öffnen, 🧩 Studio RPR drücken, dann 📚 Beispiele und „01 Invatare“ (Lernen) öffnen.
+> Beispiel: Anwendung öffnen, **⋯ → 📚 Beispiele** drücken und „01 Lernen“ öffnen.
 
-## 2. Recorder: Aufnahme und Wiedergabe
+## 2. ⏺ Bildschirm: Maus und Tastatur aufnehmen (der frühere Recorder)
 
-[video:01_recorder]
+1. Wählen Sie in Studio den Schritt, nach dem die neuen Schritte kommen sollen (oder keinen: sie kommen ans Ende).
+2. **⏺ Bildschirm** (F5) drücken. Das AutoPilot-Fenster wird minimiert, der grüne **REC**-Rahmen erscheint und oben eine kleine Leiste mit der Anzahl der Schritte und **⏹ Stopp (F6)**.
+3. Arbeiten Sie normal in jeder Anwendung: Klicks, Scrollen, Tasten. Nacheinander getippte Buchstaben werden ein einziger Schritt „Schreiben“. Klicks auf AutoPilot selbst werden nicht aufgenommen.
+4. **F6** oder **⏹ Stopp** drücken. Die Schritte kommen in die Routine, in eine Gruppe „Bildschirmaufnahme HH:MM“, als 🖱 Bildschirmschritte.
+5. Ausführen mit **▶ Ausführen** (F7). **Pause** = F8, **Stopp** = F9, **NOT-STOPP** = F12. Für Wiederholungen die Gruppe in einen **🔁 Wiederholen**-Block legen; für Werte aus Excel in ein **📊 Für jede Zeile** (und den Text des Schritts „Schreiben“ durch `{Rand.Spalte}` ersetzen).
+6. Das Schutzsystem prüft auch Bildschirmschritte: Würde der Klick bei der Ausführung in einer anderen Anwendung landen oder sieht der Bereich anders aus, hält die Routine an und fragt.
 
-1. Im **🎬 Recorder** **⏺ Aufnehmen** (F5) drücken.
-2. Die Aktionen am Bildschirm ausführen (Klicks, Text, Tasten). Ein grüner **REC**-Rahmen erscheint.
-3. **⏹ Aufnahme stopp** (F6) drücken. Die Schritte erscheinen in der Liste.
-4. Anzahl der **Wiederholungen** wählen und **▶ Ausführen** (F7) drücken. Der Rahmen wird rot **RUN**.
-5. **Pause** = F8, **Stopp** = F9, **NOT-STOPP** = F12.
-6. **💾 Speichern** (Ctrl+S) legt die Routine in `rutine_salvate` ab; im Tab **📁 Routinen** per Doppelklick wieder öffnen.
+> Beispiel: letzten Schritt wählen, ⏺ Bildschirm drücken, Editor öffnen, „Test“ tippen, F6 drücken. Die Routine erhält die Gruppe mit den Klicks und den Schritt Schreiben "Test".
 
-> Beispiel: Öffnen des Editors und Schreiben von „Test“ aufnehmen, Wiederholungen = 3, dann Ausführen.
+> Achtung: Bildschirmschritte arbeiten mit Koordinaten. Wird das Fenster verschoben oder ändert sich die Auflösung, landet der Klick woanders. Nutzen Sie wo möglich Objektschritte (🎯 Spy, ⏺ Web).
 
-> Hinweis: Der Recorder arbeitet mit Koordinaten. Wird das Fenster verschoben oder ändert sich die Auflösung, landet der Klick woanders. Für stabile Routinen Studio verwenden.
+## 3. Bildschirmschritte: Bearbeiten und was aus dem Recorder umgezogen ist
 
-## 3. Recorder: Step Builder, Bearbeiten, Debuggen
+- Ein 🖱 Bildschirmschritt wird rechts wie jeder Schritt bearbeitet: **X / Y**, Tasten, Text, Warten davor / danach, Kommentar. Der Titel zeigt, was er tut und in welchem Fenster („Klick (420, 310) · Editor“).
+- Die aufgenommene Gruppe kann umbenannt, deaktiviert, mit der Maus verschoben oder dupliziert werden; ihre Schritte einzeln verschieben, löschen oder deaktivieren.
+- Was in den Recorder-Tabs war, ist jetzt in Studio: **Step Builder** → die Blöcke in 🧱 Schritte; **Routinen** → 📋 Routinen und 🗂 Routinenmanager; **Excel** → 📊 Für jede Excel-Zeile; **Log** → ⏱ Zeitachse und Ausführungslog (mit Excel-Export); **Einstellungen** → die Schaltfläche ⚙ oben rechts; **Hilfe** → 📖 Anleitung. Wiederholungen → der Block 🔁 Wiederholen; Pause zwischen Schritten → ⚙ Routine.
+- Alte Recorder-Routinen (`rutine_salvate\*.json`) öffnen Sie mit **📂 Öffnen**: Sie werden automatisch in Bildschirmschritte umgewandelt; die alte Datei bleibt unverändert.
+- **Notizen** haben keinen Tab mehr: nutzen Sie das Feld **Kommentar / Notiz** der Schritte und die Routinenbeschreibung.
 
-- **🔧 Step Builder**: Schritte einzeln hinzufügen (Typ, Koordinaten, Tasten, Text, Pause, Frage an den Benutzer). **📍 Mausposition erfassen** liefert die Koordinaten in 3 Sekunden.
-- Doppelklick auf einen Schritt = bearbeiten. **▲/▼** verschiebt, **⊘ Überspringen** lässt ihn bei der Ausführung aus.
-- **🐛 Schritt debuggen** führt einen einzelnen Schritt als Test aus; **🔍 Simulieren** zeigt, was er täte, ohne es zu tun.
-- **📊 Excel**: dieselbe Routine für jeden Wert eines Excel-Bereichs ausführen (z. B. `A1:A100`).
-- **📋 Log** speichert jede Ausführung; Export als XLSX / CSV / JSON. **📝 Notizen** ist ein einfacher Notizblock.
-
-> Beispiel: Im Step Builder „Text schreiben“ mit `{valoare}` hinzufügen, dann im Excel-Tab Datei und Bereich `A2:A20` wählen.
+> Beispiel: 📂 Öffnen → `rutine_salvate\Bericht.json` → die Routine erscheint in Studio mit ihren 🖱 Schritten; speichern Sie sie (💾) als `.rpr.json`.
 
 ## 4. Sicherheit bei der Ausführung
 
@@ -197,12 +195,12 @@ Jedes Kapitel erklärt kurz einen Ablauf, Schritt für Schritt, mit einem Beispi
 
 ## 18. Einstellungen
 
-- **⚙ Einstellungen** (Anwendung): Verzögerung und Geschwindigkeit der Wiedergabe, Countdown, Aufzeichnung von Mausbewegungen, Sicherheit bei der Ausführung, Tastenkürzel, **Start mit Windows** (optional direkt ins Tray), die Schaltfläche ✕ versteckt ins Tray, Desktop-Verknüpfung, **Sprache** (Română / English / Deutsch) und Design. Sprache und Design gelten nach einem Neustart.
+- **⚙ Einstellungen** (Anwendung, kleine Schaltfläche oben rechts): Bildschirmaufnahme (Mausbewegungen), Sicherheit bei der Ausführung, Tastenkürzel, **Start mit Windows** (optional direkt ins Tray), die Schaltfläche ✕ versteckt ins Tray, Desktop-Verknüpfung, Design, Video, **Sprache** (Română / English / Deutsch), Backup. Sprache und Design gelten nach einem Neustart.
 - **Eine Sprache** für die ganze Anwendung (⚙ Einstellungen → 🌐 Sprache): neben der Oberfläche werden auch die Logs, die Statusspalte in der Excel-Datei der Routine (OK / FEHLER / IN BEARBEITUNG), der Ausführungsbericht sowie Zusammenfassung und Dokumentation der Vorbereitungen in dieser Sprache geschrieben. Bei der Wiederaufnahme werden Status in jeder Sprache erkannt (z. B. „IN LUCRU“ = „IN BEARBEITUNG“), eine auf Rumänisch begonnene Excel-Datei kann also nach dem Wechsel weitergeführt werden.
-- **🌐 Studio-Einstellungen**: Browser für Web-Schritte (Edge empfohlen, Chrome), ohne Fenster (nur für Zeitpläne), Minimieren bei Ausführung, Browser schließen, Browserprofil löschen (Abmeldung).
-- **⚙ Routineeinstellungen**: Fehlerverhalten, Objektmarkierung, Standard-Timeout, Pause zwischen Schritten, Wiederholungen, Screenshots, Nicht stören, Schutz, Variablen.
+- **🌐 Studio-Einstellungen**: Browser für Web-Schritte (Edge empfohlen, Chrome), ohne Fenster (nur für Zeitpläne), Minimieren bei Ausführung, Browser schließen, Browserprofil löschen (Abmeldung); dazu Textgröße, Speicherorte und die Anwendung für Videos (Kapitel 31).
+- **⚙ Routine**: Fehlerverhalten, Objektmarkierung, Standard-Timeout, Pause zwischen Schritten, Wiederholungen, Screenshots, Nicht stören, Schutz, Variablen.
 
-> Beispiel: Einstellungen → Sprache → English → Einstellungen speichern → die Anwendung startet auf Englisch neu.
+> Beispiel: ⚙ Einstellungen → Sprache → English → Einstellungen speichern → die Anwendung startet auf Englisch neu.
 
 ## 19. Häufige Probleme
 
@@ -376,3 +374,24 @@ Studio hat links eine **Aktivitaetsleiste**: 🧱 Schritte, 📚 Bibliothek, �
 - **🎬 Videos**: die gespeicherten Videos, die neuesten zuerst; Doppelklick oeffnet sie mit der App aus 🌐 Studio-Einstellungen → 🎬 Videos.
 
 > Beispiel: Oeffne **Beispiele → 03 Web + Excel** und druecke ▶ Ausfuehren. Die Mitte wechselt zu 📊 Excel und faerbt jede Zeile (gruen OK, rot Fehler). Waehle eine rote Zeile, lies rechts den Fehler und druecke ↻ Zeile wiederholen.
+
+## 33. 📥 KI-Import: eine Routine aus einem Word-Dokument
+
+Sie haben die Vorgehensweise in einem Word-Dokument. Eine KI (ChatGPT, Copilot, Claude...) macht daraus **AutoPilot-Schritte**, einfachen Text mit einem Schritt pro Zeile, und Studio baut daraus die Routine.
+
+1. In Studio **📥 KI-Import** drücken (linke Leiste oder **⋯ → 📥 Schritte importieren**).
+2. **📋 Prompt für die KI kopieren** und in die KI einfügen; danach den Text der Vorgehensweise einfügen (oder das Word-Dokument anhängen). Der Prompt erklärt Format und Regeln in der Sprache der Anwendung (**💾 Prompt speichern** legt ihn als Datei ab).
+3. Die Antwort der KI in das Importfenster einfügen (oder **📂 Datei öffnen**: `.txt`, `.json`, `.rpr.json`). Die Prüfung läuft automatisch: rechts die Schritte, unten die Probleme; fehlerhafte Zeilen werden eingefärbt (Klick auf ein Problem = seine Zeile).
+4. **✅ Routine erstellen**: Sie öffnet sich in einem neuen Tab (ungespeichert). Neue Schaltflächen und Felder kommen in die 📚 Bibliothek, gefunden über den Text auf dem Bildschirm.
+5. Prüfen Sie die neuen Objekte mit **🧪 Test** auf der echten Seite (oder markieren Sie sie neu mit 🎯 Spy), füllen Sie die Variablen in ⚙ Routine aus, führen Sie **⏭ Schritt für Schritt** aus und speichern Sie (💾). Automatischer Zeitplan: 🕒 Planen.
+
+Das Format (Schlüsselwörter auf Englisch oder Rumänisch, Groß- oder Kleinschreibung egal):
+
+- Kopf: `ROUTINE: <Name>`, `DESCRIPTION: <Text>`, `VARIABLE: Name = Wert`.
+- Schritte: `OPEN BROWSER <url>`, `GO TO <url>`, `CLICK <Objekt>`, `TYPE <Objekt> = <Text>`, `SELECT <Objekt> = <Option>`, `CHECK <Objekt>`, `PRESS Enter`, `READ <Objekt> -> {Var}`, `WAIT 2` oder `WAIT <Objekt> MAX 15`, `LOG "Text"`, `ASK "Text"`, `MANUAL "was der Mensch tut"`, `SAP TRANSACTION /nVA03`, `START APP notepad.exe`.
+- Blöcke: `IF <Bedingung>` … `ELSE` … `END`, `REPEAT 3` … `END`, `FOR EACH ROW {File} SHEET Daten` … `END` (Werte: `{Rand.Spalte}`, Schreiben: `WRITE EXCEL Ergebnis = OK`), `TRY` … `ON ERROR` … `END`.
+- Objekte: `button "Speichern"`, `field "Benutzer"`, `link "..."`, `list "Land"`, `checkbox "..."`, `text "..."`, `css "#id"`, `sap "wnd[0]/usr/..."`, `desktop "Name"` oder `[Name]` aus der Bibliothek.
+- Bedingungen: `{Var} = "x"`, `{Var} contains "x"`, `visible button "OK"`, `exists [Name]`, verknüpft mit `AND` / `OR`.
+- Eine vollständige `.rpr.json`-Routine wird ebenfalls angenommen. Was nicht automatisierbar ist, wird `MANUAL`: Die Routine hält an und wartet auf Weiter.
+
+> Beispiel: Im Importfenster **📝 Beispiel** drücken: eine Auftragserfassung aus einer Excel-Datei erscheint; rechts sehen Sie die Routine mit Schleife und Bedingung; ✅ Routine erstellen öffnet sie in Studio.

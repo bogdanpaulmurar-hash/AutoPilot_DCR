@@ -23,8 +23,7 @@ except ImportError:   # pragma: no cover
 DOCS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "docs", "instructiuni")
 VIDEO_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "docs", "video")
 # filmele scurte (docs/video/<cod>.apvid), generate cu tools/make_tutorials.py
-VIDEOS = [("01_recorder", {"ro": "Recorder", "en": "Recorder", "de": "Recorder"}),
-          ("02_studio_web", {"ro": "Studio: Web", "en": "Studio: Web", "de": "Studio: Web"}),
+VIDEOS = [("02_studio_web", {"ro": "Studio: Web", "en": "Studio: Web", "de": "Studio: Web"}),
           ("03_studio_excel", {"ro": "Studio: Excel", "en": "Studio: Excel", "de": "Studio: Excel"}),
           ("04_studio_desktop", {"ro": "Studio: Desktop", "en": "Studio: Desktop", "de": "Studio: Desktop"}),
           ("05_studio_sap", {"ro": "Studio: SAP", "en": "Studio: SAP", "de": "Studio: SAP"}),

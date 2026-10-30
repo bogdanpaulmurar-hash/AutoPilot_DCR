@@ -748,12 +748,28 @@ class StopNode(RprNode):
 @dataclass
 class LegacyStepNode(RprNode):
     """Pas din rutinele vechi (pe coordonate). `step` = dictionarul StepModel (chei snake_case)."""
-    KIND_LABEL = "Pas vechi (coordonate)"
+    KIND_LABEL = "Pas pe ecran (coordonate)"
     step: Dict[str, Any] = field(default_factory=dict)
+
+    _CLICKS = {"CLICK": "Click", "DBLCLICK": "Dublu click", "RIGHTCLICK": "Click dreapta"}
 
     def auto_title(self) -> str:
         s = self.step
-        return f"[v3.9] {s.get('step_type', '')} ({s.get('x', 0)},{s.get('y', 0)}) {s.get('description', '')}".strip()
+        t = str(s.get("step_type", "")).upper()
+        x, y = s.get("x", 0), s.get("y", 0)
+        win = str(s.get("window_title") or s.get("window_process") or "").strip()
+        where = f"  ·  {win[:40]}" if win else ""
+        if t in self._CLICKS:
+            return f"{_t(self._CLICKS[t])} ({x}, {y}){where}"
+        if t == "KEY":
+            return f"{_t('Tasta')} {s.get('key_combo', '')}{where}"
+        if t == "TYPE":
+            return f"{_t('Scrie')} \"{s.get('text_input', '')}\"{where}"
+        if t == "SCROLL":
+            return f"Scroll {s.get('scroll_dy', 0)} ({x}, {y}){where}"
+        if t == "MOVE":
+            return f"{_t('Mouse la')} ({x}, {y})"
+        return f"{t} ({x}, {y}) {s.get('description', '')}".strip()
 
 
 def _num(v: float, decimals: int = 2) -> str:

@@ -29,6 +29,7 @@ import sys
 import threading
 import time
 import uuid
+from types import SimpleNamespace
 from tkinter import filedialog, messagebox, ttk
 import tkinter as tk
 import tkinter.font as tkfont
@@ -393,6 +394,22 @@ class StudioGuard(RunGuard):
         if self._w:
             self._w.accept_current()
 
+    def check_before_legacy(self, node):
+        """v4.16: pasii pe ecran (coordonate): ca la actiuni + click / taste in aplicatia de la inregistrare."""
+        a = self.check_before_action(node)
+        if a or not safety:
+            return a
+        if getattr(self, "_sg", None) is None:
+            self._sg = safety.SafetyGuard()
+        s = dict(getattr(node, "step", {}) or {})
+        step = SimpleNamespace(step_type=str(s.get("step_type", "")).upper(), x=int(s.get("x", 0) or 0),
+                               y=int(s.get("y", 0) or 0), window_title=s.get("window_title", "") or "",
+                               window_process=s.get("window_process", "") or "",
+                               screen_signature=s.get("screen_signature", "") or "",
+                               guard_ignore=bool(s.get("guard_ignore", False)), step_id=node.id)
+        g = self._sg.check_recorded(step)
+        return RunAlert(g.title, g.details, g.key) if g else None
+
     def check_before_action(self, node):
         if not self._w:
             return None
@@ -522,9 +539,11 @@ class RunControlWindow(tk.Toplevel):
 class StudioPanel(tk.Frame):
     def __init__(self, master, colors: Dict[str, str], run_frame=None,
                  on_status: Optional[Callable[[str], None]] = None,
-                 dnd_allowed: Optional[Callable[[], bool]] = None, video=None):
+                 dnd_allowed: Optional[Callable[[], bool]] = None, video=None,
+                 on_help: Optional[Callable[[], None]] = None):
         super().__init__(master, bg=colors["bg_main"])
         self.C = colors
+        self._on_help = on_help     # v4.16: ❓ deschide 📖 Instructiuni (RO / EN / DE)
         self.video = video          # VideoController (🎥 film la rulare) sau None
         self._dnd_allowed = dnd_allowed or (lambda: True)
         self._run_frame = run_frame
@@ -640,7 +659,8 @@ class StudioPanel(tk.Frame):
         # v4.15: bara de activitati in stanga; fiecare iconita schimba doar panoul lateral
         self._rail = studio_views.ActivityBar(self, C, [
             ("steps", "🧱", "Pasi", "panel"), ("library", "📚", "Biblioteca", "panel"),
-            ("routines", "📋", "Rutine", "panel"), ("films", "🎬", "Filme", "panel"), None,
+            ("routines", "📋", "Rutine", "panel"), ("films", "🎬", "Filme", "panel"),
+            ("import", "📥", "Import AI", "action"), None,
             ("settings", "🌐", "Setari", "action"), ("guide", "❓", "Ghid", "action")],
             on_panel=self._on_rail, on_action=self._on_rail_action)
         self._rail.pack(side="left", fill="y")
@@ -1202,6 +1222,47 @@ class StudioPanel(tk.Frame):
             self.show_settings()
         elif key == "guide":
             self.show_guide()
+        elif key == "import":
+            self.show_import()
+
+    # =========================================================================
+    # v4.16: 📥 Import AI — pasi scrisi de un AI (dintr-un document Word) -> rutina
+    # =========================================================================
+    def show_import(self):
+        w = getattr(self, "_import_win", None)
+        if w is not None and w.winfo_exists():
+            w.deiconify()
+            w.lift()
+            return
+        from import_ui import ImportDialog
+        self._import_win = ImportDialog(self)
+
+    def open_imported(self, routine: Routine, new_objects: List[UiObject]) -> bool:
+        """Rutina importata intr-un tab nou (nesalvata); obiectele noi intra in biblioteca curenta."""
+        if self._busy_block():
+            return False
+        added = 0
+        for o in new_objects:
+            if any(x is o for x in self.repo.objects) or self.repo.find(o.name) is not None:
+                continue
+            if o.context:
+                self.repo.classify(o)
+            self.repo.objects.append(o)
+            added += 1
+        if added:
+            self.save_repository()
+            self.refresh_objects()
+        self._new_doc_slot()
+        routine.repository_path = "" if self._is_default_library() else self.repo_path
+        self.routine = routine
+        self.routine_path = None
+        self.dirty = True
+        self.rebuild_tree()
+        self.show_routine_settings()
+        self._update_title()
+        self.set_status(tr_template("📥 Rutina \"{0}\" importata: {1} pasi, {2} obiecte noi. Verifica obiectele cu 🧪 Test, "
+                           "apoi salveaz-o (💾).").format(routine.name, sum(1 for _ in routine.all_nodes()), added))
+        return True
 
     def show_side(self, key: str):
         """Deschide o pagina din panoul lateral (si din cod: ex. Biblioteca dupa o captura)."""
@@ -2190,6 +2251,9 @@ class StudioPanel(tk.Frame):
         self._btn(dlg, "📂 Folderul cu exemple", lambda: os.startfile(RprPaths.examples())).pack(anchor="w", padx=16, pady=10)
 
     def show_guide(self):
+        if self._on_help is not None:   # v4.16: ghidul vechi era doar in romana; Instructiunile au toate limbile
+            self._on_help()
+            return
         C = self.C
         dlg = tk.Toplevel(self)
         dlg.title("Ghid Studio RPR")
@@ -2296,6 +2360,15 @@ class StudioPanel(tk.Frame):
             if not node.enabled:
                 tags.append("disabled")
             self.tree.item(node.id, text=self._node_text(node), tags=tags)
+
+    def insert_recorded(self, nodes: List[RprNode], title: str) -> Optional[GroupNode]:
+        """v4.16: pasii inregistrati pe ecran (mouse / tastatura) intra intr-un grup, dupa pasul selectat."""
+        if not nodes:
+            return None
+        group = GroupNode(label=title, body=list(nodes))
+        self.insert_node(group)
+        self.editor.show(group)
+        return group
 
     def insert_node(self, node: RprNode):
         at, self._insert_at = getattr(self, "_insert_at", None), None
@@ -4051,7 +4124,7 @@ class PropertyEditor:
             self.check(node, "Opreste ca EROARE (randul Excel curent va fi marcat cu rosu)",
                        lambda: node.as_error, lambda v: setattr(node, "as_error", v))
         elif isinstance(node, LegacyStepNode):
-            self._hint("Pas pe coordonate de ecran (din recorder). Functioneaza, dar e fragil: daca fereastra se muta "
+            self._hint("Pas pe coordonate de ecran (inregistrat cu ⏺ Ecran). Functioneaza, dar e fragil: daca fereastra se muta "
                        "sau rezolutia se schimba, click-ul nimereste altundeva. Recomandat: un pas \"Actiune\" pe un obiect.")
             s = node.step
             self.text(node, "Descriere", lambda: s.get("description", ""), lambda v: s.__setitem__("description", v), vars_=False)

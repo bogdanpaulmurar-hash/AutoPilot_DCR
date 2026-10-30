@@ -6,37 +6,35 @@ Fiecare capitol explică pe scurt o procedură, pas cu pas, cu un exemplu. Alege
 
 - Pornești aplicația cu **AutoPilot_DC.pyw** din folderul `AutoPilotDC_py` sau cu scurtătura „AutoPilot DC” de pe Desktop (fără fereastră CMD).
 - Prima dată (sau pe un laptop nou) rulează **INSTALEAZA.bat**: instalează tot ce trebuie, fără drepturi de administrator. Fereastra rămâne deschisă până apeși o tastă.
-- Sus ai comutatorul de zone: **🎬 Recorder** (pe coordonate de ecran), **🧩 Studio RPR** (pe obiecte), **📖 Instrucțiuni** (aici).
-- Butoanele de sub comutator se schimbă după zona deschisă și trec pe rândul următor când fereastra e îngustă.
-- **🚨 STOP URGENȚĂ** (sau F12) oprește imediat orice rulare.
-- Pictograma de lângă ceas (tray): click = deschide aplicația; click dreapta = Recorder, Studio, STOP URGENȚĂ, Ieșire.
+- Aplicația are o singură zonă de lucru, **🧩 Studio RPR**. Fostul Recorder a intrat în Studio (butonul **⏺ Ecran**, capitolul 2).
+- Bara de sus e pe un singur rând: comenzile Studio (rutină, rulare, Spy și înregistrare) în mijloc; când fereastra e îngustă rămân doar iconițele (textul întreg e în tooltip). În dreapta, butoane mici: **🎥** filmează ecranul, **🎬** deschide un film, **📖 Instrucțiuni** (aici, sau F1), **⚙ Setări** aplicației, **✕**.
+- **🚨 STOP URGENȚĂ** (sau F12) oprește imediat orice rulare și înregistrare.
+- Pictograma de lângă ceas (tray): click = deschide aplicația; click dreapta = Studio, ⏺ Ecran, film, STOP URGENȚĂ, Ieșire.
 
-> Exemplu: deschide aplicația, apasă 🧩 Studio RPR, apoi 📚 Exemple și deschide „01 Învățare”.
+> Exemplu: deschide aplicația, apasă **⋯ → 📚 Exemple** și deschide „01 Învățare”.
 
-## 2. Recorder: înregistrare și redare
+## 2. ⏺ Ecran: înregistrare mouse și tastatură (fostul Recorder)
 
-[video:01_recorder]
+1. În Studio selectează pasul după care vrei pașii noi (sau nimic: se adaugă la sfârșit).
+2. Apasă **⏺ Ecran** (F5). Fereastra AutoPilot se minimizează, apare chenarul verde **REC** și o bară mică sus, cu numărul de pași și **⏹ Stop (F6)**.
+3. Lucrează normal în orice aplicație: click-uri, scroll, taste. Literele scrise una după alta devin un singur pas „Scrie”. Click-urile pe AutoPilot nu se înregistrează.
+4. Apasă **F6** sau **⏹ Stop**. Pașii intră în rutină într-un grup „Înregistrare pe ecran HH:MM”, ca pași 🖱 pe ecran.
+5. Rulezi cu **▶ Rulează** (F7). **Pauză** = F8, **Stop** = F9, **STOP URGENȚĂ** = F12. Pentru repetări pui grupul într-un bloc **🔁 Repetă**; pentru valori din Excel, într-un **📊 Pentru fiecare rând** (și schimbi textul pasului „Scrie” cu `{Rand.Coloana}`).
+6. Sistemul de prevenție verifică și pașii pe ecran: dacă la rulare click-ul ar ajunge în altă aplicație sau zona arată diferit, rutina se oprește și te întreabă.
 
-1. În zona **🎬 Recorder** apasă **⏺ Înregistrează** (F5).
-2. Fă acțiunile pe ecran (click-uri, text, taste). Pe margini apare un chenar verde **REC**.
-3. Apasă **⏹ Stop Rec** (F6). Pașii apar în listă.
-4. Alege numărul de **Repetări** și apasă **▶ Rulează** (F7). Chenarul devine roșu **RUN**.
-5. **Pauză** = F8, **Stop** = F9, **STOP URGENȚĂ** = F12.
-6. **💾 Salvează** (Ctrl+S) păstrează rutina în `rutine_salvate`; o redeschizi din tab-ul **📁 Rutine** (dublu click).
+> Exemplu: selectează ultimul pas, apasă ⏺ Ecran, deschide Notepad, scrie „Test”, apasă F6. În rutină apare grupul cu click-urile și pasul „Scrie "Test"”.
 
-> Exemplu: înregistrează deschiderea Notepad și scrierea „Test”, setează Repetări = 3, apoi Rulează.
+> Atenție: pașii pe ecran lucrează pe coordonate. Dacă fereastra se mută sau rezoluția se schimbă, click-ul nimerește altundeva. Unde se poate, folosește pași pe obiecte (🎯 Spy, ⏺ Web).
 
-> Atenție: Recorder-ul lucrează pe coordonate. Dacă fereastra se mută sau rezoluția se schimbă, click-ul nimerește altundeva. Pentru rutine stabile folosește Studio.
+## 3. Pași pe ecran: editare și ce s-a mutat din Recorder
 
-## 3. Recorder: Step Builder, editare, depanare
+- Un pas 🖱 pe ecran se editează în dreapta, ca orice pas: **X / Y**, tastele, textul, așteptarea dinainte / după, comentariul. Titlul arată ce face și în ce fereastră („Click (420, 310) · Notepad”).
+- Grupul înregistrat se poate redenumi, dezactiva, muta cu mouse-ul sau duplica; pașii din el se mută, se șterg sau se dezactivează unul câte unul.
+- Ce era în tab-urile Recorder-ului e acum în Studio: **Step Builder** → blocurile din 🧱 Pași; **Rutine** → 📋 Rutine și 🗂 Manager rutine; **Excel** → 📊 Pentru fiecare rând Excel; **Log** → ⏱ Cronologie și Log rulare (cu export Excel); **Setări** → butonul ⚙ din dreapta sus; **Ajutor** → 📖 Instrucțiuni. Repetările → blocul 🔁 Repetă; pauza dintre pași → ⚙ Rutina.
+- Rutinele vechi ale Recorder-ului (`rutine_salvate\*.json`) se deschid cu **📂 Deschide**: se convertesc automat în pași pe ecran; fișierul vechi rămâne neschimbat.
+- **Notițele** nu mai au tab: folosește câmpul **Comentariu / notiță** al pașilor și descrierea rutinei.
 
-- **🔧 Step Builder**: adaugi pași unul câte unul (tip, coordonate, taste, text, pauză, întrebare către utilizator). **📍 Capturează poziția mouse-ului** îți dă coordonatele în 3 secunde.
-- Dublu click pe un pas = editare. **▲/▼** mută pasul, **⊘ Skip** îl sare la rulare.
-- **🐛 Debug pas** execută un singur pas ca test; **🔍 Simulează** arată ce ar face, fără să facă.
-- **📊 Excel**: rulezi aceeași rutină pentru fiecare valoare dintr-un interval Excel (ex. `A1:A100`).
-- **📋 Log** păstrează fiecare rulare; îl exporți în XLSX / CSV / JSON. **📝 Notițe** e un carnet simplu.
-
-> Exemplu: în Step Builder adaugă „Scriere text” cu `{valoare}`, apoi în tab-ul Excel alege fișierul și intervalul `A2:A20`.
+> Exemplu: 📂 Deschide → `rutine_salvate\Raport.json` → rutina apare în Studio cu pașii ei 🖱; salvează-o (💾) ca `.rpr.json`.
 
 ## 4. Siguranța la rulare
 
@@ -195,12 +193,12 @@ Fiecare capitol explică pe scurt o procedură, pas cu pas, cu un exemplu. Alege
 
 ## 18. Setări
 
-- **⚙ Setări** (aplicație): delay și viteză la redare, countdown, înregistrarea mișcărilor, siguranța la rulare, shortcut-uri, **pornire cu Windows** (opțional direct în tray), butonul ✕ ascunde în tray, scurtătură pe Desktop, **limba** (Română / English / Deutsch) și tema. Limba și tema se aplică după repornire.
+- **⚙ Setări** (aplicație, butonul mic din dreapta sus): înregistrarea pe ecran (mișcări mouse), siguranța la rulare, shortcut-uri, **pornire cu Windows** (opțional direct în tray), butonul ✕ ascunde în tray, scurtătură pe Desktop, tema, video, **limba** (Română / English / Deutsch), backup. Limba și tema se aplică după repornire.
 - **O singură limbă** pentru toată aplicația (⚙ Setări → 🌐 Limba): pe lângă interfață, în aceeași limbă se scriu logurile, coloana de status din Excel-ul rutinei (OK / EROARE / IN LUCRU), raportul rulării, rezumatul și documentația pregătirilor. La reluare, statusurile sunt recunoscute în orice limbă (ex. „IN PROGRESS” = „IN LUCRU”), deci un Excel început în română poate fi reluat după trecerea pe engleză.
 - **🌐 Setări Studio**: browserul pentru pașii Web (Edge recomandat, Chrome), fără fereastră (doar pentru programări), minimizare la rulare, închide browserul, șterge profilul browserului (logout); plus mărimea textului, unde se salvează fișierele și aplicația pentru filme (capitolul 31).
-- **⚙ Setări rutină**: politica la eroare, marcarea obiectelor, timeout implicit, pauză între pași, reîncercări, capturi, Nu deranja, prevenție, variabile.
+- **⚙ Rutina**: politica la eroare, marcarea obiectelor, timeout implicit, pauză între pași, reîncercări, capturi, Nu deranja, prevenție, variabile.
 
-> Exemplu: Setări → Limba → English → Salvează setările → aplicația repornește în engleză.
+> Exemplu: ⚙ Setări → Limba → English → Salvează setările → aplicația repornește în engleză.
 
 ## 19. Probleme frecvente
 
@@ -374,3 +372,24 @@ Studio are o **bară de activități** în stânga: 🧱 Pași, 📚 Bibliotecă
 - **🎬 Filme**: filmele salvate, cele mai noi primele; dublu-click le deschide cu aplicația aleasă în 🌐 Setări Studio → 🎬 Filme.
 
 > Exemplu: deschide **Exemple → 03 Web + Excel**, apasă ▶ Rulează. Centrul trece pe 📊 Excel și colorează fiecare rând (verde OK, roșu eroare). Alegi un rând roșu, citești eroarea în dreapta și apeși ↻ Reia rândul.
+
+## 33. 📥 Import AI: rutină dintr-un document Word
+
+Ai procedura într-un document Word. Un AI (ChatGPT, Copilot, Claude...) o transformă în **pași AutoPilot**, un text simplu cu un pas pe rând, iar Studio face din el rutina.
+
+1. În Studio apasă **📥 Import AI** (bara din stânga sau **⋯ → 📥 Importă pași**).
+2. **📋 Copiază promptul pentru AI** și lipește-l în AI; apoi lipește textul procedurii (sau atașează documentul Word). Promptul explică formatul și regulile, în limba aplicației (**💾 Salvează promptul** îl păstrează ca fișier).
+3. Răspunsul AI-ului îl lipești în fereastra de import (sau **📂 Deschide fișier**: `.txt`, `.json`, `.rpr.json`). Verificarea se face singură: în dreapta vezi pașii, jos problemele; rândurile greșite se colorează (click pe problemă = rândul).
+4. **✅ Creează rutina**: rutina se deschide într-un tab nou (nesalvată). Butoanele și câmpurile noi intră în 📚 Bibliotecă, găsite după textul de pe ecran.
+5. Verifică obiectele noi cu **🧪 Test** pe pagina reală (sau marchează-le din nou cu 🎯 Spy), completează variabilele în ⚙ Rutina, rulează **⏭ Pas cu pas**, apoi salvează (💾). Programarea automată: 🕒 Programează.
+
+Formatul (cuvinte cheie în română sau engleză, fără diferență mare / mică):
+
+- Antet: `RUTINA: <nume>`, `DESCRIERE: <text>`, `VARIABILA: Nume = valoare`.
+- Pași: `DESCHIDE BROWSER <url>`, `MERGI LA <url>`, `CLICK <obiect>`, `SCRIE <obiect> = <text>`, `ALEGE <obiect> = <opțiune>`, `BIFEAZA <obiect>`, `APASA Enter`, `CITESTE <obiect> -> {Var}`, `ASTEAPTA 2` sau `ASTEAPTA <obiect> MAX 15`, `LOG "text"`, `INTREABA "text"`, `MANUAL "ce face omul"`, `SAP TRANZACTIE /nVA03`, `PORNESTE APLICATIE notepad.exe`.
+- Blocuri: `DACA <condiție>` … `ALTFEL` … `SFARSIT`, `REPETA 3` … `SFARSIT`, `PENTRU FIECARE RAND {Fisier} FOAIE Date` … `SFARSIT` (valori: `{Rand.Coloana}`, scriere: `SCRIE IN EXCEL Rezultat = OK`), `INCEARCA` … `LA EROARE` … `SFARSIT`.
+- Obiecte: `buton "Salvează"`, `camp "Utilizator"`, `link "..."`, `lista "Țara"`, `bifa "..."`, `text "..."`, `css "#id"`, `sap "wnd[0]/usr/..."`, `desktop "Nume"` sau `[Nume]` din bibliotecă.
+- Condiții: `{Var} = "x"`, `{Var} contine "x"`, `vizibil buton "OK"`, `exista [Nume]`, combinate cu `SI` / `SAU`.
+- Se acceptă și o rutină completă `.rpr.json`. Ce nu se poate automatiza devine `MANUAL`: rutina se oprește și așteaptă Continuă.
+
+> Exemplu: în fereastra de import apasă **📝 Exemplu**: apare o procedură de introducere a comenzilor dintr-un Excel; în dreapta vezi rutina cu bucla și condiția; ✅ Creează rutina o deschide în Studio.

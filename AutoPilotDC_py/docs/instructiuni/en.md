@@ -8,37 +8,35 @@ Each chapter briefly explains one procedure, step by step, with an example. Pick
 
 - Start the application with **AutoPilot_DC.pyw** in the `AutoPilotDC_py` folder or with the "AutoPilot DC" desktop shortcut (no CMD window).
 - The first time (or on a new laptop) run **INSTALEAZA.bat**: it installs everything needed, without administrator rights. The window stays open until you press a key.
-- At the top is the area switch: **🎬 Recorder** (screen coordinates), **🧩 Studio RPR** (objects), **📖 Instructions** (here).
-- The buttons below the switch change with the open area and wrap to a second row when the window is narrow.
-- **🚨 EMERGENCY STOP** (or F12) stops any run immediately.
-- Tray icon next to the clock: click = open the application; right-click = Recorder, Studio, EMERGENCY STOP, Exit.
+- The application has one work area, **🧩 Studio RPR**. The former Recorder is now inside Studio (the **⏺ Screen** button, chapter 2).
+- The top bar is a single row: the Studio commands (routine, run, Spy and recording) in the middle; when the window is narrow only the icons remain (the full text is in the tooltip). On the right, small buttons: **🎥** records the screen, **🎬** opens a video, **📖 Instructions** (here, or F1), **⚙ Settings** of the application, **✕**.
+- **🚨 EMERGENCY STOP** (or F12) stops any run and recording immediately.
+- Tray icon next to the clock: click = open the application; right-click = Studio, ⏺ Screen, video, EMERGENCY STOP, Exit.
 
-> Example: open the application, press 🧩 Studio RPR, then 📚 Examples and open "01 Invatare" (learning).
+> Example: open the application, press **⋯ → 📚 Examples** and open "01 Learning".
 
-## 2. Recorder: recording and playback
+## 2. ⏺ Screen: recording mouse and keyboard (the former Recorder)
 
-[video:01_recorder]
+1. In Studio select the step after which the new steps should go (or nothing: they are added at the end).
+2. Press **⏺ Screen** (F5). The AutoPilot window is minimized, the green **REC** border appears and a small bar at the top shows the number of steps and **⏹ Stop (F6)**.
+3. Work normally in any application: clicks, scrolling, keys. Letters typed one after another become a single "Type" step. Clicks on AutoPilot itself are not recorded.
+4. Press **F6** or **⏹ Stop**. The steps go into the routine in a group "Screen recording HH:MM", as 🖱 screen steps.
+5. Run with **▶ Run** (F7). **Pause** = F8, **Stop** = F9, **EMERGENCY STOP** = F12. For repetitions put the group inside a **🔁 Repeat** block; for values from Excel, inside a **📊 For each row** (and change the text of the "Type" step to `{Rand.Column}`).
+6. The prevention system also checks screen steps: if during the run the click would land in another application or the area looks different, the routine stops and asks you.
 
-1. In **🎬 Recorder** press **⏺ Record** (F5).
-2. Perform the actions on screen (clicks, text, keys). A green **REC** border appears around the screen.
-3. Press **⏹ Stop Rec** (F6). The steps appear in the list.
-4. Choose the number of **Repetitions** and press **▶ Run** (F7). The border turns red **RUN**.
-5. **Pause** = F8, **Stop** = F9, **EMERGENCY STOP** = F12.
-6. **💾 Save** (Ctrl+S) keeps the routine in `rutine_salvate`; reopen it from the **📁 Routines** tab (double-click).
+> Example: select the last step, press ⏺ Screen, open Notepad, type "Test", press F6. The routine gets the group with the clicks and the step Type "Test".
 
-> Example: record opening Notepad and typing "Test", set Repetitions = 3, then Run.
+> Attention: screen steps work on coordinates. If the window moves or the resolution changes, the click lands somewhere else. Where possible, use object steps (🎯 Spy, ⏺ Web).
 
-> Note: the Recorder works with coordinates. If the window moves or the resolution changes, the click lands elsewhere. For stable routines use Studio.
+## 3. Screen steps: editing and what moved from the Recorder
 
-## 3. Recorder: Step Builder, editing, debugging
+- A 🖱 screen step is edited on the right like any step: **X / Y**, keys, text, wait before / after, comment. The title shows what it does and in which window ("Click (420, 310) · Notepad").
+- The recorded group can be renamed, disabled, moved with the mouse or duplicated; its steps can be moved, deleted or disabled one by one.
+- What was in the Recorder tabs is now in Studio: **Step Builder** → the blocks in 🧱 Steps; **Routines** → 📋 Routines and 🗂 Routine manager; **Excel** → 📊 For each Excel row; **Log** → ⏱ Timeline and Run log (with Excel export); **Settings** → the ⚙ button at the top right; **Help** → 📖 Instructions. Repetitions → the 🔁 Repeat block; pause between steps → ⚙ Routine.
+- Old Recorder routines (`rutine_salvate\*.json`) open with **📂 Open**: they are converted automatically into screen steps; the old file stays unchanged.
+- **Notes** no longer have a tab: use the **Comment / note** field of the steps and the routine description.
 
-- **🔧 Step Builder**: add steps one by one (type, coordinates, keys, text, pause, question to the user). **📍 Capture mouse position** gives you the coordinates within 3 seconds.
-- Double-click a step = edit. **▲/▼** moves it, **⊘ Skip** skips it when running.
-- **🐛 Debug step** executes a single step as a test; **🔍 Simulate** shows what it would do without doing it.
-- **📊 Excel**: run the same routine for every value of an Excel range (e.g. `A1:A100`).
-- **📋 Log** keeps every run; export it to XLSX / CSV / JSON. **📝 Notes** is a simple notepad.
-
-> Example: in the Step Builder add "Type text" with `{valoare}`, then in the Excel tab choose the file and the range `A2:A20`.
+> Example: 📂 Open → `rutine_salvate\Report.json` → the routine appears in Studio with its 🖱 steps; save it (💾) as `.rpr.json`.
 
 ## 4. Run safety
 
@@ -197,12 +195,12 @@ Each chapter briefly explains one procedure, step by step, with an example. Pick
 
 ## 18. Settings
 
-- **⚙ Settings** (application): playback delay and speed, countdown, recording mouse movements, run safety, shortcuts, **start with Windows** (optionally straight into the tray), the ✕ button hides into the tray, desktop shortcut, **language** (Română / English / Deutsch) and theme. Language and theme apply after a restart.
+- **⚙ Settings** (application, the small button at the top right): screen recording (mouse movements), run safety, shortcuts, **start with Windows** (optionally straight into the tray), the ✕ button hides into the tray, desktop shortcut, theme, video, **language** (Română / English / Deutsch), backup. Language and theme apply after a restart.
 - **One language** for the whole application (⚙ Settings → 🌐 Language): besides the interface, the logs, the status column in the routine's Excel (OK / ERROR / IN PROGRESS), the run report and the preparation summary and documentation are written in the same language. When resuming, statuses are recognised in any language (e.g. "IN LUCRU" = "IN PROGRESS"), so an Excel started in Romanian can be resumed after switching to English.
-- **🌐 Studio settings**: the browser for Web steps (Edge recommended, Chrome), without a window (only for schedules), minimize when running, close the browser, delete the browser profile (logout).
-- **⚙ Routine settings**: error policy, highlighting objects, default timeout, pause between steps, retries, screenshots, do not disturb, prevention, variables.
+- **🌐 Studio settings**: the browser for Web steps (Edge recommended, Chrome), without a window (only for schedules), minimize when running, close the browser, delete the browser profile (logout); plus the text size, where files are saved and the application for videos (chapter 31).
+- **⚙ Routine**: error policy, highlighting objects, default timeout, pause between steps, retries, screenshots, do not disturb, prevention, variables.
 
-> Example: Settings → Language → Deutsch → Save settings → the application restarts in German.
+> Example: ⚙ Settings → Language → Deutsch → Save settings → the application restarts in German.
 
 ## 19. Common problems
 
@@ -376,3 +374,24 @@ Studio has an **activity bar** on the left: 🧱 Steps, 📚 Library, 📋 Routi
 - **🎬 Videos**: the saved videos, newest first; double-click opens them with the app chosen in 🌐 Studio settings → 🎬 Videos.
 
 > Example: open **Examples → 03 Web + Excel** and press ▶ Run. The center switches to 📊 Excel and colors every row (green OK, red error). Pick a red row, read the error on the right and press ↻ Rerun row.
+
+## 33. 📥 AI import: a routine from a Word document
+
+You have the procedure in a Word document. An AI (ChatGPT, Copilot, Claude...) turns it into **AutoPilot steps**, plain text with one step per line, and Studio builds the routine from it.
+
+1. In Studio press **📥 AI import** (left bar or **⋯ → 📥 Import steps**).
+2. **📋 Copy the prompt for the AI** and paste it into the AI; then paste the text of the procedure (or attach the Word document). The prompt explains the format and the rules, in the application language (**💾 Save the prompt** keeps it as a file).
+3. Paste the AI's answer into the import window (or **📂 Open file**: `.txt`, `.json`, `.rpr.json`). It is checked automatically: on the right you see the steps, below the problems; wrong lines are coloured (click a problem = its line).
+4. **✅ Create the routine**: it opens in a new tab (unsaved). New buttons and fields go into the 📚 Library, found by the text on screen.
+5. Check the new objects with **🧪 Test** on the real page (or mark them again with 🎯 Spy), fill in the variables in ⚙ Routine, run **⏭ Step by step**, then save (💾). Automatic scheduling: 🕒 Schedule.
+
+The format (keywords in English or Romanian, upper or lower case):
+
+- Header: `ROUTINE: <name>`, `DESCRIPTION: <text>`, `VARIABLE: Name = value`.
+- Steps: `OPEN BROWSER <url>`, `GO TO <url>`, `CLICK <object>`, `TYPE <object> = <text>`, `SELECT <object> = <option>`, `CHECK <object>`, `PRESS Enter`, `READ <object> -> {Var}`, `WAIT 2` or `WAIT <object> MAX 15`, `LOG "text"`, `ASK "text"`, `MANUAL "what the person does"`, `SAP TRANSACTION /nVA03`, `START APP notepad.exe`.
+- Blocks: `IF <condition>` … `ELSE` … `END`, `REPEAT 3` … `END`, `FOR EACH ROW {File} SHEET Data` … `END` (values: `{Rand.Column}`, writing: `WRITE EXCEL Result = OK`), `TRY` … `ON ERROR` … `END`.
+- Objects: `button "Save"`, `field "User"`, `link "..."`, `list "Country"`, `checkbox "..."`, `text "..."`, `css "#id"`, `sap "wnd[0]/usr/..."`, `desktop "Name"` or `[Name]` from the library.
+- Conditions: `{Var} = "x"`, `{Var} contains "x"`, `visible button "OK"`, `exists [Name]`, combined with `AND` / `OR`.
+- A complete `.rpr.json` routine is accepted too. What cannot be automated becomes `MANUAL`: the routine stops and waits for Continue.
+
+> Example: in the import window press **📝 Example**: an order entry procedure from an Excel appears; on the right you see the routine with the loop and the condition; ✅ Create the routine opens it in Studio.
