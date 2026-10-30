@@ -6,7 +6,7 @@
 #   DocTabs       tab-uri pentru mai multe rutine deschise
 #   RunTimeline   cronologia rularii: un card pe pas (status, rand, durata, captura erorii)
 #   ExcelRunView  ecranul de rulare pe randurile Excel (status, film, reia randul)
-#   FlowView      rutina ca flux de carduri legate (doar citire; click = pasul in arbore)
+#   FlowView      rutina ca flux de carduri legate (doar citire; click = pasul in arbore; zoom, harta, export)
 #   FilmsPanel    filmele salvate (cele mai noi primele)
 #
 # Toate primesc culorile (C) ale aplicatiei; textele sunt in romana si se traduc prin i18n.
@@ -19,7 +19,7 @@ import threading
 import time
 import tkinter as tk
 from tkinter import ttk
-from typing import Callable, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 import ui_theme
 
@@ -626,34 +626,206 @@ class ExcelRunView(tk.Frame):
 # ─────────────────────────────────────────────────────────────
 class FlowView(tk.Frame):
     """Pasii ca un flux de carduri legate; ramurile (Atunci / Altfel...) stau una langa alta.
-    Click pe card = pasul se alege in arbore (proprietatile in dreapta); dublu-click = inapoi la lista de pasi."""
+    Click pe card = pasul se alege in arbore (proprietatile in dreapta); dublu-click = inapoi la lista de pasi.
+    v4.20: zoom (Ctrl + rotita, − / +), tragere pe fundal, Potriveste, harta mica, ramuri restranse, export PNG / SVG.
+
+    Desenul se face o data in coordonate „logice” (zoom 100 %) intr-o lista de primitive (self._prims);
+    canvasul, harta mica si exportul le deseneaza pe aceleasi, la scara lor."""
 
     CW, CH, GAP, COLGAP, LBL = 250, 40, 22, 30, 18
+    ZMIN, ZMAX = 0.05, 2.0
+    MAP_W, MAP_H = 170, 210
 
     def __init__(self, master, panel):
         super().__init__(master, bg=panel.C["bg_main"])
         self.p = panel
         C = self.C = panel.C
-        self.canvas = tk.Canvas(self, bg=C["bg_main"], highlightthickness=0)
-        vsb = ttk.Scrollbar(self, orient="vertical", command=self.canvas.yview)
-        hsb = ttk.Scrollbar(self, orient="horizontal", command=self.canvas.xview)
-        self.canvas.configure(yscrollcommand=vsb.set, xscrollcommand=hsb.set)
+        self.z = 1.0
+        self._ox = 0.0                       # deplasarea logica pe X (centrarea fluxului ingust)
+        self._prims: List[tuple] = []
+        self._size = (0.0, 0.0)              # latimea / inaltimea logica a desenului
+        self.collapsed: set = set()          # nodurile cu ramurile restranse (doar in sesiune)
+        self._owner: Dict[str, str] = {}     # pas ascuns -> cardul restrans care il contine
+        self._drag = None
+        self._map_on = True
+        self._build_bar()
+        body = tk.Frame(self, bg=C["bg_main"])
+        body.pack(fill="both", expand=True)
+        self.canvas = tk.Canvas(body, bg=C["bg_main"], highlightthickness=0)
+        vsb = ttk.Scrollbar(body, orient="vertical", command=self.canvas.yview)
+        hsb = ttk.Scrollbar(body, orient="horizontal", command=self.canvas.xview)
+        self.canvas.configure(yscrollcommand=lambda *a: (vsb.set(*a), self._map_view()),
+                              xscrollcommand=lambda *a: (hsb.set(*a), self._map_view()))
         vsb.pack(side="right", fill="y")
         hsb.pack(side="bottom", fill="x")
         self.canvas.pack(fill="both", expand=True)
-        self.canvas.bind("<MouseWheel>", self._wheel)
-        self.canvas.bind("<Shift-MouseWheel>", lambda e: (self.canvas.xview_scroll(-1 if e.delta > 0 else 1,
-                                                                                    "units"), "break")[1])
-        self.canvas.bind("<Configure>", lambda e: self._center())
-        self.cards: Dict[str, int] = {}     # node.id -> dreptunghiul cardului
+        cv = self.canvas
+        cv.bind("<MouseWheel>", self._wheel)
+        cv.bind("<Shift-MouseWheel>", lambda e: self._scroll_x(-1 if e.delta > 0 else 1))
+        cv.bind("<Control-MouseWheel>", lambda e: self._zoom_at(1.15 if e.delta > 0 else 1 / 1.15, e.x, e.y))
+        cv.bind("<Button-4>", lambda e: self._scroll_y(-1))            # Linux
+        cv.bind("<Button-5>", lambda e: self._scroll_y(1))
+        cv.bind("<Control-Button-4>", lambda e: self._zoom_at(1.15, e.x, e.y))
+        cv.bind("<Control-Button-5>", lambda e: self._zoom_at(1 / 1.15, e.x, e.y))
+        cv.bind("<ButtonPress-1>", self._press, add="+")
+        cv.bind("<B1-Motion>", self._move)
+        cv.bind("<ButtonRelease-1>", self._release)
+        cv.bind("<ButtonPress-2>", lambda e: self._start_pan(e))     # rotita apasata = trage oriunde
+        cv.bind("<B2-Motion>", self._move)
+        cv.bind("<ButtonRelease-2>", self._release)
+        for seq, fn in [("<Control-plus>", lambda: self.zoom_by(1.25)), ("<Control-equal>", lambda: self.zoom_by(1.25)),
+                        ("<Control-minus>", lambda: self.zoom_by(0.8)), ("<Control-KP_Add>", lambda: self.zoom_by(1.25)),
+                        ("<Control-KP_Subtract>", lambda: self.zoom_by(0.8)), ("<Control-Key-0>", self.fit),
+                        ("<Control-Key-1>", lambda: self.set_zoom(1.0)),
+                        ("<Control-Key-2>", lambda: self.fit(width_only=True))]:
+            cv.bind(seq, lambda e, f=fn: (f(), "break")[1])
+        cv.bind("<Configure>", lambda e: self._on_resize())
+        self.minimap = tk.Canvas(body, width=self.MAP_W, height=self.MAP_H, bg=C["bg_card"], cursor="hand2",
+                                 highlightthickness=1, highlightbackground=C.get("border", C["bg_input"]))
+        self.minimap.bind("<ButtonPress-1>", self._map_jump)
+        self.minimap.bind("<B1-Motion>", self._map_jump)
+        _tip(self.minimap, "Harta rutinei: click sau trage ca sa mergi acolo")
+        self.cards: Dict[str, int] = {}     # node.id -> dreptunghiul cardului (pe canvas)
         self._selected = ""
         self._width = 0
+        self._last_w = 0
 
+    def _build_bar(self):
+        C = self.C
+        bar = tk.Frame(self, bg=C["bg_main"])
+        bar.pack(side="top", fill="x", pady=(0, 2))
+
+        def btn(text, cmd, tip):
+            b = tk.Button(bar, text=text, command=cmd, bg=C["bg_input"], fg=C["text"], relief="flat", bd=0,
+                          activebackground=C["primary"], activeforeground=ui_theme.text_on(C["primary"], self),
+                          font=(FONT, 9), padx=7, pady=2, cursor="hand2", highlightthickness=0)
+            b.pack(side="left", padx=1)
+            _tip(b, tip)
+            return b
+
+        btn("−", lambda: self.zoom_by(0.8), "Micsoreaza (Ctrl + rotita / Ctrl + -)")
+        self._zoom_lbl = tk.Label(bar, text="100 %", width=6, bg=C["bg_main"], fg=C["text"], font=(FONT, 9))
+        self._zoom_lbl.pack(side="left")
+        btn("+", lambda: self.zoom_by(1.25), "Mareste (Ctrl + rotita / Ctrl + +)")
+        btn("⤢ Potriveste", self.fit, "Toata rutina pe ecran (Ctrl + 0)")
+        btn("↔ Latime", lambda: self.fit(width_only=True), "Toata latimea pe ecran; derulezi doar in jos (Ctrl + 2)")
+        btn("1:1", lambda: self.set_zoom(1.0), "Marimea normala (Ctrl + 1)")
+        btn("▸ Restrange tot", self.collapse_all, "Ascunde pasii din ramurile Daca / Bucla (click pe ▾ / ▸ de pe card = doar acela)")
+        btn("▾ Extinde tot", self.expand_all, "Arata din nou toti pasii")
+        self._map_btn = btn("🗺 Harta", self.toggle_map, "Arata / ascunde harta mica din colt")
+        btn("⬇ Export", self.export_dialog, "Salveaza fluxul ca imagine mare PNG sau SVG (se deschide in browser, cu zoom oricat)")
+        tk.Label(bar, text="Trage pe fundal ca sa muti harta", bg=C["bg_main"], fg=C["text_dim"],
+                 font=(FONT, 8)).pack(side="left", padx=8)
+
+    # ── derulare + zoom ──
     def _wheel(self, e):
-        self.canvas.yview_scroll(-1 if e.delta > 0 else 1, "units")
+        return self._scroll_y(-1 if e.delta > 0 else 1)
+
+    def _scroll_y(self, n):
+        self.canvas.yview_scroll(n, "units")
         return "break"
 
-    # ── masurare + desen ──
+    def _scroll_x(self, n):
+        self.canvas.xview_scroll(n, "units")
+        return "break"
+
+    def zoom_by(self, f: float):
+        cv = self.canvas
+        self._zoom_at(f, cv.winfo_width() / 2, cv.winfo_height() / 2)
+
+    def set_zoom(self, z: float):
+        self._zoom_at(z / self.z, self.canvas.winfo_width() / 2, self.canvas.winfo_height() / 2)
+
+    def _zoom_at(self, f: float, sx: float, sy: float):
+        """Zoom pastrand punctul de sub mouse (sx, sy = pe ecran) in acelasi loc."""
+        new = max(self.ZMIN, min(self.ZMAX, self.z * f))
+        if abs(new - self.z) < 1e-3:
+            return "break"
+        cv = self.canvas
+        lx = cv.canvasx(sx) / self.z - self._ox
+        ly = cv.canvasy(sy) / self.z
+        self.z = new
+        self._render()
+        self._scroll_to((lx + self._ox) * self.z - sx, ly * self.z - sy)
+        return "break"
+
+    def fit(self, width_only: bool = False):
+        """Toata rutina pe ecran; width_only = doar latimea (apoi derulezi in jos, textul ramane citibil)."""
+        cv = self.canvas
+        W, H = max(50, cv.winfo_width()), max(50, cv.winfo_height())
+        w, h = self._size
+        if w <= 0 or h <= 0:
+            return
+        zw = (W - 20) / (w + 20)
+        self.z = max(self.ZMIN, min(1.25, zw if width_only else min(zw, (H - 10) / (h + 30))))
+        self._render()
+        self._scroll_to(0, 0)
+
+    def _scroll_to(self, left: float, top: float):
+        """Coltul stanga-sus al ferestrei = punctul (left, top) de pe canvas."""
+        cv = self.canvas
+        cv.update_idletasks()
+        sr = self._sr
+        sw, sh = sr[2] - sr[0], sr[3] - sr[1]
+        if sw > 0:
+            cv.xview_moveto(max(0.0, (left - sr[0]) / sw))
+        if sh > 0:
+            cv.yview_moveto(max(0.0, (top - sr[1]) / sh))
+
+    def _on_resize(self):
+        W = self.canvas.winfo_width()
+        if abs(W - self._last_w) > 2 and self._prims:
+            self._last_w = W
+            l, t = self.canvas.canvasx(0), self.canvas.canvasy(0)
+            self._render()
+            self._scroll_to(l, t)
+        self._place_map()
+
+    # ── tragere pe fundal (ca pe o harta) ──
+    def _on_card(self) -> bool:
+        cur = self.canvas.find_withtag("current")
+        return bool(cur) and any(t.startswith("n") or t.startswith("tog") for t in self.canvas.gettags(cur[0]))
+
+    def _press(self, e):
+        self.canvas.focus_set()     # pentru Ctrl + / Ctrl - / Ctrl 0
+        if not self._on_card():
+            self._start_pan(e)
+
+    def _start_pan(self, e):
+        self._drag = (e.x, e.y)
+        self.canvas.scan_mark(e.x, e.y)
+        self.canvas.configure(cursor="fleur")
+
+    def _move(self, e):
+        if self._drag:
+            self.canvas.scan_dragto(e.x, e.y, gain=1)
+
+    def _release(self, _e=None):
+        if self._drag:
+            self._drag = None
+            self.canvas.configure(cursor="")
+
+    # ── restrangerea ramurilor ──
+    @staticmethod
+    def _count(nodes) -> int:
+        return sum(1 + sum(FlowView._count(lst) for _, lst in n.branches()) for n in nodes)
+
+    def toggle(self, node_id: str):
+        if node_id in self.collapsed:
+            self.collapsed.discard(node_id)
+        else:
+            self.collapsed.add(node_id)
+        self.refresh(keep_view=True)
+
+    def collapse_all(self):
+        self.collapsed = {n.id for n in self.p.routine.all_nodes() if any(lst for _, lst in n.branches())}
+        self.refresh(keep_view=True)
+
+    def expand_all(self):
+        self.collapsed.clear()
+        self.refresh(keep_view=True)
+
+    # ── masurare (coordonate logice) ──
     def _measure_list(self, nodes) -> Tuple[int, int]:
         if not nodes:
             return self.CW // 2, 24
@@ -665,63 +837,105 @@ class FlowView(tk.Frame):
 
     def _measure_node(self, n) -> Tuple[int, int]:
         br = n.branches()
-        if not br:
+        if not br or n.id in self.collapsed:
             return self.CW, self.CH
         cols = [self._measure_list(lst) for _, lst in br]
         w = max(self.CW, sum(c[0] for c in cols) + self.COLGAP * (len(cols) - 1))
         h = self.CH + self.GAP + self.LBL + max(c[1] for c in cols) + self.GAP
         return w, h
 
-    def refresh(self):
+    # ── primitive (coordonate logice) ──
+    def _rect(self, x1, y1, x2, y2, fill, outline="", tag=""):
+        self._prims.append(("rect", (x1, y1, x2, y2), fill, outline, tag))
+
+    def _oval(self, x1, y1, x2, y2, fill):
+        self._prims.append(("oval", (x1, y1, x2, y2), fill, "", ""))
+
+    def _line(self, *pts, arrow=None):
+        self._prims.append(("line", pts, self.C["text_dim"], arrow, ""))
+
+    def _text(self, x, y, text, color, size, style="normal", anchor="center", tag=""):
+        self._prims.append(("text", (x, y), text, color, size, style, anchor, tag))
+
+    def refresh(self, keep_view: bool = False):
         cv = self.canvas
-        cv.delete("all")
-        self.cards.clear()
+        view = (cv.canvasx(0) / self.z - self._ox, cv.canvasy(0) / self.z) if keep_view else None
+        self._prims = []
+        self._owner = {}
         steps = self.p.routine.steps
+        ids = {n.id for n in self.p.routine.all_nodes()}
+        self.collapsed &= ids
         w, h = self._measure_list(steps)
         self._width = w
         x0 = max(self.CW // 2 + 20, w // 2 + 20)
         name = self.p.routine.name or "Rutina noua"
-        cv.create_text(x0, 14, text=name, fill=self.C["text"], font=(FONT, 12, "bold"), tags=("flow",))
-        cv.create_oval(x0 - 6, 34, x0 + 6, 46, fill=self.C["primary"], outline="", tags=("flow",))
+        self._text(x0, 14, name, self.C["text"], 12, "bold")
+        self._oval(x0 - 6, 34, x0 + 6, 46, self.C["primary"])
         top = 66
-        cv.create_line(x0, 46, x0, top, fill=self.C["text_dim"], arrow="last", tags=("flow",))
+        self._line(x0, 46, x0, top, arrow="last")
         if steps:
             end = self._draw_list(steps, x0, top)
         else:
-            cv.create_text(x0, top + 12, text="Rutina nu are pasi inca. Adauga-i din 🧱 Pasi.", fill=self.C["text_dim"],
-                           font=(FONT, 10), tags=("flow",))
+            self._text(x0, top + 12, "Rutina nu are pasi inca. Adauga-i din 🧱 Pasi.", self.C["text_dim"], 10)
             end = top + 24
-        cv.create_line(x0, end, x0, end + 18, fill=self.C["text_dim"], arrow="last", tags=("flow",))
-        cv.create_rectangle(x0 - 6, end + 20, x0 + 6, end + 32, fill=self.C["text_dim"], outline="", tags=("flow",))
-        cv.configure(scrollregion=(0, 0, x0 * 2, end + 60))
-        self._center()
+        self._line(x0, end, x0, end + 18, arrow="last")
+        self._rect(x0 - 6, end + 20, x0 + 6, end + 32, self.C["text_dim"])
+        self._size = (x0 * 2, end + 40)
+        self._render()
+        if view:
+            self._scroll_to((view[0] + self._ox) * self.z, view[1] * self.z)
+
+    def _render(self):
+        """Deseneaza primitivele pe canvas la zoom-ul curent (textul se ascunde cand ar fi prea mic)."""
+        cv, z = self.canvas, self.z
+        cv.delete("all")
+        self.cards.clear()
+        W, H = cv.winfo_width(), cv.winfo_height()
+        w, h = self._size
+        self._ox = max(0.0, (W / z - w) / 2)       # fluxul sta pe mijloc cand e mai ingust decat fereastra
+        ox = self._ox
+        for p in self._prims:
+            kind = p[0]
+            if kind == "text":
+                (x, y), text, color, size, style, anchor, tag = p[1:]
+                fs = round(size * z)
+                if fs < 4:
+                    continue
+                tags = ("flow", tag) if tag else ("flow",)
+                cv.create_text((x + ox) * z, y * z, text=text, fill=color, anchor=anchor,
+                               font=(FONT, fs, style) if style != "normal" else (FONT, fs), tags=tags)
+                continue
+            if kind == "line":
+                pts, color, arrow, _ = p[1:]
+                xy = [(v + ox) * z if i % 2 == 0 else v * z for i, v in enumerate(pts)]
+                kw = {"arrow": arrow, "arrowshape": (max(3, 8 * z), max(4, 10 * z), max(2, 3 * z))} if arrow else {}
+                cv.create_line(*xy, fill=color, width=1, tags=("flow",), **kw)
+                continue
+            (x1, y1, x2, y2), fill, outline, tag = p[1:]
+            xy = ((x1 + ox) * z, y1 * z, (x2 + ox) * z, y2 * z)
+            if kind == "oval":
+                cv.create_oval(*xy, fill=fill, outline="", tags=("flow",))
+            elif tag.startswith("card:"):
+                nid = tag[5:]
+                self.cards[nid] = cv.create_rectangle(*xy, fill=fill, outline=outline, width=1,
+                                                      tags=("flow", "n" + nid, "card"))
+            else:
+                tags = ("flow", tag) if tag else ("flow",)
+                cv.create_rectangle(*xy, fill=fill, outline=outline or fill, tags=tags)
+        for nid in self.cards:
+            tag = "n" + nid
+            cv.tag_bind(tag, "<Button-1>", lambda e, i=nid: self.pick(i))
+            cv.tag_bind(tag, "<Double-Button-1>", lambda e, i=nid: self.p.show_center("steps", select=i))
+            cv.tag_bind("tog" + nid, "<Button-1>", lambda e, i=nid: (self.toggle(i), "break")[1])
+        self._sr = (0.0, 0.0, max(W, (w + 2 * ox) * z), max(H, h * z + 20))
+        cv.configure(scrollregion=self._sr)
+        self._zoom_lbl.configure(text=f"{round(z * 100)} %")
         self.sync_states()
-
-    def _center(self):
-        # fluxul sta pe mijloc cand e mai ingust decat fereastra
-        cv = self.canvas
-        try:
-            bbox = cv.bbox("flow")
-        except tk.TclError:
-            return
-        if not bbox:
-            return
-        W = cv.winfo_width()
-        width = bbox[2] - bbox[0]
-        dx = (W - width) / 2 - bbox[0] if width < W else 20 - bbox[0]
-        if abs(dx) >= 1:
-            cv.move("flow", dx, 0)
-        bbox = cv.bbox("flow")
-        cv.configure(scrollregion=(min(0, bbox[0] - 20), 0, max(W, bbox[2] + 20), bbox[3] + 30))
-
-    def _line(self, *pts, arrow=None):
-        kw = {"arrow": arrow} if arrow else {}
-        self.canvas.create_line(*pts, fill=self.C["text_dim"], width=1, tags=("flow",), **kw)
+        self._draw_map()
 
     def _draw_list(self, nodes, cx: float, y: float) -> float:
         if not nodes:
-            self.canvas.create_text(cx, y + 12, text="(gol)", fill=self.C["text_dim"], font=(FONT, 9, "italic"),
-                                    tags=("flow",))
+            self._text(cx, y + 12, "(gol)", self.C["text_dim"], 9, "italic")
             return y + 24
         prev = None
         for n in nodes:
@@ -742,8 +956,14 @@ class FlowView(tk.Frame):
             return C["warning"]
         return C["primary"]
 
+    def _hide(self, nodes, owner: str):
+        for n in nodes:
+            self._owner[n.id] = owner
+            for _, lst in n.branches():
+                self._hide(lst, owner)
+
     def _draw_node(self, n, cx: float, y: float) -> float:
-        C, cv = self.C, self.canvas
+        C = self.C
         try:
             from studio_ui import icon_for
             icon = icon_for(n)
@@ -752,18 +972,26 @@ class FlowView(tk.Frame):
         x1, x2 = cx - self.CW / 2, cx + self.CW / 2
         tag = f"n{n.id}"
         fill = C["bg_card"]
-        rect = cv.create_rectangle(x1, y, x2, y + self.CH, fill=fill, outline=C.get("border", C["bg_input"]),
-                                   width=1, tags=("flow", tag, "card"))
+        self._rect(x1, y, x2, y + self.CH, fill, C.get("border", C["bg_input"]), "card:" + n.id)
         strip = self._kind_color(n)
-        cv.create_rectangle(x1, y, x1 + 5, y + self.CH, fill=strip, outline=strip, tags=("flow", tag))
+        self._rect(x1, y, x1 + 5, y + self.CH, strip, strip, tag)
         fg = C["text"] if n.enabled else ui_theme.readable(C["text_muted"], fill, 3.0, self)
-        cv.create_text(x1 + 14, y + self.CH / 2, text=f"{icon}  {_short(tr(n.title), 30)}", fill=fg, anchor="w",
-                       font=(FONT, 10, "normal" if n.enabled else "italic"), tags=("flow", tag))
-        cv.tag_bind(tag, "<Button-1>", lambda e, nid=n.id: self.pick(nid))
-        cv.tag_bind(tag, "<Double-Button-1>", lambda e, nid=n.id: self.p.show_center("steps", select=nid))
-        self.cards[n.id] = rect
         br = n.branches()
+        has_kids = any(lst for _, lst in br)
+        folded = n.id in self.collapsed and bool(br)
+        n_title = 25 if has_kids else 30
+        self._text(x1 + 14, y + self.CH / 2, f"{icon}  {_short(tr(n.title), n_title)}", fg, 10,
+                   "normal" if n.enabled else "italic", "w", tag)
+        if has_kids:
+            self._rect(x2 - 34, y + 8, x2 - 6, y + self.CH - 8, C["bg_input"], "", "tog" + n.id)
+            self._text(x2 - 20, y + self.CH / 2, "▸" if folded else "▾", C["text"], 10, "bold", "center", "tog" + n.id)
         if not br:
+            return y + self.CH
+        if folded:
+            hidden = sum(self._count(lst) for _, lst in br)
+            self._hide([k for _, lst in br for k in lst], n.id)
+            self._text(x2 + 6, y + self.CH / 2, f"+{hidden}", ui_theme.readable(strip, C["bg_main"], 4.5, self),
+                       9, "bold", "w", "tog" + n.id)
             return y + self.CH
         cols = [self._measure_list(lst) for _, lst in br]
         total = sum(c[0] for c in cols) + self.COLGAP * (len(cols) - 1)
@@ -772,12 +1000,12 @@ class FlowView(tk.Frame):
         top = y + self.CH + self.GAP
         self._line(cx, y + self.CH, cx, split)
         bottoms = []
+        lbl = ui_theme.readable(strip, C["bg_main"], 4.5, self)
         for (name, lst), (w, h) in zip(br, cols):
             ccx = x + w / 2
             self._line(cx, split, ccx, split)
             self._line(ccx, split, ccx, top + self.LBL - 4, arrow="last")
-            cv.create_text(ccx + 6, top + 6, text=_short(tr(name), 28), anchor="w",
-                           fill=ui_theme.readable(strip, C["bg_main"], 4.5, self), font=(FONT, 9, "bold"), tags=("flow",))
+            self._text(ccx + 6, top + 6, _short(tr(name), 28), lbl, 9, "bold", "w")
             bottoms.append((ccx, self._draw_list(lst, ccx, top + self.LBL)))
             x += w + self.COLGAP
         merge = max(b for _, b in bottoms) + self.GAP / 2
@@ -788,12 +1016,250 @@ class FlowView(tk.Frame):
             self._line(bottoms[0][0], merge, cx, merge)
         return merge
 
+    # ── harta mica ──
+    def toggle_map(self):
+        self._map_on = not self._map_on
+        self._place_map()
+
+    def _map_needed(self) -> bool:
+        cv = self.canvas
+        w, h = self._size
+        return w > 0 and (w * self.z > cv.winfo_width() + 2 or h * self.z > cv.winfo_height() + 2)
+
+    def _place_map(self):
+        if self._map_on and self._map_needed():
+            self.minimap.place(in_=self.canvas, relx=1.0, rely=1.0, x=-8, y=-8, anchor="se")
+            tk.Misc.lift(self.minimap)   # Canvas.lift = tag_raise
+        else:
+            self.minimap.place_forget()
+
+    def _map_scale(self):
+        """Scara hartii mici: are forma rutinei (inalta si ingusta la o rutina lunga), max. MAP_W x MAP_H."""
+        w, h = self._size
+        if w <= 0 or h <= 0:
+            return 0.0, 0.0, 0.0
+        cv = self.canvas
+        mw = min(self.MAP_W, max(60, cv.winfo_width() // 4))
+        mh = min(self.MAP_H, max(80, int(cv.winfo_height() * 0.45)))
+        s = min((mw - 8) / w, (mh - 8) / h)
+        W, H = max(40, int(w * s) + 8), max(40, int(h * s) + 8)
+        if (int(float(self.minimap.cget("width"))), int(float(self.minimap.cget("height")))) != (W, H):
+            self.minimap.configure(width=W, height=H)
+        return s, (W - w * s) / 2, (H - h * s) / 2
+
+    def _draw_map(self):
+        mm = self.minimap
+        mm.delete("all")
+        s, mx, my = self._map_scale()
+        if s <= 0:
+            self._place_map()
+            return
+        for p in self._prims:
+            if p[0] == "rect" and p[4].startswith("card:"):
+                x1, y1, x2, y2 = p[1]
+                mm.create_rectangle(mx + x1 * s, my + y1 * s, mx + x2 * s, my + max(y2 * s, y1 * s + 1),
+                                    fill=self.C["text_dim"], outline="")
+            elif p[0] == "rect" and p[2] != self.C["bg_card"] and p[4].startswith("n"):
+                x1, y1, x2, y2 = p[1]   # banda colorata = tipul pasului
+                mm.create_rectangle(mx + x1 * s, my + y1 * s, mx + x1 * s + 2, my + max(y2 * s, y1 * s + 1),
+                                    fill=p[2], outline="")
+        mm.create_rectangle(0, 0, 0, 0, outline=self.C["primary"], width=2, tags=("view",))
+        self._map_view()
+        self._place_map()
+
+    def _map_view(self):
+        mm = getattr(self, "minimap", None)
+        if mm is None or not self._prims:
+            return
+        s, mx, my = self._map_scale()
+        cv, z = self.canvas, self.z
+        try:
+            l, t = cv.canvasx(0) / z - self._ox, cv.canvasy(0) / z
+            r, b = l + cv.winfo_width() / z, t + cv.winfo_height() / z
+            mm.coords("view", mx + l * s, my + t * s, mx + r * s, my + b * s)
+        except tk.TclError:
+            pass
+
+    def _map_jump(self, e):
+        s, mx, my = self._map_scale()
+        if s <= 0:
+            return
+        cv, z = self.canvas, self.z
+        lx, ly = (e.x - mx) / s, (e.y - my) / s
+        self._scroll_to((lx + self._ox) * z - cv.winfo_width() / 2, ly * z - cv.winfo_height() / 2)
+
+    # ── export ──
+    def export_dialog(self):
+        from tkinter import filedialog
+        base = "".join(ch if ch.isalnum() or ch in " -_." else "_" for ch in (self.p.routine.name or "Rutina")).strip()
+        path = filedialog.asksaveasfilename(parent=self, title="Exporta fluxul", initialfile=f"{base or 'Rutina'}_flux.png",
+                                            defaultextension=".png",
+                                            filetypes=[("Imagine PNG", "*.png"), ("Imagine vectoriala SVG", "*.svg")])
+        if not path:
+            return
+        try:
+            info = self.export_svg(path) if path.lower().endswith(".svg") else self.export_png(path)
+        except Exception as ex:  # noqa: BLE001
+            self.p.set_status(f"⬇ Export esuat: {ex}")
+            return
+        self.p.set_status(f"⬇ Flux salvat: {path} ({info})")
+        try:
+            self.p.open_path(path)
+        except Exception:  # noqa: BLE001
+            pass
+
+    def _export_box(self):
+        w, h = self._size
+        return w, h
+
+    def export_svg(self, path: str) -> str:
+        """SVG din aceleasi primitive (zoom 100 %); in browser se mareste oricat fara sa se strice textul."""
+        from xml.sax.saxutils import escape
+        w, h = self._export_box()
+        bg = self.C["bg_main"]
+        out = [f'<svg xmlns="http://www.w3.org/2000/svg" width="{w:.0f}" height="{h:.0f}" '
+               f'viewBox="0 0 {w:.0f} {h:.0f}" font-family="Segoe UI, Arial, sans-serif">',
+               '<defs><marker id="a" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" '
+               f'orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="{self.C["text_dim"]}"/></marker></defs>',
+               f'<rect width="100%" height="100%" fill="{bg}"/>']
+        anchors = {"w": "start", "center": "middle", "e": "end"}
+        for p in self._prims:
+            kind = p[0]
+            if kind == "text":
+                (x, y), text, color, size, style, anchor, _ = p[1:]
+                weight = ' font-weight="bold"' if style == "bold" else (' font-style="italic"' if style == "italic" else "")
+                out.append(f'<text x="{x:.1f}" y="{y:.1f}" font-size="{size * 4 / 3:.1f}" fill="{color}"{weight} '
+                           f'text-anchor="{anchors.get(anchor, "middle")}" dominant-baseline="central">'
+                           f'{escape(str(text))}</text>')
+            elif kind == "line":
+                pts, color, arrow, _ = p[1:]
+                pl = " ".join(f"{pts[i]:.1f},{pts[i + 1]:.1f}" for i in range(0, len(pts), 2))
+                mk = ' marker-end="url(#a)"' if arrow else ""
+                out.append(f'<polyline points="{pl}" fill="none" stroke="{color}" stroke-width="1"{mk}/>')
+            else:
+                (x1, y1, x2, y2), fill, outline, tag = p[1:]
+                if kind == "oval":
+                    out.append(f'<ellipse cx="{(x1 + x2) / 2:.1f}" cy="{(y1 + y2) / 2:.1f}" rx="{(x2 - x1) / 2:.1f}" '
+                               f'ry="{(y2 - y1) / 2:.1f}" fill="{fill}"/>')
+                else:
+                    stroke = f' stroke="{outline}"' if outline and outline != fill else ""
+                    out.append(f'<rect x="{x1:.1f}" y="{y1:.1f}" width="{x2 - x1:.1f}" height="{y2 - y1:.1f}" '
+                               f'fill="{fill}"{stroke}/>')
+        out.append("</svg>")
+        with open(path, "w", encoding="utf-8") as f:
+            f.write("\n".join(out))
+        return f"{w:.0f} × {h:.0f}, SVG"
+
+    @staticmethod
+    def _png_scale(w: float, h: float) -> float:
+        """Cat de mare se face poza: de 2 ori, dar fara sa depaseasca ~40 de milioane de pixeli / 30000 pe latura."""
+        if w <= 0 or h <= 0:
+            return 1.0
+        return max(0.25, min(2.0, (40e6 / (w * h)) ** 0.5, 30000 / max(w, h)))
+
+    def export_png(self, path: str, scale: Optional[float] = None) -> str:
+        from PIL import Image, ImageDraw, ImageFont
+        w, h = self._export_box()
+        s = scale or self._png_scale(w, h)
+        img = Image.new("RGB", (max(1, int(w * s)), max(1, int(h * s))), self.C["bg_main"])
+        d = ImageDraw.Draw(img)
+        fonts: Dict[tuple, Any] = {}
+
+        def font(size, style, emoji=False):
+            key = (size, style, emoji)
+            if key not in fonts:
+                names = (["seguiemj.ttf", "NotoColorEmoji.ttf"] if emoji else
+                         {"bold": ["segoeuib.ttf", "DejaVuSans-Bold.ttf"],
+                          "italic": ["segoeuii.ttf", "DejaVuSans-Oblique.ttf"]}.get(style, []) +
+                         ["segoeui.ttf", "DejaVuSans.ttf", "arial.ttf"])
+                f = None
+                for nm in names:
+                    try:
+                        f = ImageFont.truetype(nm, size)
+                        break
+                    except OSError:
+                        continue
+                if f is None and not emoji:
+                    try:
+                        f = ImageFont.load_default(size=size)
+                    except TypeError:   # Pillow < 10.1
+                        f = ImageFont.load_default()
+                fonts[key] = f
+            return fonts[key]
+
+        dim = self.C["text_dim"]
+        for p in self._prims:
+            kind = p[0]
+            if kind == "line":
+                pts, color, arrow, _ = p[1:]
+                xy = [v * s for v in pts]
+                d.line(xy, fill=color, width=max(1, round(s)))
+                if arrow and len(xy) >= 4:
+                    import math
+                    (ax, ay), (bx, by) = xy[-4:-2], xy[-2:]
+                    ang = math.atan2(by - ay, bx - ax)
+                    L, Wd = 9 * s, 4 * s
+                    d.polygon([(bx, by), (bx - L * math.cos(ang) + Wd * math.sin(ang), by - L * math.sin(ang) - Wd * math.cos(ang)),
+                               (bx - L * math.cos(ang) - Wd * math.sin(ang), by - L * math.sin(ang) + Wd * math.cos(ang))],
+                              fill=dim)
+            elif kind == "text":
+                (x, y), text, color, size, style, anchor, _ = p[1:]
+                px = max(6, round(size * 4 / 3 * s))
+                text = str(text)
+                icon, rest = "", text
+                if "  " in text:      # "🔎  Titlu": iconita cu fontul de emoji, daca exista
+                    icon, rest = text.split("  ", 1)
+                    ef = font(px, style, emoji=True)
+                    if ef is None:
+                        icon = ""
+                f = font(px, style)
+                pa = {"w": "lm", "center": "mm", "e": "rm"}.get(anchor, "mm")
+                cx, cy = x * s, y * s
+                if icon:
+                    try:
+                        d.text((cx, cy), icon, font=font(px, style, emoji=True), anchor="lm", embedded_color=True)
+                        cx += d.textlength(icon + "  ", font=f)
+                    except Exception:  # noqa: BLE001 — fontul de emoji nu are marimea ceruta
+                        pass
+                    d.text((cx, cy), rest, fill=color, font=f, anchor="lm")
+                else:
+                    d.text((cx, cy), rest, fill=color, font=f, anchor=pa)
+            else:
+                (x1, y1, x2, y2), fill, outline, tag = p[1:]
+                box = [x1 * s, y1 * s, x2 * s, y2 * s]
+                if kind == "oval":
+                    d.ellipse(box, fill=fill)
+                else:
+                    d.rectangle(box, fill=fill, outline=(outline or None) if outline != fill else None,
+                                width=max(1, round(s)))
+        img.save(path, "PNG", optimize=True)
+        return f"{img.width} × {img.height} px"
+
     # ── stare ──
     def pick(self, node_id: str):
         self.select(node_id)
         self.p.select_node(node_id)
 
+    def _reveal(self, node_id: str) -> bool:
+        """Pasul ales e intr-o ramura restransa: o deschide (cu toti parintii)."""
+        if node_id in self.cards or node_id not in self._owner:
+            return False
+        parents: Dict[str, str] = {}
+        for n in self.p.routine.all_nodes():
+            for _, lst in n.branches():
+                for k in lst:
+                    parents[k.id] = n.id
+        cur = parents.get(node_id)
+        while cur:
+            self.collapsed.discard(cur)
+            cur = parents.get(cur)
+        return True
+
     def select(self, node_id: str):
+        if self._reveal(node_id):
+            self._selected = node_id
+            self.refresh(keep_view=True)
+            return
         C = self.C
         old = self.cards.get(self._selected)
         if old:
@@ -809,14 +1275,17 @@ class FlowView(tk.Frame):
         cv = self.canvas
         try:
             x1, y1, x2, y2 = cv.coords(item)
-            sr = [float(v) for v in str(cv.cget("scrollregion")).split()]
         except (ValueError, tk.TclError):
             return
-        if len(sr) != 4 or sr[3] <= sr[1]:
+        sr = getattr(self, "_sr", None)
+        if not sr or sr[3] <= sr[1]:
             return
         top, bottom = cv.canvasy(0), cv.canvasy(cv.winfo_height())
         if y1 < top or y2 > bottom:
             cv.yview_moveto(max(0.0, (y1 - 60 - sr[1]) / (sr[3] - sr[1])))
+        left, right = cv.canvasx(0), cv.canvasx(cv.winfo_width())
+        if x1 < left or x2 > right:
+            cv.xview_moveto(max(0.0, ((x1 + x2) / 2 - cv.winfo_width() / 2 - sr[0]) / (sr[2] - sr[0])))
 
     def _paint_state(self, node_id: str):
         r = self.cards.get(node_id)
@@ -842,11 +1311,15 @@ class FlowView(tk.Frame):
     def sync_states(self):
         for nid in self.cards:
             self._paint_state(nid)
-        if self._selected in self.cards:
-            self.select(self._selected)
+        r = self.cards.get(self._selected)
+        if r:   # fara derulare: zoom-ul si tragerea nu sar la pasul ales
+            self.canvas.itemconfigure(r, outline=self.C["primary"], width=3)
 
     def set_state(self, node_id: str):
         if node_id not in self.cards:
+            owner = self._owner.get(node_id)   # pasul e intr-o ramura restransa: urmarim cardul ei
+            if owner in self.cards and self.p.tree.exists(node_id) and "running" in self.p.tree.item(node_id, "tags"):
+                self._see(self.cards[owner])
             return
         self._paint_state(node_id)
         if self.p.tree.exists(node_id) and "running" in self.p.tree.item(node_id, "tags"):
