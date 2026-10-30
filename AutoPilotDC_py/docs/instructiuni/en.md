@@ -316,6 +316,7 @@ Some web applications change their "folders" (menu, tree on the left) without ch
 2. In the library the tree becomes **Site · Page · 📁 Folder · button**.
 3. For an existing object: right-click → **📁 Move to folder...** or the **Folder** field in **Edit**.
 4. Right-click a folder: **✎ Rename the folder...** (also renames its subfolders) and **🩺 Check the folder's objects**.
+- **Rename page / site**: right-click a 📄 page (or 🌐 site) → **✎ Rename the page...**; it changes for all objects under it. If the new name already exists, the pages merge.
 - A folder only groups. It does not change where the element is searched on the page (that is what a **Container** does). Routines do not change: steps still use the object name.
 - Windows (object, scan, check, schedule) scroll with the mouse wheel and the **Save / Add / Close** buttons stay fixed at the bottom, so you no longer need to enlarge them.
 

@@ -316,6 +316,7 @@ Manche Web-Anwendungen wechseln ihre „Ordner“ (Menü, Baum links), ohne die 
 2. In der Bibliothek wird der Baum zu **Website · Seite · 📁 Ordner · Schaltfläche**.
 3. Für ein vorhandenes Objekt: Rechtsklick → **📁 In Ordner verschieben...** oder das Feld **Ordner** in **Bearbeiten**.
 4. Rechtsklick auf einen Ordner: **✎ Ordner umbenennen...** (benennt auch die Unterordner um) und **🩺 Objekte des Ordners prüfen**.
+- **Seite / Website umbenennen**: Rechtsklick auf eine 📄 Seite (oder 🌐 Website) → **✎ Seite umbenennen...**; gilt für alle Objekte darunter. Existiert der neue Name schon, werden die Seiten zusammengeführt.
 - Ein Ordner gruppiert nur. Er ändert nicht, wo das Element auf der Seite gesucht wird (das macht der **Container**). Routinen ändern sich nicht: Schritte verwenden weiter den Objektnamen.
 - Fenster (Objekt, Scan, Prüfung, Zeitplan) scrollen mit dem Mausrad, und die Schaltflächen **Speichern / Hinzufügen / Schließen** bleiben unten fest, sodass Sie die Fenster nicht mehr vergrößern müssen.
 

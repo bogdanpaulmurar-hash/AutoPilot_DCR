@@ -2,6 +2,11 @@
 
 Pornirea aplicației: **`AutoPilot_DC.pyw`** (sau scurtătura „AutoPilot DC” de pe Desktop). Numele fișierelor nu se mai schimbă de la o versiune la alta, deci scurtăturile și pornirea cu Windows rămân valabile.
 
+## 4.11.1 — 2026-10-30
+- **Redenumire pagină / site în bibliotecă**: click dreapta pe 📄 pagină (sau 🌐 site) → **✎ Redenumeste pagina... / site-ul...** schimbă numele pentru toate obiectele de sub ea (și grupul de link-uri al site-ului). Dacă numele nou există deja, paginile se unesc. Tot acolo: **🩺 Verifica obiectele de aici**.
+- Instrucțiuni: capitolul 28, în RO / EN / DE.
+- Teste (Linux, Python 3.12): 127 rulate, 3 sărite; aceleași 3 eșecuri vechi; test nou `test_rename_page_and_site`. Verificat în Studio (Xvfb): redenumirea paginii și a site-ului. Meniul click-dreapta nu a fost încercat pe Windows.
+
 ## 4.11.0 — 2026-10-30
 - **🔍 Fereastra de scanare**: click pe un rând **marchează elementul în browser** (3,5 s, cu textul găsit) ca să știi ce buton e și dacă îl ții; bifa din prima coloană (sau Space / **☑ Tine / scoate**) îl ține sau îl scoate. **✎ Redenumeste** (F2 / dublu-click pe nume) schimbă numele înainte de salvare (nume unic față de bibliotecă).
 - **📁 Foldere în bibliotecă**: câmp nou `folder` pe obiect (doar Python; C# îl ignoră), ex. `Comenzi/Export`, cu subfoldere. Arborele devine **Site · Pagină · 📁 Folder · buton**. Sus în fereastra de scanare alegi **Pagina** și **Folderul** sub care intră obiectele; **🖐 Captura 3 s** folosește ultimul folder ales. Pe obiect: câmpul **Folder** din Editează și **📁 Muta in folder...** (click dreapta). Pe folder (click dreapta): **✎ Redenumeste folderul...** (și subfolderele) și **🩺 Verifica obiectele folderului**. Folderul doar grupează: nu schimbă locul unde se caută elementul (asta face Containerul), iar rutinele nu se schimbă.

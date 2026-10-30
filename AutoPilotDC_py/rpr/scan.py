@@ -267,3 +267,25 @@ def rename_folder(objs: Iterable[UiObject], old_path: str, new_last: str) -> int
             o.folder = "/".join(new + parts[len(old):])
             n += 1
     return n
+
+
+def rename_page(objs: Iterable[UiObject], new_name: str) -> int:
+    """Pagina noua pentru toate obiectele date (v4.11.1)."""
+    n = 0
+    for o in objs:
+        o.page = new_name.strip()
+        n += 1
+    return n
+
+
+def rename_site(repo: ObjectRepository, objs: Iterable[UiObject], old: str, new_name: str) -> int:
+    """Site-ul nou pentru obiectele date; grupul de link-uri al site-ului (daca exista) isi schimba si el numele."""
+    new_name = new_name.strip()
+    n = 0
+    for o in objs:
+        o.site = new_name
+        n += 1
+    g = repo.find_site(old) if old else None
+    if g is not None and repo.find_site(new_name) is None:
+        g.name = new_name
+    return n

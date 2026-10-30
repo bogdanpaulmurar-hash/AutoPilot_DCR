@@ -15,7 +15,7 @@ APP = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, APP)
 
 from rpr import scan  # noqa: E402
-from rpr.model import Locator, LocatorKind, ObjectRepository, Routine, UiObject, UiTechnology  # noqa: E402
+from rpr.model import Locator, LocatorKind, ObjectRepository, Routine, SiteGroup, UiObject, UiTechnology  # noqa: E402
 from rpr.storage import RepositoryStore, RoutineStore  # noqa: E402
 
 PAGE = """<!doctype html><html><body>
@@ -295,6 +295,16 @@ class FolderTests(unittest.TestCase):
         self.assertEqual(["Orders/Import", "Orders/Import", "Orders/Export", ""], [o.folder for o in repo.objects])
         scan.rename_folder(repo.objects, "Orders/Export", "Iesire")
         self.assertEqual("Orders/Iesire", repo.objects[2].folder)
+
+    def test_rename_page_and_site(self):
+        repo = self._repo()
+        repo.objects[0].site = repo.objects[1].site = "app.local"
+        repo.sites.append(SiteGroup(name="app.local"))
+        self.assertEqual(2, scan.rename_page(repo.objects[:2], " Principal "))
+        self.assertEqual(["Principal", "Principal"], [o.page for o in repo.objects[:2]])
+        self.assertEqual(2, scan.rename_site(repo, repo.objects[:2], "app.local", "Comenzi"))
+        self.assertEqual(["Comenzi", "Comenzi"], [o.site for o in repo.objects[:2]])
+        self.assertIsNotNone(repo.find_site("Comenzi"))
 
     def test_folder_survives_save_and_load(self):
         path = os.path.join(tempfile.mkdtemp(prefix="apdc_fold_"), "obiecte.json")
