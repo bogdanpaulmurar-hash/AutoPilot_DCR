@@ -160,5 +160,107 @@ class WebScanTests(unittest.TestCase):
             self.driver.stop_hover_capture()
 
 
+CHECK_PAGE = """<!doctype html><html><body>
+<script>window.clicks = 0;</script>
+<button id="ok" onclick="window.clicks++">Salveaza</button>
+<button id="gri" disabled>Trimite</button>
+<button id="sub" onclick="window.clicks++">Sub overlay</button>
+<div id="ov" style="position:fixed;left:0;top:0;width:100%;height:100%;display:none"></div>
+<button class="dublu">A</button><button class="dublu">A</button>
+<input id="citire" readonly value="x">
+</body></html>"""
+
+
+def _wobj(name, *locs, typ="Buton", et="button", text=""):
+    return UiObject(name=name, technology=UiTechnology.Web, object_type=typ, element_type=et, captured_text=text,
+                    locators=[Locator(k, v, 90) for k, v in locs])
+
+
+class DiagnoseTests(unittest.TestCase):
+    def test_fix_and_recapture_keep_name(self):
+        o = _wobj("Buton_X", (LocatorKind.Id, "vechi"), (LocatorKind.Text, "X"))
+        used = o.locators[1]
+        self.assertTrue(scan.fix_locators(o, used))
+        self.assertIs(used, o.locators[0])
+        self.assertFalse(scan.fix_locators(o, used))
+        new = _wobj("Buton_Nou", (LocatorKind.Css, "#nou"))
+        o.parent, o.page = "Formular", "/app"
+        scan.apply_recapture(o, new)
+        self.assertEqual(("Buton_X", "Formular", "/app"), (o.name, o.parent, o.page))
+        self.assertEqual("#nou", o.locators[0].value)
+
+    def test_objects_to_check_by_page(self):
+        repo = ObjectRepository(objects=[])
+        a, b = _wobj("A", (LocatorKind.Id, "a")), _wobj("B", (LocatorKind.Id, "b"))
+        a.page, b.page = "/app/comenzi", "/app/clienti"
+        repo.objects += [a, b]
+        url = "https://app.local/app/comenzi/123"
+        self.assertEqual(["A"], [o.name for o in scan.objects_to_check(repo, url)])
+        self.assertEqual(["A", "B"], [o.name for o in scan.objects_to_check(repo, url, whole_site=True)])
+
+    def test_other_page_is_not_remap(self):
+        o = _wobj("B", (LocatorKind.Id, "b"))
+        o.page = "/app/clienti"
+        st, _ = scan.diagnose(o, {"found": False, "counts": []}, "https://app.local/app/comenzi")
+        self.assertEqual(scan.OTHER_PAGE, st)
+
+
+@unittest.skipUnless(_available(), "playwright nu e instalat")
+class WebCheckTests(unittest.TestCase):
+    """Verificarea fara click pe o pagina reala: nimic nu e apasat."""
+
+    @classmethod
+    def setUpClass(cls):
+        from rpr.drivers.web import PlaywrightDriver, WebSettings
+        cls.tmp = tempfile.mkdtemp(prefix="apdc_check_")
+        path = os.path.join(cls.tmp, "check.html")
+        with open(path, "w", encoding="utf-8") as f:
+            f.write(CHECK_PAGE)
+        cls.url = "file:///" + path.replace("\\", "/")
+        cls.driver = PlaywrightDriver(WebSettings(browser=os.environ.get("APDC_TEST_BROWSER", "Edge"), headless=True))
+        try:
+            cls.driver.open(cls.url)
+        except Exception as ex:  # noqa: BLE001
+            raise unittest.SkipTest(f"browserul nu porneste: {ex}")
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.driver.close()
+
+    def _check(self, obj, overlay=False):
+        self.driver._call(lambda: self.driver._page.evaluate(
+            f"document.getElementById('ov').style.display = '{'block' if overlay else 'none'}'"))
+        res = self.driver.check_object(obj, 600)
+        return scan.diagnose(obj, res, self.url)
+
+    def test_ok_without_click(self):
+        st, why = self._check(_wobj("Buton_Salveaza", (LocatorKind.Id, "ok"), text="Salveaza"))
+        self.assertEqual((scan.OK, []), (st, why))
+        self.assertEqual(0, self.driver._call(lambda: self.driver._page.evaluate("window.clicks")))
+
+    def test_missing_needs_remap(self):
+        st, why = self._check(_wobj("Buton_Disparut", (LocatorKind.Id, "nu_exista")))
+        self.assertEqual(scan.REMAP, st)
+
+    def test_fallback_locator(self):
+        o = _wobj("Buton_Salveaza", (LocatorKind.Id, "vechi_id"), (LocatorKind.Text, "Salveaza"))
+        st, why = self._check(o)
+        self.assertEqual(scan.WARN, st)
+        self.assertIn("Repara locatorii", why[0])
+
+    def test_disabled_covered_ambiguous_readonly(self):
+        st, why = self._check(_wobj("Buton_Trimite", (LocatorKind.Id, "gri")))
+        self.assertEqual(scan.WARN, st)
+        self.assertTrue(any("dezactivat" in w for w in why), why)
+        st, why = self._check(_wobj("Buton_Sub", (LocatorKind.Id, "sub")), overlay=True)
+        self.assertEqual(scan.WARN, st)
+        self.assertTrue(any("Acoperit" in w and "ov" in w for w in why), why)
+        self.assertEqual(0, self.driver._call(lambda: self.driver._page.evaluate("window.clicks")))
+        st, why = self._check(_wobj("Buton_A", (LocatorKind.Css, ".dublu")))
+        self.assertTrue(any("2 elemente" in w for w in why), why)
+        st, why = self._check(_wobj("Camp_Citire", (LocatorKind.Id, "citire"), typ="Camp text", et="input"))
+        self.assertTrue(any("scriere" in w for w in why), why)
+
+
 if __name__ == "__main__":
     unittest.main()

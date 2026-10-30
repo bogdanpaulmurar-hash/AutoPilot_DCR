@@ -293,3 +293,15 @@ Fiecare capitol explică pe scurt o procedură, pas cu pas, cu un exemplu. Alege
 - Dacă pe celălalt laptop OneDrive are altă cale, biblioteca e găsită la același loc din OneDrive-ul de pe acel PC.
 
 > Exemplu: pentru aplicația de comenzi creezi biblioteca „Comenzi” în OneDrive, scanezi pagina de căutare și formularul de comandă, apoi cu Captura 3 s adaugi butonul din meniul care apare doar la hover. Rutinele noi pentru această aplicație folosesc biblioteca „Comenzi”.
+
+## 27. Verifică butoanele salvate (simulare fără click)
+
+1. Deschide în browserul AutoPilot pagina aplicației (te autentifici, deschizi meniul / tabul unde sunt butoanele).
+2. 📚 Biblioteca → **🩺 Verifica** (sau, după 🔍 Scaneaza site, alegi **🩺 Verifica butoanele salvate**). Dacă site-ul are obiecte și pe alte pagini, alegi **Pagina curenta** sau **Tot site-ul**.
+3. Pentru fiecare obiect, AutoPilot face un „click de probă”: aceleași verificări ca la un click real (îl găsește, e vizibil, e activ, nu se mișcă, nu e acoperit de altă fereastră), dar **nu apasă** și nu trimite nimic la server.
+4. Primești lista: **✅** merge · **⚠** merge, dar cu impedimente (acoperit de un overlay, dezactivat, găsit de mai multe ori, merge doar locatorul de rezervă, alt text) · **❌** trebuie recaptat · **·** e pe altă pagină. Click pe un rând arată motivele.
+5. **👁 Arata in browser** marchează elementul. **🔧 Repara locatorii** pune primul locatorul care merge. **🎯 Recapteaza**: dai click pe element în browser; numele rămâne, deci rutinele care îl folosesc merg mai departe. **🔄 Verifica din nou** după ce ai schimbat ceva în browser.
+- Click-ul de probă poate derula pagina până la element, dar nu apasă nimic. Un buton care apare doar după o acțiune (meniu, tab, filtru) se verifică după ce îl deschizi tu.
+- La un element ⚠ „Acoperit”, de obicei o fereastră sau un mesaj stă peste el: închide-l și verifică din nou. Dacă rămâne, rutina are nevoie de un pas înainte (închide mesajul).
+
+> Exemplu: după o actualizare a aplicației, deschizi pagina de comenzi și apeși 🩺 Verifica. „Salveaza” e ✅, „Trimite” e ⚠ dezactivat (normal până completezi formularul), iar „Export” e ❌: îl recaptezi dintr-un click și rutina de export merge din nou.

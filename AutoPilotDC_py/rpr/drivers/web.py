@@ -570,6 +570,56 @@ class PlaywrightDriver(UiDriver):
                 "container": parent.name if parent is not None else "",
                 "container_found": scope is not None if parent is not None else None}
 
+    def check_object(self, obj: UiObject, timeout_ms: int = 1500) -> Dict[str, Any]:
+        """🩺 Verificare fara click (v4.10): obiectul salvat mai e pe pagina si ar merge apasat?
+        Face doar verificarile pe care le face si un click real (gasit, vizibil, activ, nu se misca,
+        nu e acoperit de alt element), fara sa apese si fara cereri la server."""
+        return self._call(self._check_object, obj, timeout_ms)
+
+    def _check_object(self, obj: UiObject, timeout_ms: int) -> Dict[str, Any]:
+        if not self._is_open():
+            raise RprStepException("Browserul nu e deschis. Deschide pagina pe care vrei sa verifici obiectele.")
+        page = self._page
+        res: Dict[str, Any] = {"url": page.url, "found": False, "used": None, "counts": [],
+                               "visible": None, "enabled": None, "editable": None,
+                               "trial": None, "trial_error": "", "tag": "", "text": ""}
+        scope = self._scope_of(obj)
+        for loc in obj.active_locators:
+            try:
+                n = self._build(page, obj, loc, scope).count() if scope is not None else None
+                if not n:
+                    n = self._build(page, obj, loc, None).count()
+            except Exception:
+                n = -1   # locator invalid
+            res["counts"].append((loc, n))
+        if obj.parent:
+            res["container_found"] = scope is not None
+        l, used = self._resolve(obj, 0, None)
+        if l is None:
+            return res
+        res["found"], res["used"] = True, used
+        try:
+            res["visible"], res["enabled"] = l.is_visible(), l.is_enabled()
+        except Exception:
+            pass
+        try:
+            res["editable"] = l.is_editable()
+        except Exception:
+            res["editable"] = None   # nu e camp (buton, link): nu conteaza
+        try:
+            res["tag"] = (l.evaluate("e => e.tagName") or "").lower()
+            res["text"] = (l.inner_text(timeout=500) or "").strip()[:80]
+        except Exception:
+            pass
+        try:
+            # trial=True: Playwright face toate verificarile unui click, dar NU apasa
+            l.click(trial=True, timeout=timeout_ms)
+            res["trial"] = True
+        except Exception as ex:  # noqa: BLE001
+            res["trial"] = False
+            res["trial_error"] = str(ex)
+        return res
+
     def element_inside(self, container: UiObject, child: UiObject) -> bool:
         """Elementul capturat se afla in interiorul containerului (pe pagina curenta)?"""
         try:

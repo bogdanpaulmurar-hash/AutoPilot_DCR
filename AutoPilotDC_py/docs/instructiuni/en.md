@@ -295,3 +295,15 @@ Each chapter briefly explains one procedure, step by step, with an example. Pick
 - If OneDrive has a different path on the other laptop, the library is found at the same place in that PC's OneDrive.
 
 > Example: for the orders application you create the "Orders" library in OneDrive, scan the search page and the order form, then use the 3 s capture to add the button from the menu that only appears on hover. New routines for this application use the "Orders" library.
+
+## 27. Check saved buttons (simulation without clicking)
+
+1. Open the application page in the AutoPilot browser (sign in, open the menu / tab with the buttons).
+2. 📚 Library → **🩺 Check** (or, after 🔍 Scan site, choose **🩺 Check saved buttons**). If the site has objects on other pages too, choose **Current page** or **Whole site**.
+3. For each object, AutoPilot makes a "trial click": the same checks as a real click (found, visible, enabled, not moving, not covered by another window), but it **does not press** and sends nothing to the server.
+4. You get the list: **✅** works · **⚠** works, but with obstacles (covered by an overlay, disabled, found several times, only the fallback locator works, different text) · **❌** must be recaptured · **·** on another page. Click a row to see the reasons.
+5. **👁 Show in browser** marks the element. **🔧 Repair locators** puts the working locator first. **🎯 Recapture**: click the element in the browser; the name stays, so routines that use it keep working. **🔄 Check again** after you changed something in the browser.
+- The trial click may scroll the page to the element, but it presses nothing. A button that appears only after an action (menu, tab, filter) is checked after you open it.
+- For a ⚠ "Covered" element, usually a window or message sits on top of it: close it and check again. If it stays, the routine needs a step before (close the message).
+
+> Example: after an application update you open the orders page and press 🩺 Check. "Save" is ✅, "Send" is ⚠ disabled (normal until you fill in the form) and "Export" is ❌: you recapture it with one click and the export routine works again.
