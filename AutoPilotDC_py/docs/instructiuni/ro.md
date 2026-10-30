@@ -319,3 +319,16 @@ Unele aplicații web își schimbă „folderele” (meniul, arborele din stâng
 - Ferestrele (obiect, scanare, verificare, programare) se derulează cu roata mouse-ului, iar butoanele **Salveaza / Adauga / Inchide** rămân fixe jos, deci nu mai trebuie să le măreșți.
 
 > Exemplu: în aplicația de comenzi, folderul `Comenzi/Import` are butoanele „Încarcă fișier” și „Validează”, iar `Comenzi/Export` are „Export Excel”. Deschizi folderul în aplicație, scanezi, alegi folderul și butoanele intră la locul lor.
+
+## 29. Rutine salvate ca pas (tab 📋 Rutine)
+
+Ai deja o rutină de 2–3 pași (ex. autentificarea) și vrei s-o folosești în altele, fără să refaci pașii:
+
+1. În **Studio RPR**, lângă **📚 Biblioteca**, deschide tab-ul **📋 Rutine**: arată rutinele din folderul tău (același ca în **📂 Manager rutine**; **📁 Folder** îl schimbă, **↻** citește din nou, câmpul de sus caută).
+2. Alege o rutină și apasă **➕ Ca pas** (sau dublu-click): se adaugă pasul **📋 Ruleaza rutina**, care **urmărește fișierul**. Schimbi rutina o dată și merge în toate locurile unde e folosită.
+3. Pune pașii tăi înainte și după. Ruleaza rutina folosește **aceleași variabile, același Excel și aceeași bibliotecă de obiecte**; setările rutinei principale (erori, pauze) se aplică și ei. Variabilele cu valoare implicită din rutina apelată se iau doar dacă nu există deja.
+4. **📥 Ca pasi** copiază pașii în rutina curentă (îi poți edita; nu mai urmăresc originalul). La un pas existent, **📥 Inlocuieste cu pasii ei** face aceeași copie.
+- Înainte de start se verifică fișierul, buclele (A apelează B, B apelează A), adâncimea (maxim 8) și obiectele lipsă; dacă ceva nu merge, rutina nu pornește și ți se spune care pas. În log, pașii calupului apar cu numele lui în față.
+- Dacă mutați fișierul rutinei, pasul trebuie să arate din nou spre el (câmpul fișier din pas).
+
+> Exemplu: `Login SAP` (2 pași) e salvată în folderul rutinelor. În rutina de raport: ➕ Ca pas „Login SAP”, apoi pașii raportului.

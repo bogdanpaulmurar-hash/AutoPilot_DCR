@@ -321,3 +321,16 @@ Some web applications change their "folders" (menu, tree on the left) without ch
 - Windows (object, scan, check, schedule) scroll with the mouse wheel and the **Save / Add / Close** buttons stay fixed at the bottom, so you no longer need to enlarge them.
 
 > Example: in the orders application, the folder `Orders/Import` has the buttons "Upload file" and "Validate", and `Orders/Export` has "Export Excel". You open the folder in the application, scan, choose the folder and the buttons land in place.
+
+## 29. Saved routines as a step (📋 Routines tab)
+
+You already have a routine of 2–3 steps (e.g. the login) and want to use it in others without rebuilding the steps:
+
+1. In **Studio RPR**, next to **📚 Library**, open the **📋 Routines** tab: it lists the routines in your folder (the same as in **📂 Routine manager**; **📁 Folder** changes it, **↻** reads again, the box at the top searches).
+2. Pick a routine and press **➕ As step** (or double-click): the **📋 Run routine** step is added and it **follows the file**. Change the routine once and it works everywhere it is used.
+3. Put your own steps before and after. Run routine uses **the same variables, the same Excel and the same object library**; the main routine's settings (errors, pauses) apply to it too. Default values of the called routine's variables are used only if they do not exist yet.
+4. **📥 As steps** copies the steps into the current routine (you can edit them; they no longer follow the original). On an existing step, **📥 Replace with its steps** makes the same copy.
+- Before the start the file, loops (A calls B, B calls A), depth (maximum 8) and missing objects are checked; if something is wrong the routine does not start and you are told which step. In the log the block's steps appear with its name in front.
+- If you move the routine file, the step has to point to it again (the file field of the step).
+
+> Example: `Login SAP` (2 steps) is saved in the routines folder. In the report routine: ➕ As step "Login SAP", then the report steps.

@@ -647,6 +647,23 @@ class GroupNode(RprNode):
         return "Grup"
 
 
+@_node("run_routine")
+@dataclass
+class RunRoutineNode(RprNode):
+    """v4.12: ruleaza o rutina salvata (calup) ca pas. Foloseste aceleasi variabile, acelasi Excel si aceeasi
+    biblioteca de obiecte ca rutina principala; setarile rutinei principale se aplica si calupului."""
+    KIND_LABEL = "Ruleaza rutina"
+    path: str = ""   # fisierul .rpr.json (poate contine {variabile})
+    name: str = ""   # numele rutinei, doar pentru titlu
+
+    def auto_title(self) -> str:
+        shown = self.name.strip() or re.split(r"[\\/]", self.path.strip().rstrip("\\/"))[-1]
+        for ext in (".rpr.json", ".json"):
+            if shown.lower().endswith(ext):
+                shown = shown[:-len(ext)]
+        return f"Ruleaza rutina [{shown}]" if shown else "Ruleaza rutina"
+
+
 @_node("log")
 @dataclass
 class LogNode(RprNode):

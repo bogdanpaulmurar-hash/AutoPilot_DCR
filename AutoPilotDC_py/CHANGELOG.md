@@ -2,6 +2,12 @@
 
 Pornirea aplicației: **`AutoPilot_DC.pyw`** (sau scurtătura „AutoPilot DC” de pe Desktop). Numele fișierelor nu se mai schimbă de la o versiune la alta, deci scurtăturile și pornirea cu Windows rămân valabile.
 
+## 4.12.0 — 2026-10-30
+- **📋 Rutine salvate ca pas.** Pas nou **📋 Ruleaza rutina** (Organizare): rulează o rutină salvată în locul pasului, cu **aceleași variabile, același Excel și aceeași bibliotecă**; setările rutinei principale se aplică și ei, iar pașii calupului apar în log cu numele lui. Înainte de start se verifică fișierul, buclele, adâncimea (maxim 8) și obiectele lipsă. Fișierul se urmărește: o schimbi o dată și merge peste tot.
+- **Tab nou 📋 Rutine** lângă 📚 Biblioteca (folderul din 📂 Manager rutine, căutare, subfoldere): **➕ Ca pas** (dublu-click) adaugă pasul care apelează rutina, **📥 Ca pasi** copiază pașii în rutina curentă (cu variabilele lor), **📂 Deschide**. La pasul existent: **📥 Inlocuieste cu pasii ei**.
+- Instrucțiuni: capitolul 29, în RO / EN / DE. Format `.rpr.json`: tip nou de pas `run_routine` (câmpurile `path`, `name`); versiunile mai vechi păstrează pasul necunoscut, dar nu îl rulează.
+- Teste (Linux, Python 3.12, Chromium fără interfață): 138 rulate, 3 sărite; aceleași eșecuri vechi (`test_windows`, `test_schedule.test_weekdays`, tutorialul `06_biblioteca`). Teste noi `test_subroutine` (11): rulare pe loc cu variabile comune, valoare implicită vs. variabilă din rutina principală, fișier lipsă, buclă, obiect lipsă numit, pas dezactivat, cale cu variabilă, politica de erori, copiere de pași, cale relativă. Verificat în Studio (Xvfb): lista rutinelor, ➕ Ca pas, 📥 Ca pasi, editorul pasului, Inlocuieste cu pasii ei. Nu am putut testa pe Windows, cu rutine pe Drive / OneDrive reale și nici o rulare completă cu SAP / Web printr-un calup.
+
 ## 4.11.2 — 2026-10-30
 - **Marcarea în browser durează 8 s** (înainte 2 s la 🧪 Test, deci o secțiune mare se pierdea). Buton nou **👁 Marcheaza din nou** în fereastra de test și **👁 Marcheaza in browser (8 s)** la click dreapta pe obiect. Merge și pe containere (secțiuni): se marchează chenarul întreg.
 - **Reparat**: `version.py` rămăsese gol în 4.11.1 (aplicația nu pornea: lipsea `__version__`); restaurat.
