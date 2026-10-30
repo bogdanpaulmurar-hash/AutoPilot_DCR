@@ -2042,5 +2042,10 @@
  "Imagine PNG": "PNG-Bild",
  "Imagine vectoriala SVG": "SVG-Vektorbild",
  "⬇ Export esuat: {0}": "⬇ Export fehlgeschlagen: {0}",
- "⬇ Flux salvat: {0} ({1})": "⬇ Ablauf gespeichert: {0} ({1})"
+ "⬇ Flux salvat: {0} ({1})": "⬇ Ablauf gespeichert: {0} ({1})",
+ "⛶ Ecran complet": "⛶ Vollbild",
+ "Fereastra pe tot ecranul (F11; Esc = iesi)": "Fenster auf dem ganzen Bildschirm (F11; Esc = beenden)",
+ "🗗 Fereastra separata": "🗗 Eigenes Fenster",
+ "Fluxul in fereastra lui: o muti pe alt monitor si urmaresti rularea pe culori": "Der Ablauf in einem eigenen Fenster: auf einen anderen Monitor ziehen und den Lauf an den Farben verfolgen",
+ "Flux": "Ablauf"
 }

@@ -636,10 +636,11 @@ class FlowView(tk.Frame):
     ZMIN, ZMAX = 0.05, 2.0
     MAP_W, MAP_H = 170, 210
 
-    def __init__(self, master, panel):
+    def __init__(self, master, panel, detached: bool = False):
         super().__init__(master, bg=panel.C["bg_main"])
         self.p = panel
         C = self.C = panel.C
+        self.detached = detached             # v4.21: fluxul din fereastra separata (FlowWindow)
         self.z = 1.0
         self._ox = 0.0                       # deplasarea logica pe X (centrarea fluxului ingust)
         self._prims: List[tuple] = []
@@ -714,6 +715,11 @@ class FlowView(tk.Frame):
         btn("▾ Extinde tot", self.expand_all, "Arata din nou toti pasii")
         self._map_btn = btn("🗺 Harta", self.toggle_map, "Arata / ascunde harta mica din colt")
         btn("⬇ Export", self.export_dialog, "Salveaza fluxul ca imagine mare PNG sau SVG (se deschide in browser, cu zoom oricat)")
+        if self.detached:
+            btn("⛶ Ecran complet", lambda: self.winfo_toplevel().toggle_full(), "Fereastra pe tot ecranul (F11; Esc = iesi)")
+        else:
+            btn("🗗 Fereastra separata", self.open_window,
+                "Fluxul in fereastra lui: o muti pe alt monitor si urmaresti rularea pe culori")
         tk.Label(bar, text="Trage pe fundal ca sa muti harta", bg=C["bg_main"], fg=C["text_dim"],
                  font=(FONT, 8)).pack(side="left", padx=8)
 
@@ -881,6 +887,8 @@ class FlowView(tk.Frame):
         self._line(x0, end, x0, end + 18, arrow="last")
         self._rect(x0 - 6, end + 20, x0 + 6, end + 32, self.C["text_dim"])
         self._size = (x0 * 2, end + 40)
+        if self.detached:
+            self.winfo_toplevel()._title()
         self._render()
         if view:
             self._scroll_to((view[0] + self._ox) * self.z, view[1] * self.z)
@@ -1087,6 +1095,20 @@ class FlowView(tk.Frame):
         cv, z = self.canvas, self.z
         lx, ly = (e.x - mx) / s, (e.y - my) / s
         self._scroll_to((lx + self._ox) * z - cv.winfo_width() / 2, ly * z - cv.winfo_height() / 2)
+
+    def open_window(self):
+        """Deschide (sau aduce in fata) fereastra separata cu fluxul."""
+        win = getattr(self.p, "_flow_win", None)
+        if win is None or not win.winfo_exists():
+            win = self.p._flow_win = FlowWindow(self.p)
+        else:
+            win.deiconify()
+            win.lift()
+        win.view.refresh()
+        sel = self.p.tree.selection()
+        if sel and sel[0] in win.view.cards:
+            win.view.select(sel[0])
+        return win
 
     # ── export ──
     def export_dialog(self):
@@ -1324,6 +1346,40 @@ class FlowView(tk.Frame):
         self._paint_state(node_id)
         if self.p.tree.exists(node_id) and "running" in self.p.tree.item(node_id, "tags"):
             self._see(self.cards[node_id])   # fluxul urmareste pasul care ruleaza
+
+
+class FlowWindow(tk.Toplevel):
+    """Fluxul intr-o fereastra separata (v4.21): se pune pe al doilea monitor, pe tot ecranul (F11),
+    si ramane pe flux in timpul rularii, chiar daca Studio trece pe 📊 Excel."""
+
+    def __init__(self, panel):
+        super().__init__(panel.winfo_toplevel())
+        self.p = panel
+        self.configure(bg=panel.C["bg_main"])
+        self.geometry("1000x780")
+        self.minsize(420, 320)
+        self.view = FlowView(self, panel, detached=True)
+        self.view.pack(fill="both", expand=True, padx=4, pady=4)
+        self._full = False
+        self.bind("<F11>", lambda e: self.toggle_full())
+        self.bind("<Escape>", lambda e: self.toggle_full(False))
+        self.protocol("WM_DELETE_WINDOW", self.close)
+        self._title()
+
+    def _title(self):
+        self.title(f"🔀 {tr('Flux')} — {self.p.routine.name or tr('Rutina noua')}")
+
+    def toggle_full(self, on: Optional[bool] = None):
+        self._full = (not self._full) if on is None else on
+        try:
+            self.attributes("-fullscreen", self._full)
+        except tk.TclError:
+            pass
+
+    def close(self):
+        if getattr(self.p, "_flow_win", None) is self:
+            self.p._flow_win = None
+        self.destroy()
 
 
 # ─────────────────────────────────────────────────────────────

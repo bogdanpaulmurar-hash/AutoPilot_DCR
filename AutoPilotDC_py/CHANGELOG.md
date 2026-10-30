@@ -2,6 +2,11 @@
 
 Pornirea aplicației: **`AutoPilot_DC.pyw`** (sau scurtătura „AutoPilot DC” de pe Desktop). Numele fișierelor nu se mai schimbă de la o versiune la alta, deci scurtăturile și pornirea cu Windows rămân valabile.
 
+## 4.21.0 — 2026-10-30
+- **🔀 Flux → 🗗 Fereastră separată**: fluxul în fereastra lui, pentru al doilea monitor (**⛶ Ecran complet** / F11, Esc = ieși). Urmărește rularea pe culori (galben = rulează, verde = reușit, roșu = eroare) și rămâne pe flux și când Studio trece singur pe 📊 Excel la o rutină cu buclă Excel. Se reface la fiecare modificare a rutinei sau la schimbarea tab-ului; zoom-ul, harta și restrângerea merg la fel ca în centru.
+- Instrucțiuni: capitolul 32, în RO / EN / DE; textele noi în EN / DE.
+- Teste (Linux, Python 3.12, Xvfb): `test_views` +1 (fereastra separată: o singură fereastră, aceleași carduri, cu centrul pe Excel primește galben / verde / roșu din evenimentele rulării, titlul urmează rutina, închiderea o scoate din listă). Suita: 229 rulate, 20 sărite; aceleași 4 eșecuri vechi ca pe main. Netestat pe Windows: fereastra pe al doilea monitor și F11.
+
 ## 4.20.0 — 2026-10-30
 - **🔀 Flux pentru rutine mari** (ex. 145 de pași): până acum se putea doar derula. Bara nouă de deasupra fluxului:
   - **zoom**: Ctrl + rotița (în jurul mouse-ului), **−** / **+**, Ctrl + / Ctrl −; între 5 % și 200 %. Sub ~40 % textul se ascunde și rămâne forma rutinei;
