@@ -7,6 +7,10 @@
 //                         Esc = anulare.
 //  - startSpy('record') : click-urile si scrierea trec normal in pagina,
 //                         dar fiecare actiune e trimisa ca pas de rutina.
+//  - startSpy('hover')  : cursorul tinut 3 s pe un element = captureaza (v4.9);
+//                         click-urile trec normal (poti deschide meniuri). Esc = stop.
+//  - scanStart / scanBatch : scanarea paginii (v4.9) — doar CITESTE pagina,
+//                         nu da click si nu trimite nimic la server.
 //  - generate(el)       : locatori multipli, ordonati dupa stabilitate.
 //  - resolve(kind, val) : gaseste elementele dupa un locator (folosit de Selenium).
 //  - highlight(el, ms)  : marcheaza elementul inainte de actiune.
@@ -16,11 +20,13 @@
 // ============================================================
 (function () {
   'use strict';
-  if (window.__apdc && window.__apdc.version >= 1) return;
+  if (window.__apdc && window.__apdc.version >= 2) return;
+  if (window.__apdc && window.__apdc.stopSpy) { try { window.__apdc.stopSpy(); } catch (e) { /* ignorat */ } }
 
   var COLOR_SPY = '#00D7A0';     // verde Siemens — marcare in Spy
   var COLOR_REC = '#E05252';     // rosu — inregistrare
   var COLOR_RUN = '#FF9900';     // portocaliu — inainte de actiune la rulare
+  var COLOR_HOVER = '#3B82F6';   // albastru — captura cu cursorul tinut 3 s
   var Z = 2147483647;
 
   // ── 1. Utilitare text ──────────────────────────────────────
@@ -398,7 +404,7 @@
     ensureOverlay();
     var r = el.getBoundingClientRect();
     box.style.borderColor = color;
-    box.style.background = color === COLOR_SPY ? 'rgba(0,215,160,0.12)' : color === COLOR_REC ? 'rgba(224,82,82,0.12)' : 'rgba(255,153,0,0.15)';
+    box.style.background = color === COLOR_SPY ? 'rgba(0,215,160,0.12)' : color === COLOR_REC ? 'rgba(224,82,82,0.12)' : color === COLOR_HOVER ? 'rgba(59,130,246,0.14)' : 'rgba(255,153,0,0.15)';
     box.style.left = (r.left - 2) + 'px';
     box.style.top = (r.top - 2) + 'px';
     box.style.width = (r.width + 4) + 'px';
@@ -464,12 +470,47 @@
     api.queue.push(json);
   }
 
+  // ── captura cu cursorul tinut pe element (mode 'hover') ──
+  var HOVER_MS = 3000;
+  var hoverTimer = null, hoverTick = null, hoverStart = 0, hoverDone = null, hoverName = '';
+
+  function hoverReset() {
+    clearTimeout(hoverTimer);
+    clearInterval(hoverTick);
+    hoverTimer = hoverTick = null;
+  }
+
+  function hoverArm(el, name) {
+    hoverReset();
+    if (el === hoverDone) {          // deja capturat: mutati cursorul pe alt element
+      place(el, COLOR_HOVER, '✔ ' + name + (hint ? '   ·   ' + hint : ''));
+      return;
+    }
+    hoverStart = Date.now();
+    hoverName = name;
+    function label() {
+      var left = Math.max(0, Math.ceil((HOVER_MS - (Date.now() - hoverStart)) / 1000));
+      place(el, COLOR_HOVER, '⏱ ' + left + ' s   ·   ' + hoverName + (hint ? '   ·   ' + hint : ''));
+    }
+    label();
+    hoverTick = setInterval(function () { if (current === el && el.isConnected) label(); }, 250);
+    hoverTimer = setTimeout(function () {
+      hoverReset();
+      if (mode !== 'hover' || current !== el || !el.isConnected) return;
+      hoverDone = el;
+      emit({ type: 'captured', element: generate(el) });
+      place(el, COLOR_HOVER, '✔ ' + hoverName + (hint ? '   ·   ' + hint : ''));
+    }, HOVER_MS);
+  }
+
   function onMove(ev) {
     var el = targetOf(ev);
     if (!el) return;
     el = interactiveAncestor(el);
+    if (mode === 'hover' && el === current) return;   // acelasi element: numaratoarea continua
     current = el;
     var g = generate(el);
+    if (mode === 'hover') { hoverArm(el, g.suggestedName); return; }
     var best = g.locators.length ? g.locators[0] : null;
     var label = g.suggestedName + (best ? '   ·   ' + best.kind + ': ' + short(best.value, 60) : '') + (hint ? '   ·   ' + hint : '');
     place(el, mode === 'record' ? COLOR_REC : COLOR_SPY, label);
@@ -523,7 +564,7 @@
   function onKey(ev) {
     if (ev.key === 'Escape' && mode) {
       swallow(ev);
-      emit({ type: mode === 'spy' ? 'cancel' : 'stop' });
+      emit({ type: mode === 'spy' ? 'cancel' : 'stop' });   // 'record' si 'hover' -> stop
       stopSpy();
       return;
     }
@@ -539,9 +580,12 @@
 
   function startSpy(m, h) {
     stopSpy();
-    mode = m === 'record' ? 'record' : 'spy';
+    mode = m === 'record' ? 'record' : m === 'hover' ? 'hover' : 'spy';
     hint = h || '';
+    hoverDone = null;
     document.addEventListener('mousemove', onMove, true);
+    document.addEventListener('keydown', onKey, true);
+    if (mode === 'hover') return true;   // click-urile si scrierea trec normal in pagina
     document.addEventListener('click', onClickCapture, true);
     document.addEventListener('dblclick', onBlockedMouse, true);
     document.addEventListener('mousedown', onBlockedMouse, true);
@@ -556,6 +600,8 @@
   function stopSpy() {
     mode = null;
     current = null;
+    hoverReset();
+    hoverDone = null;
     document.removeEventListener('mousemove', onMove, true);
     document.removeEventListener('click', onClickCapture, true);
     document.removeEventListener('dblclick', onBlockedMouse, true);
@@ -581,6 +627,48 @@
     return cssPath(frameEl);
   }
 
+  // ── 10. Scanarea paginii (v4.9) ───────────────────────────
+  // Doar citeste DOM-ul deja incarcat: nu da click, nu scrie, nu trimite cereri.
+  // Lucrul e impartit in loturi mici (scanBatch), ca pagina sa ramana fluida.
+  var SCAN_SELECTOR = [
+    'button', 'a[href]', 'select', 'textarea', 'input:not([type=hidden])', '[contenteditable="true"]',
+    '[role=button]', '[role=link]', '[role=checkbox]', '[role=radio]', '[role=combobox]', '[role=textbox]',
+    '[role=searchbox]', '[role=tab]', '[role=menuitem]', '[role=switch]', '[role=option]', '[role=spinbutton]'
+  ].join(',');
+  var scanList = [];
+
+  function scanVisible(e) {
+    if (isOurs(e)) return false;
+    var r = e.getBoundingClientRect();
+    if (r.width < 2 || r.height < 2) return false;
+    var st = window.getComputedStyle ? getComputedStyle(e) : null;
+    // si elementele dezactivate conteaza: devin active mai tarziu
+    return !(st && (st.visibility === 'hidden' || st.display === 'none' || st.opacity === '0'));
+  }
+
+  function scanStart(max) {
+    max = max || 500;
+    var seen = [], out = [];
+    var all = document.querySelectorAll(SCAN_SELECTOR);
+    for (var i = 0; i < all.length && out.length < max; i++) {
+      var el = interactiveAncestor(all[i]);
+      if (seen.indexOf(el) >= 0 || !scanVisible(el)) continue;
+      seen.push(el);
+      out.push(el);
+    }
+    scanList = out;
+    return { found: out.length, total: all.length };
+  }
+
+  function scanBatch(start, n) {
+    var res = [];
+    for (var i = start; i < scanList.length && i < start + n; i++) {
+      try { res.push(generate(scanList[i])); } catch (e) { /* element disparut */ }
+    }
+    if (start + n >= scanList.length) scanList = [];
+    return res;
+  }
+
   function drain() {
     var q = api.queue.slice();
     api.queue.length = 0;
@@ -588,7 +676,7 @@
   }
 
   var api = {
-    version: 1,
+    version: 2,
     queue: [],
     generate: generate,
     resolve: resolve,
@@ -599,6 +687,8 @@
     frameSelector: frameSelector,
     highlight: highlight,
     startSpy: startSpy,
+    scanStart: scanStart,
+    scanBatch: scanBatch,
     stopSpy: stopSpy,
     drain: drain,
     looksGenerated: looksGenerated,

@@ -280,3 +280,16 @@ Fiecare capitol explică pe scurt o procedură, pas cu pas, cu un exemplu. Alege
 - Rularea pas cu pas nu se reia. Dacă închizi tu aplicația în timpul rulării, nu se oferă reluarea.
 
 > Exemplu: rutina creează 200 de useri și se oprește curentul la rândul 120. La repornire alegi „Reiau rularea”; rândurile 2–119 sunt sărite, verifici în sistem userul de pe rândul 120 și alegi „E făcut, marchez OK” sau „Refac rândul”.
+
+## 26. Scanarea unui site și biblioteca pe aplicație
+
+1. 📚 Biblioteca → **＋ Noua**: scrii numele aplicației; AutoPilot propune `OneDrive\AutoPilotDC\obiecte\<Aplicație>\obiecte.json` (fără OneDrive: în Documente). Poți alege orice alt folder.
+2. **🔍 Scaneaza site**: scrii adresa, se deschide browserul AutoPilot. Te autentifici și deschizi pagina dorită, apoi alegi **🔍 Scaneaza automat**.
+3. Primești lista cu butoanele, câmpurile, listele, bifele și link-urile vizibile (și din iframe-uri, maxim 500). Click pe un rând îl bifează / debifează; **Fara link-uri** scoate meniurile de navigare. **💾 Adauga in biblioteca** le salvează.
+4. Deschizi alt meniu sau alt tab în browser și alegi **🔍 Scaneaza din nou**. Obiectele deja în bibliotecă sunt sărite.
+5. **🖐 Captura 3 s**: ții cursorul 3 secunde pe un câmp sau buton (contur albastru, numărătoare inversă) și se salvează singur; apoi treci la următorul. Click-urile merg normal, deci poți deschide meniuri. Esc în browser sau **Am terminat** oprește.
+- Scanarea doar citește pagina deja încărcată: nu dă click, nu scrie și nu trimite nimic la server, deci nu încarcă aplicația. Elementele ascunse (meniuri închise, alte taburi) nu se văd până nu le deschizi tu.
+- **📂 Deschide** schimbă biblioteca. Rutina salvată ține minte biblioteca ei și o încarcă singură la deschidere; aplicația ține minte doar calea ultimei biblioteci.
+- Dacă pe celălalt laptop OneDrive are altă cale, biblioteca e găsită la același loc din OneDrive-ul de pe acel PC.
+
+> Exemplu: pentru aplicația de comenzi creezi biblioteca „Comenzi” în OneDrive, scanezi pagina de căutare și formularul de comandă, apoi cu Captura 3 s adaugi butonul din meniul care apare doar la hover. Rutinele noi pentru această aplicație folosesc biblioteca „Comenzi”.

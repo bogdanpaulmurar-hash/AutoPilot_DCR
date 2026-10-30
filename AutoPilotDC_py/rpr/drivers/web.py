@@ -160,6 +160,9 @@ class PlaywrightDriver(UiDriver):
         self._restart_frames: List[Any] = []
         self._pending_records: List[Tuple[Dict[str, Any], Any]] = []
         self._spy_source: Optional[str] = None
+        self._hover_cb: Optional[Callable[[UiObject], None]] = None   # v4.9: captura cu cursorul tinut 3 s
+        self._pending_hover: List[Tuple[Dict[str, Any], Any]] = []
+        self._hover_folder = ""
 
     # =========================================================
     # Lucratorul (firul Playwright)
@@ -211,6 +214,28 @@ class PlaywrightDriver(UiDriver):
             f = self._restart_frames.pop(0)
             if self._spy_mode:
                 self._start_spy_in_frame(f)
+        # obiectele capturate cu cursorul tinut 3 s (v4.9)
+        while self._pending_hover:
+            ev, frame = self._pending_hover.pop(0)
+            cb = self._hover_cb
+            if cb is None:
+                continue
+            if ev is None:
+                self._hover_cb = None
+                self._stop_spy()
+                try:
+                    cb(None)
+                except Exception:
+                    pass
+                continue
+            if not ev.get("element"):
+                continue
+            try:
+                obj = captured_to_object(ev["element"], self._frame_path(frame))
+                self._verify_and_screenshot(obj, self._hover_folder)
+                cb(obj)
+            except Exception as ex:  # noqa: BLE001
+                self._info("Eroare la captura: " + _first_line(ex))
         # actiunile inregistrate (calculul FramePath cere apeluri Playwright -> nu din handler)
         while self._pending_records:
             ev, frame = self._pending_records.pop(0)
@@ -795,6 +820,13 @@ class PlaywrightDriver(UiDriver):
             self._spy_event, self._spy_frame = ev, frame
             self._spy_done.set()
             return
+        if self._spy_mode == "hover":
+            if typ == "stop":
+                self._spy_mode = None
+                self._pending_hover.append((None, None))   # on_object(None) = oprit din browser (Esc)
+            elif typ == "captured":
+                self._pending_hover.append((ev, frame))
+            return
         if self._spy_mode == "record":
             if typ == "stop":
                 self._record_cb = None
@@ -851,6 +883,68 @@ class PlaywrightDriver(UiDriver):
                 obj.screenshot = file
         except Exception:
             pass   # captura e optionala
+
+    # =========================================================
+    # 4b. Captura cu cursorul tinut 3 s si scanarea paginii (v4.9)
+    # =========================================================
+    @property
+    def is_hover_capturing(self) -> bool:
+        return self._hover_cb is not None
+
+    def start_hover_capture(self, on_object: Callable[[Optional[UiObject]], None], hint: str = "",
+                            screenshot_folder: str = "") -> None:
+        """Fiecare element pe care utilizatorul tine cursorul 3 s ajunge la on_object (pe firul lucratorului).
+        Click-urile trec normal in pagina. Esc in browser = on_object(None); stop_hover_capture() opreste."""
+        self._call(self._start_hover, on_object, hint, screenshot_folder)
+
+    def _start_hover(self, on_object, hint, folder):
+        self._require_page()
+        self._hover_folder = folder or ""
+        self._hover_cb = on_object
+        self._pending_hover.clear()
+        self._start_spy("hover", hint)
+
+    def stop_hover_capture(self) -> None:
+        self._hover_cb = None
+        try:
+            self._call(self._stop_spy)
+        except Exception:
+            pass
+
+    def scan_page(self, max_items: int = 500, batch: int = 25,
+                  cancel: Optional[threading.Event] = None) -> List[UiObject]:
+        """Butoanele, campurile, listele, bifele si link-urile vizibile pe pagina curenta (si in iframe-uri).
+        Doar citeste pagina: nu da click si nu trimite nimic la server. Lucrul se face in loturi mici,
+        cu pauze intre ele, ca aplicatia din browser sa ramana fluida."""
+        return self._call(self._scan_page, max_items, batch, cancel)
+
+    def _scan_page(self, max_items, batch, cancel):
+        page = self._require_page()
+        out: List[UiObject] = []
+        for frame in list(page.frames):
+            left = max_items - len(out)
+            if left <= 0 or (cancel is not None and cancel.is_set()):
+                break
+            try:
+                frame.evaluate(self._spy_js())
+                info = frame.evaluate("(m) => window.__apdc.scanStart(m)", left)
+                found = int((info or {}).get("found", 0))
+            except Exception:
+                continue   # frame in navigare / detasat / alt domeniu blocat
+            if not found:
+                continue
+            path = self._frame_path(frame)
+            for start in range(0, found, batch):
+                if cancel is not None and cancel.is_set():
+                    break
+                try:
+                    items = frame.evaluate("([s, n]) => window.__apdc.scanBatch(s, n)", [start, batch]) or []
+                except Exception:
+                    break
+                for el in items:
+                    out.append(captured_to_object(el, path))
+                page.wait_for_timeout(20)   # pauza: pagina isi face treaba intre loturi
+        return out
 
     # =========================================================
     # 5. Recorder — click-uri / scriere din browser -> pasi

@@ -23,7 +23,7 @@ Tool RPA + Data Cleansing: recorder/player de pași desktop și browser, plus **
 - Versiune: `AutoPilotDC_py/version.py` (sursă unică) + intrare în `AutoPilotDC_py/CHANGELOG.md`
 
 ## Hartă (Python)
-`AutoPilot_DC_app.py` (recorder/player, customtkinter) · `studio_ui.py` (Studio RPR) · `rpr/` (motorul: pași, condiții, bucle, variabile, Excel, drivere; `report.py` raportul Excel al rulării, `batch.py` managerul de rutine și pregătirile, `resume.py` reluarea după o închidere neașteptată) · `routine_manager_ui.py` (📂 Manager rutine) · `autopilot_safety.py` (Nu deranja, chenar RUN/REC, prevenție) · `app_shell.py` (icon, tray, pornire cu Windows) · `i18n/` + `i18n.py` · `instructions_ui.py` (tab Instrucțiuni) · `docs/`
+`AutoPilot_DC_app.py` (recorder/player, customtkinter) · `studio_ui.py` (Studio RPR) · `rpr/` (motorul: pași, condiții, bucle, variabile, Excel, drivere; `report.py` raportul Excel al rulării, `batch.py` managerul de rutine și pregătirile, `resume.py` reluarea după o închidere neașteptată, `scan.py` scanarea site-ului și biblioteca pe aplicație) · `routine_manager_ui.py` (📂 Manager rutine) · `autopilot_safety.py` (Nu deranja, chenar RUN/REC, prevenție) · `app_shell.py` (icon, tray, pornire cu Windows) · `i18n/` + `i18n.py` · `instructions_ui.py` (tab Instrucțiuni) · `docs/`
 Fișiere vechi păstrate doar ca referință: `AutoPilot_DCv3.9_RedCursor.py`, `apply_patches_v4.py`, `autopilot_dc_setup_refactoration.py`, `0. Prompt_*`.
 
 ## Reguli
