@@ -79,6 +79,80 @@ class VideoFileTests(unittest.TestCase):
             self.assertGreater(getattr(g, "n_frames", 1), 3)
 
 
+class IntroOutroTests(unittest.TestCase):
+    """v4.16: filmul rularii = introducere + ce s-a inregistrat (pana la ultimul pas) + iesire."""
+
+    def setUp(self):
+        self._grab = sr.ImageGrab.grab
+        self.n = 0
+
+        def fake_grab(bbox=None, all_screens=False):   # ecran care se schimba doar la inceput
+            self.n += 1
+            return Image.new("RGB", (bbox[2] - bbox[0], bbox[3] - bbox[1]), (min(self.n, 3) * 60, 80, 120))
+        sr.ImageGrab.grab = fake_grab
+
+    def tearDown(self):
+        sr.ImageGrab.grab = self._grab
+
+    def _rec(self, **kw):
+        d = tempfile.mkdtemp(prefix="apdc_io_")
+        return sr.ScreenRecorder(sr.VideoSettings(folder=d, fps=8, scale=0.25, area="primary", intro_s=2.0,
+                                                  outro_s=3.0, idle_compress_s=0.5, **kw))
+
+    def test_intro_last_frame_and_outro(self):
+        r = self._rec()
+        r.start("Rutina test", intro=["▶ Rulare automata", "Inceput: azi"])
+        time.sleep(1.5)
+        self.n = 100                       # ultimul pas schimba ecranul chiar inainte de oprire
+        v = sr.VideoFile(r.stop(["✅ Rutina s-a terminat cu succes", "Durata: 00:02"]))
+        frames = v.m["frames"]
+        self.assertEqual([0.0, "frames/intro.webp"], frames[0])
+        self.assertGreaterEqual(frames[1][0], 2.0)                 # inregistrarea incepe dupa introducere
+        self.assertEqual("frames/outro.webp", frames[-1][1])
+        end = frames[-2][0]
+        self.assertGreaterEqual(end, 3.4)                          # ultimul cadru = ecranul de la oprire
+        self.assertAlmostEqual(v.duration, frames[-1][0] + 3.0, delta=0.05)
+        self.assertEqual([0.0, 2.0], v.m["intro"])
+        # pauzele se scurteaza, dar introducerea, finalul si iesirea raman intregi
+        self.assertGreater(v.out_duration, 2.0 + 1.0 + 3.0 - 0.3)
+        self.assertEqual("▶ Rutina test", v.m["markers"][0][1])
+        img = v.render(0.5)
+        self.assertEqual(tuple(v.m["size"]), img.size)
+        v.close()
+
+    def test_manual_without_intro(self):
+        r = self._rec()
+        r.start("Manual")
+        time.sleep(0.5)
+        v = sr.VideoFile(r.stop())
+        self.assertNotIn("intro", v.m)
+        self.assertNotIn("outro", v.m)
+        self.assertLess(v.m["frames"][0][0], 0.5)
+        v.close()
+
+    def test_disabled_in_settings(self):
+        r = self._rec(intro_outro=False)
+        r.start("Fara", intro=["x"])
+        time.sleep(0.3)
+        v = sr.VideoFile(r.stop(["y"]))
+        self.assertNotIn("intro", v.m)
+        self.assertNotIn("outro", v.m)
+        v.close()
+
+    def test_controller_outro_lines(self):
+        import video_ui
+        from rpr.host import RunResult
+        c = video_ui.VideoController.__new__(video_ui.VideoController)
+        c._run_t0 = time.monotonic() - 65
+        ok = c._outro(RunResult(success=True, steps_executed=12, errors=0, rows_ok=3, rows_failed=1))
+        self.assertTrue(ok[0].startswith("✅"))
+        self.assertIn("01:05", ok[1])
+        self.assertIn("12", ok[2])
+        bad = c._outro(RunResult(success=False, message="Nu am gasit [Buton_OK]"))
+        self.assertTrue(bad[0].startswith("❌") and "Buton_OK" in bad[0])
+        self.assertTrue(video_ui.VideoController._intro("Rand 3")[-1] == "Rand 3")
+
+
 @unittest.skipUnless(os.name == "nt", "doar Windows")
 class RecorderTests(unittest.TestCase):
     def test_record_marker_split(self):

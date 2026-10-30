@@ -23,13 +23,13 @@ Tool RPA + Data Cleansing: recorder/player de pași desktop și browser, plus **
 - Versiune: `AutoPilotDC_py/version.py` (sursă unică) + intrare în `AutoPilotDC_py/CHANGELOG.md`
 
 ## Hartă (Python)
-`AutoPilot_DC_app.py` (recorder/player, customtkinter) · `studio_ui.py` (Studio RPR) · `studio_views.py` (bara de activități, tab-uri, cronologia, ecranul Excel, fluxul) · `rpr/` (motorul: pași, condiții, bucle, variabile, Excel, drivere; `report.py` raportul Excel al rulării, `batch.py` managerul de rutine și pregătirile, `resume.py` reluarea după o închidere neașteptată, `scan.py` scanarea site-ului și biblioteca pe aplicație, `locations.py` folderul comun / unde se salvează) · `routine_manager_ui.py` (📂 Manager rutine) · `autopilot_safety.py` (Nu deranja, chenar RUN/REC, prevenție) · `ui_theme.py` (mărimea textului, contrast, ferestre care încap pe ecran) · `app_shell.py` (icon, tray, pornire cu Windows) · `i18n/` + `i18n.py` · `instructions_ui.py` (tab Instrucțiuni) · `docs/`
+`AutoPilot_DC_app.py` (fereastra principală = Studio; ⏺ Ecran înregistrează mouse/tastatură în pași pe ecran; ⚙ Setări aplicație; tray) · `studio_ui.py` (Studio RPR) · `import_ui.py` + `rpr/importer.py` (📥 Import AI: pași în text/JSON → rutină) · `studio_views.py` (bara de activități, tab-uri, cronologia, ecranul Excel, fluxul) · `rpr/` (motorul: pași, condiții, bucle, variabile, Excel, drivere; `report.py` raportul Excel al rulării, `batch.py` managerul de rutine și pregătirile, `resume.py` reluarea după o închidere neașteptată, `scan.py` scanarea site-ului și biblioteca pe aplicație, `locations.py` folderul comun / unde se salvează) · `routine_manager_ui.py` (📂 Manager rutine) · `autopilot_safety.py` (Nu deranja, chenar RUN/REC, prevenție) · `ui_theme.py` (mărimea textului, contrast, ferestre care încap pe ecran) · `app_shell.py` (icon, tray, pornire cu Windows) · `i18n/` + `i18n.py` · `instructions_ui.py` (📖 Instrucțiuni, F1) · `docs/`
 Fișiere vechi păstrate doar ca referință: `AutoPilot_DCv3.9_RedCursor.py`, `apply_patches_v4.py`, `autopilot_dc_setup_refactoration.py`, `0. Prompt_*`.
 
 ## Reguli
 - Fără `.exe`: Python pornit cu `pythonw`, tray, pornire cu Windows. Nu trebuie să interfereze cu alte aplicații Python pornite.
 - Sistemul de prevenție (v4.1) rămâne activ pe orice cale nouă de rulare: mai bine pauză și întrebare decât un click în locul greșit.
-- Orice text nou trece prin i18n în RO/EN/DE și, dacă e o procedură, în tab-ul Instrucțiuni.
+- Orice text nou trece prin i18n în RO/EN/DE și, dacă e o procedură, în Instrucțiuni (`docs/instructiuni`). Nu mai există tab-ul Recorder: funcțiile noi intră în Studio.
 - Integrare planificată cu ScreenPilot (de aceea varianta principală e în Python).
 - Comentarii, documentație și commit-uri în română.
 - Documentație vizibilă: fără numele angajatorului, e-mailuri de firmă, ID-uri sau numere interne.

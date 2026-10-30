@@ -227,8 +227,9 @@ Each chapter briefly explains one procedure, step by step, with an example. Pick
 
 - **🎥** (top bar or tray menu) starts a recording at any time, without a routine — for example to show a colleague a procedure. Press 🎥 again or **⏹ Stop** in the small ● REC bar (which does not appear in the video). **⏸** pauses the video.
 - When it stops, the **editor** opens: chapters (routine steps, Excel rows), **A ▸ / ◂ B** for a selection, **✂ Cut A–B**, **💬 Text A–B** (a caption on screen), **▦ Hide area** (blur over personal data), **⟦ Start / End ⟧**, **shortening long pauses**. The original video stays unchanged; **💾 Save** keeps the edits, **GIF** / **MP4** export.
-- **⚙ Settings → 🎥 Video**: the video folder, **automatic video on every run** (Studio and Recorder), **one video per Excel row**, also for scheduled runs, captures per second, size and quality.
+- **⚙ Settings → 🎥 Video**: the video folder, **automatic video on every run** (Studio), **one video per Excel row**, also for scheduled runs, captures per second, size and quality.
 - Videos are made of **screenshots saved only when the screen changes** (small `.apvid` files). The cursor and clicks are drawn during playback. **🎬** in the top bar opens a saved video.
+- **Intro and outro** (on by default): a run's video starts with a screen showing the routine name and start time (3 s) and ends with a screen showing the result (✅ / ❌ and the error message), duration, steps and Excel rows (4 s). What was recorded stays in between. After the last step the video keeps going for **2 s** to catch its result, and the last screen is saved when it stops; the end is no longer shortened by "shorten pauses". Durations and turning them off: ⚙ Settings → 🎥 Video.
 - MP4 needs the `opencv-python` package (optional); GIF always works.
 - In the Excel loop, with video on, every row gets the link to the video and the minute where the row starts in the **Film** column (change or turn off the column in the loop's properties). The same link appears in the run report. Double-clicking an `.apvid` file (or clicking the link in Excel) opens it in the player without starting the app.
 

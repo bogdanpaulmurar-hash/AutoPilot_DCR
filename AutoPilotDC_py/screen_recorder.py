@@ -71,6 +71,10 @@ class VideoSettings:
     show_clicks: bool = True
     max_minutes: int = 60             # protectie: opreste dupa atatea minute
     idle_compress_s: float = 2.0      # la redare / export: pauzele mai lungi se scurteaza la atat (0 = nu)
+    intro_outro: bool = True          # v4.16: filmele rularilor incep cu o introducere si se termina cu o iesire
+    intro_s: float = 3.0              # cat dureaza introducerea (titlu, data)
+    outro_s: float = 4.0              # cat dureaza iesirea (rezultat, durata)
+    tail_s: float = 2.0               # dupa ultimul pas se mai filmeaza atat (rezultatul ultimului pas)
     player: str = PLAYER_BUILTIN      # "" = AutoPilot, "system" = aplicatia din Windows, altfel calea unui .exe
 
     @classmethod
@@ -87,6 +91,9 @@ class VideoSettings:
         s.fps = max(1, min(10, int(s.fps)))
         s.scale = max(0.3, min(1.0, float(s.scale)))
         s.quality = max(20, min(95, int(s.quality)))
+        s.intro_s = max(0.0, min(15.0, float(s.intro_s)))
+        s.outro_s = max(0.0, min(15.0, float(s.outro_s)))
+        s.tail_s = max(0.0, min(15.0, float(s.tail_s)))
         # folderul implicit nu se "ingheata" in fisier: urmeaza folderul comun cand acesta se schimba
         if not s.folder.strip() or os.path.normcase(os.path.normpath(s.folder)) == \
                 os.path.normcase(os.path.normpath(_legacy_folder())):
@@ -274,6 +281,8 @@ class ScreenRecorder:
         self.hwnd = 0           # >0 = se inregistreaza doar aceasta fereastra
         self.follow = False     # True = fereastra activa (cea in care lucreaza rutina), schimbata din mers
         self.ignore_hwnds = set()   # ferestre care nu se inregistreaza niciodata (ex. AutoPilot la rulare)
+        self._offset = 0.0      # durata introducerii: cadrele reale incep dupa ea
+        self._outro: Optional[List[str]] = None
 
     @property
     def active(self) -> bool:
@@ -288,11 +297,13 @@ class ScreenRecorder:
             return 0.0
         now = time.monotonic()
         paused = self._paused_total + ((now - self._pause_started) if self._paused.is_set() else 0.0)
-        return max(0.0, now - self._t0 - paused)
+        return max(0.0, now - self._t0 - paused) + self._offset
 
-    def start(self, title: str = "Inregistrare", folder: str = "", hwnd: int = 0, follow: bool = False) -> str:
+    def start(self, title: str = "Inregistrare", folder: str = "", hwnd: int = 0, follow: bool = False,
+              intro: Optional[List[str]] = None) -> str:
         """hwnd > 0: doar fereastra respectiva; follow=True: mereu doar fereastra activa.
-        In ambele cazuri restul ecranului (alte aplicatii, bara de activitati) nu apare in film."""
+        In ambele cazuri restul ecranului (alte aplicatii, bara de activitati) nu apare in film.
+        intro: randurile introducerii (data, ce se ruleaza); None = fara introducere."""
         if self.active:
             return self.path
         folder = folder or getattr(self, "folder", "") or self.s.folder
@@ -316,6 +327,13 @@ class ScreenRecorder:
                    "edits": {"trim": None, "cuts": [], "captions": [], "blur": [],
                              "idle": self.s.idle_compress_s}}
         self._zip = zipfile.ZipFile(self.path, "w", zipfile.ZIP_STORED)
+        self._offset = 0.0
+        self._outro = None
+        if intro is not None and self.s.intro_outro and self.s.intro_s > 0:
+            self._offset = round(float(self.s.intro_s), 2)
+            self._write_card("frames/intro.webp", 0.0, title_card((w, h), title, intro, "intro"))
+            self._m["intro"] = [0.0, self._offset]
+            self._m["markers"].append([0.0, "▶ " + str(title)[:110]])
         self._stop.clear()
         self._paused.clear()
         self._paused_total = 0.0
@@ -338,9 +356,19 @@ class ScreenRecorder:
             with self._lock:
                 self._m["markers"].append([round(self.elapsed(), 2), str(text)[:120]])
 
-    def stop(self) -> str:
+    def _write_card(self, name: str, t: float, img: Image.Image):
+        buf = io.BytesIO()
+        img.convert("RGB").save(buf, "WEBP", quality=max(70, self.s.quality), method=4)
+        self._zip.writestr(name, buf.getvalue())
+        with self._lock:
+            self._m["frames"].append([round(t, 2), name])
+
+    def stop(self, outro: Optional[List[str]] = None) -> str:
+        """outro: randurile iesirii (rezultat, durata); None = fara iesire.
+        Inainte de oprire se salveaza inca un cadru: ecranul exact de la final (ultimul pas)."""
         if self._thread is None:
             return ""
+        self._outro = outro
         self._stop.set()
         self._thread.join(timeout=10)
         self._thread = None
@@ -352,11 +380,18 @@ class ScreenRecorder:
                 pass
         return path
 
-    def split(self, title: str) -> str:
+    def split(self, title: str, outro: Optional[List[str]] = None, intro: Optional[List[str]] = None) -> str:
         """Inchide filmul curent si incepe altul (ex. un video pentru fiecare rand Excel)."""
-        old = self.stop() if self.active else ""
-        self.start(title)
+        old = self.stop(outro) if self.active else ""
+        self.start(title, intro=intro)
         return old
+
+    def _grab(self, bbox, target: int, size) -> Optional[Image.Image]:
+        """O captura: fereastra urmarita (target) sau zona bbox; None = nu se poate acum."""
+        if target:
+            img = capture_window(target)   # doar fereastra (nu ce e peste / langa ea)
+            return _fit(img, size)[0] if img is not None else None
+        return ImageGrab.grab(bbox=bbox, all_screens=self.s.area == "all")
 
     def _run(self, bbox):
         s = self.s
@@ -412,18 +447,14 @@ class ScreenRecorder:
                 down_before = down
                 # ecran: salvam cadrul doar daca s-a schimbat (sau la 15 s, cadru de siguranta)
                 try:
-                    if target:
-                        img = capture_window(target)   # doar fereastra (nu ce e peste / langa ea)
-                        if img is None:                   # minimizata: pastram ultimul cadru
-                            time.sleep(period)
-                            continue
-                    else:
-                        img = ImageGrab.grab(bbox=bbox, all_screens=s.area == "all")
+                    img = self._grab(bbox, target, size)
+                    if img is None:                   # minimizata: pastram ultimul cadru
+                        time.sleep(period)
+                        continue
                 except Exception as ex:  # noqa: BLE001 — ecran blocat (Ctrl+Alt+Del), sesiune RDP minimizata
                     self.last_error = str(ex)
                     time.sleep(period)
                     continue
-                img = _fit(img, size)[0] if target else img
                 thumb = img.resize((max(1, img.width // 8), max(1, img.height // 8)), Image.BILINEAR).convert("L")
                 # schimbare reala = pixeli care difera vizibil (cursorul de text care clipeste nu conteaza)
                 changed = prev_thumb is None or ImageChops.difference(thumb, prev_thumb).point(
@@ -445,8 +476,34 @@ class ScreenRecorder:
                 # ritmul de captura (capturile mari pot dura mai mult decat perioada)
                 time.sleep(max(0.01, period - (time.monotonic() - tick)))
         finally:
+            end = round(self.elapsed(), 2)
+            # ultimul cadru = ecranul exact de la oprire (altfel rezultatul ultimului pas se putea pierde)
+            if self._stop.is_set():
+                try:
+                    img = self._grab(bbox, self.hwnd if (self.hwnd or self.follow) else 0, size)
+                    if img is not None:
+                        n += 1
+                        self._write_card(f"frames/{n:06d}.webp", end, _fit(img, size)[0])
+                except Exception as ex:  # noqa: BLE001
+                    self.last_error = str(ex)
+            duration = end
+            outro = self._outro
+            if outro is not None and s.intro_outro and s.outro_s > 0:
+                # ultimul ecran ramane o secunda, apoi iesirea
+                t_out = round(end + 1.0, 2)
+                try:
+                    self._write_card("frames/outro.webp", t_out,
+                                     title_card(size, self._m.get("title", ""), outro, "outro"))
+                    self._m["outro"] = [t_out, round(t_out + s.outro_s, 2)]
+                    with self._lock:
+                        self._m["markers"].append([t_out, "■ " + (outro[0] if outro else "")[:110]])
+                    duration = round(t_out + s.outro_s, 2)
+                except Exception as ex:  # noqa: BLE001
+                    self.last_error = str(ex)
+            # finalul (ultimul pas + iesirea) nu se scurteaza la redare, chiar daca ecranul nu se mai schimba
+            self._m["hold"] = [round(max(0.0, end - max(1.0, s.tail_s)), 2), duration]
             with self._lock:
-                self._m["duration"] = round(self.elapsed(), 2)
+                self._m["duration"] = duration
                 self._zip.writestr("manifest.json", json.dumps(self._m, ensure_ascii=False))
             self._zip.close()
             self._zip = None
@@ -515,15 +572,44 @@ def _draw_text(draw, xy, text, font, efont, fill):
 
 
 def _font(size: int):
-    for name in ("segoeuib.ttf", "segoeui.ttf", "arial.ttf"):
+    for name in ("segoeuib.ttf", "segoeui.ttf", "arial.ttf", "DejaVuSans.ttf"):
         try:
             return ImageFont.truetype(name, size)
         except OSError:
             continue
-    return ImageFont.load_default()
+    try:
+        return ImageFont.load_default(size)   # Pillow >= 10.1: font scalabil
+    except TypeError:
+        return ImageFont.load_default()
 
 
 JOURNAL_EXT = ".jurnal.json"
+
+
+def title_card(size, title: str, lines: List[str], kind: str = "intro") -> Image.Image:
+    """Cadrul de introducere / iesire: fundal inchis, numele rutinei mare, randurile dedesubt."""
+    w, h = int(size[0]), int(size[1])
+    img = Image.new("RGB", (w, h), (24, 28, 40))
+    d = ImageDraw.Draw(img)
+    accent = (0, 150, 136) if kind == "intro" else (90, 110, 160)
+    if kind == "outro" and lines and lines[0].startswith(("❌", "⛔", "✕")):
+        accent = (198, 40, 40)
+    d.rectangle([0, 0, w, max(6, h // 60)], fill=accent)
+    d.rectangle([0, h - max(6, h // 60), w, h], fill=accent)
+    big, mid, small = _font(max(18, h // 14)), _font(max(14, h // 26)), _font(max(12, h // 36))
+    efont = _emoji_font(max(14, h // 26))
+    y = h // 4
+    _draw_text(d, (w // 12, y), "AutoPilot DC", small, None, (150, 160, 180))
+    y += int(h / 36 * 1.8)
+    for ln in _wrap(d, str(title), big, w - w // 6)[:2]:
+        _draw_text(d, (w // 12, y), ln, big, None, (240, 244, 250))
+        y += int(h / 14 * 1.25)
+    y += h // 40
+    for text in lines:
+        for ln in _wrap(d, str(text), mid, w - w // 6, efont)[:2]:
+            _draw_text(d, (w // 12, y), ln, mid, efont, (200, 210, 225))
+            y += int(h / 26 * 1.5)
+    return img
 
 
 def recover(path: str) -> bool:
@@ -655,6 +741,8 @@ class VideoFile:
         events = sorted(set(self._frame_times) | {c[0] for c in self.m.get("cursor", [])}
                         | {c[0] for c in self.m.get("clicks", [])}
                         | {c["t0"] for c in self.edits.get("captions", [])})
+        # introducerea, finalul (ultimul pas) si iesirea raman intregi (nu sunt "pauze")
+        protect = [seg for seg in (self.m.get("intro"), self.m.get("hold"), self.m.get("outro")) if seg]
         out, ot, t = [], 0.0, 0.0
         last_event = 0.0
         ei = 0
@@ -664,7 +752,8 @@ class VideoFile:
                 last_event = events[ei]
                 ei += 1
             if self.kept(t):
-                idle_now = idle > 0 and (t - last_event) > idle and not self._caption_at(t)
+                idle_now = idle > 0 and (t - last_event) > idle and not self._caption_at(t) \
+                    and not any(a <= t <= b for a, b in protect)
                 if not idle_now:
                     out.append((round(ot, 3), round(t, 3)))
                     ot += step

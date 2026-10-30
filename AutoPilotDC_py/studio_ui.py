@@ -3523,6 +3523,11 @@ class StudioPanel(tk.Frame):
                 from rpr.host import RunResult
                 result = RunResult(success=False, message=str(ex))
             finally:
+                if self.video is not None:
+                    try:
+                        self.video.settle()   # 🎥 filmul mai prinde cateva secunde: rezultatul ultimului pas
+                    except Exception:  # noqa: BLE001
+                        pass
                 if dnd:
                     safety.DoNotDisturb.restore()
                 self.post("done", (result,))
@@ -3565,7 +3570,7 @@ class StudioPanel(tk.Frame):
         self._resume_state = None
         if self.video is not None:
             try:
-                self.video.run_finished()
+                self.video.run_finished(result)
             except Exception:  # noqa: BLE001
                 pass
         if self._run_control:
@@ -3656,13 +3661,15 @@ class StudioPanel(tk.Frame):
                                                                          folder=rpr_report.video_folder(routine))))
                 except Exception:  # noqa: BLE001 — filmul nu are voie sa opreasca pregatirea
                     filmed = False
+            result = None
             try:
                 result = engine.run(routine)
             finally:
                 film = ""
                 if filmed:
                     try:
-                        film = self.call_ui(self.video.run_finished) or ""
+                        self.video.settle()
+                        film = self.call_ui(lambda: self.video.run_finished(result)) or ""
                     except Exception:  # noqa: BLE001
                         film = ""
             return result, film

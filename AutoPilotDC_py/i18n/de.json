@@ -1931,5 +1931,16 @@
  "Tasta": "Taste",
  "Scrie": "Schreiben",
  "Pas pe coordonate de ecran (inregistrat cu ⏺ Ecran). Functioneaza, dar e fragil: daca fereastra se muta sau rezolutia se schimba, click-ul nimereste altundeva. Recomandat: un pas \"Actiune\" pe un obiect.": "Schritt auf Bildschirmkoordinaten (aufgenommen mit ⏺ Bildschirm). Er funktioniert, ist aber empfindlich: wenn sich das Fenster verschiebt oder die Auflösung ändert, landet der Klick woanders. Empfohlen: ein Schritt \"Aktion\" auf einem Objekt.",
- "📥 Import AI — pasi din text": "📥 KI-Import — Schritte aus Text"
+ "📥 Import AI — pasi din text": "📥 KI-Import — Schritte aus Text",
+ "Filmele rularilor: introducere (rutina, data) la inceput si iesire (rezultat, durata) la final": "Videos der Ausführungen: Intro (Routine, Datum) am Anfang und Abspann (Ergebnis, Dauer) am Ende",
+ "Introducere / iesire (s):": "Intro / Abspann (s):",
+ "Dupa ultimul pas se mai filmeaza (s):": "Nach dem letzten Schritt weiter aufnehmen (s):",
+ "▶ Rulare automata": "▶ Automatische Ausführung",
+ "■ Sfarsitul filmului": "■ Ende des Videos",
+ "⛔ Rulare oprita": "⛔ Ausführung gestoppt",
+ "{0} pasi, {1} erori": "{0} Schritte, {1} Fehler",
+ "✅ Rutina s-a terminat cu succes": "✅ Die Routine wurde erfolgreich beendet",
+ "❌ Rutina s-a oprit cu eroare": "❌ Die Routine wurde mit einem Fehler beendet",
+ "Randuri Excel: {0} OK, {1} cu eroare": "Excel-Zeilen: {0} OK, {1} mit Fehler",
+ "Inregistreaza automat un film la fiecare rulare de rutina (Studio)": "Bei jeder Ausführung einer Routine automatisch ein Video aufnehmen (Studio)"
 }
