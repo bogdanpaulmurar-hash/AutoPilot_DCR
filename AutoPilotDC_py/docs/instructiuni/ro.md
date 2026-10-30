@@ -163,6 +163,9 @@ Fiecare capitol explică pe scurt o procedură, pas cu pas, cu un exemplu. Alege
 2. Pune pașii **în interiorul** blocului; folosește `{Rand.NumeColoana}`.
 3. **📝 Scrie în Excel** (în interiorul buclei) scrie un rezultat în rândul curent (coloana se creează dacă lipsește) și poate colora celula.
 4. **Coloana de status** primește OK / eroarea, iar rândurile se colorează verde / roșu. Cu „Salvează după fiecare rând” și „sari rândurile deja OK” poți relua o rulare întreruptă.
+5. **📤 Exportă șablon Excel** (în panoul blocului): fișier nou cu coloana cheie (gol = `Id`) formatată ca text, deci zerourile din față și Id-urile lungi rămân cum le scrii, apoi coloanele din pașii **Scrie în Excel** (verzi) și statusul (gri). Are foaia *Instrucțiuni* și avertizează la un Id repetat. După salvare poți folosi șablonul ca fișier al buclei.
+6. **Coloana cheie sub alt nume**: dacă rutina cere `Id`, iar fișierul are `ID`, `UEID`, `Cod` sau `Nr`, coloana e găsită și `{Rand.Id}` are valoarea ei. Spațiile, `_` și literele mari nu contează. La scriere nu se folosesc aceste nume: „Cod” citit din SAP nu ajunge peste coloana cu Id-ul.
+7. **Verificare înainte de primul click**: rândurile cu date dar fără Id (lista se oprește la primul) și Id-urile repetate apar într-o întrebare: **Continui** sau **Opresc rutina**. La rularea programată se continuă și se notează în log.
 - Formulele din fișier rămân intacte.
 
 > Exemplu: fișier cu coloana `IBase`; în buclă: Scrie text `{Rand.IBase}` în câmpul de căutare, Click Caută, Citește statusul → Scrie în Excel în coloana `Rezultat`.

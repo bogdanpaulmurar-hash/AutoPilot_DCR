@@ -373,6 +373,14 @@ def input_dialog(parent, title: str, prompt: str, initial: str = "", C=None) -> 
     return res["v"]
 
 
+def _app_version() -> str:
+    try:
+        from version import __version__
+        return __version__
+    except Exception:  # noqa: BLE001
+        return ""
+
+
 def _new_ids(node: RprNode) -> None:
     node.id = uuid.uuid4().hex[:10]
     for _, lst in node.branches():
@@ -3675,6 +3683,34 @@ class StudioPanel(tk.Frame):
         self.log.delete(*self.log.get_children())
         self._log_entries.clear()
 
+    def export_excel_template(self):
+        """v4.23: 📤 sablon Excel pentru bucla Excel a rutinei (Id + coloanele scrise + status)."""
+        from rpr import template
+        f = template.first_loop(self.routine)
+        if f is None:
+            messagebox.showinfo("📤", "Rutina nu are pasul \"Pentru fiecare rand Excel\".", parent=self)
+            return
+        start = os.path.dirname(f.file_path) if f.file_path.strip() and "{" not in f.file_path else RprPaths.output()
+        path = filedialog.asksaveasfilename(parent=self, title="Unde salvez sablonul?", initialdir=start,
+                                            initialfile=f"Sablon_{sanitize_name(self.routine.name)}.xlsx",
+                                            defaultextension=".xlsx", filetypes=[("Excel", "*.xlsx")])
+        if not path:
+            return
+        try:
+            template.export_template(self.routine, path, _app_version())
+        except Exception as ex:  # noqa: BLE001
+            messagebox.showerror("📤", str(ex), parent=self)
+            return
+        self.set_status(tr_template("Sablon salvat: {0}").format(path))
+        if not f.file_path.strip() and messagebox.askyesno(
+                "📤", "Folosesc sablonul ca fisier Excel al buclei?", parent=self):
+            f.file_path = os.path.normpath(path)
+            self.mark_dirty()
+            self.refresh_node(f)
+            if self.editor._target is f:
+                self.editor.show(f)
+        self.open_path(path)
+
     def export_log(self):
         if not self._log_entries:
             messagebox.showinfo("Studio RPR", "Logul e gol.", parent=self)
@@ -4506,6 +4542,11 @@ class PropertyEditor:
         elif info.headers:
             self._hint(tr_template("Coloane gasite ({0} randuri cu date): {1}").format(info.data_rows,
                        ", ".join("{" + f.row_variable + "." + h + "}" for h in info.headers)))
+        self.p._btn(self._host, "📤 Exporta sablon Excel", self.p.export_excel_template,
+                    tip="Fisier Excel nou cu coloanele asteptate de rutina: Id (text, orice format), "
+                        "coloanele din \"Scrie in Excel\" si statusul").pack(anchor="w", padx=10, pady=(8, 2))
+        self._hint("Sablonul are coloana cheie (gol = Id) formatata ca text, apoi coloanele in care scrie rutina "
+                   "si statusul. Coloana cheie e gasita si daca in fisier se numeste ID, UEID, Cod sau Nr.")
 
     # ── conditie (recursiv pentru SI / SAU) ──
     def condition(self, c: Condition, node: RprNode, host=None, depth=0):

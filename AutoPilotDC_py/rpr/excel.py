@@ -37,6 +37,15 @@ _FILLS = {
 }
 
 
+# v4.23: coloana cheie se gaseste si sub alt nume (fisierul are "UEID", rutina cere "Id").
+# Se folosesc doar daca titlul exact nu exista; spatiile, "_", "-", "." si literele mari nu conteaza.
+ID_ALIASES = ("id", "ueid", "cod", "code", "nr", "numar", "number", "nummer", "cheie", "key", "schluessel")
+
+
+def _compact(title: str) -> str:
+    return re.sub(r"[\s_.\-]+", "", (title or "").strip().lower())
+
+
 def _require_openpyxl():
     if openpyxl is None:
         raise RprStepException("Lipseste pachetul openpyxl. Ruleaza INSTALEAZA.bat din folderul aplicatiei.")
@@ -119,19 +128,59 @@ class ExcelTable:
                 self._titles[title.lower()] = title
 
     @property
+    def max_row(self) -> int:
+        return self._ws.max_row
+
+    @property
     def header_titles(self) -> List[str]:
         return [self._titles[k] for k in sorted(self.headers, key=self.headers.get)]
 
     # ── 2. Coloana: titlu ("IBase") sau litera ("C") ─────────
-    def resolve_column(self, column: str) -> Optional[int]:
+    def resolve_column(self, column: str, key: bool = False) -> Optional[int]:
+        """key=True doar pentru coloana cheie: atunci "Id" gaseste si "UEID" / "Cod" / "Nr".
+        La scriere nu: "Cod" citit din SAP nu are voie sa ajunga peste coloana cu Id-ul."""
         if not column or not column.strip():
             return None
         column = column.strip()
         if column.lower() in self.headers:
             return self.headers[column.lower()]
+        wanted = _compact(column)
+        for title, col in self.headers.items():   # "Pret nou" = "pret_nou" = "PretNou"
+            if _compact(title) == wanted:
+                return col
+        if key and wanted in ID_ALIASES:                # cheia: "Id" gaseste "UEID", "Cod", "Nr"... (prima din stanga)
+            for k in sorted(self.headers, key=self.headers.get):
+                if _compact(k) in ID_ALIASES:
+                    return self.headers[k]
         if re.fullmatch(r"[A-Za-z]{1,3}", column):
             return column_index_from_string(column.upper())
         return None
+
+    def title_of(self, column: str) -> str:
+        """Titlul real din fisier pentru o coloana ceruta (ex. "Id" -> "UEID"); "" = nu exista."""
+        col = self.resolve_column(column, key=True)
+        if col is None:
+            return ""
+        for key, c in self.headers.items():
+            if c == col:
+                return self._titles[key]
+        return ""
+
+    def key_problems(self, key_column: str, first: int, last: int) -> Tuple[List[int], Dict[str, List[int]]]:
+        """Verificarea dinaintea rularii: (randuri cu date dar fara cheie, {cheie: randuri} pentru duplicate)."""
+        col = self.resolve_column(key_column, key=True)
+        if col is None:
+            return [], {}
+        missing: List[int] = []
+        seen: Dict[str, List[int]] = {}
+        for r in range(first, max(first, last) + 1):
+            key = self._text(r, col).strip()
+            if key:
+                seen.setdefault(key.lower(), []).append(r)
+            elif not self._row_empty(r):
+                missing.append(r)
+        dup = {self._text(rows[0], col).strip(): rows for rows in seen.values() if len(rows) > 1}
+        return missing, dup
 
     def get_or_create_column(self, column: str) -> int:
         existing = self.resolve_column(column)
@@ -151,7 +200,7 @@ class ExcelTable:
         return start_row if start_row > 0 else self.header_row + 1
 
     def last_data_row(self, key_column: str) -> int:
-        col = self.resolve_column(key_column)
+        col = self.resolve_column(key_column, key=True)
         if col is not None:
             for r in range(self._ws.max_row, 0, -1):
                 if self._text(r, col).strip():
@@ -163,13 +212,13 @@ class ExcelTable:
         return 0
 
     def is_row_empty(self, row: int, key_column: str) -> bool:
-        col = self.resolve_column(key_column)
+        col = self.resolve_column(key_column, key=True)
         if col is not None:
             return not self._text(row, col).strip()
         return self._row_empty(row)
 
     # ── 3. Citire rand -> {Prefix.Titlu}, {Prefix.A}, {Prefix.#} ─
-    def load_row_into(self, variables: VariableStore, prefix: str, row: int) -> None:
+    def load_row_into(self, variables: VariableStore, prefix: str, row: int, key_column: str = "") -> None:
         variables.remove_prefix(prefix + ".")
         variables.set(f"{prefix}.#", str(row))
         last = max([self._last_col_in_row(row)] + list(self.headers.values()) + [0])
@@ -177,6 +226,17 @@ class ExcelTable:
             variables.set(f"{prefix}.{get_column_letter(col)}", self._text(row, col))
         for key, col in self.headers.items():
             variables.set(f"{prefix}.{self._titles[key]}", self._text(row, col))
+        # v4.23: rutina scrie {Rand.Id}, fisierul are "UEID" -> {Rand.Id} exista si el
+        name = (key_column or "").strip()
+        is_letter = re.fullmatch(r"[A-Za-z]{1,3}", name) and _compact(name) not in ID_ALIASES   # "Id" e titlu, nu litera
+        if name and not is_letter and name.lower() not in self.headers:
+            col = self.resolve_column(name, key=True)
+            if col is not None:
+                variables.set(f"{prefix}.{name}", self._text(row, col))
+
+    def get_key(self, row: int, key_column: str) -> str:
+        col = self.resolve_column(key_column, key=True)
+        return self._text(row, col) if col is not None else ""
 
     def get_cell(self, row: int, column: str) -> str:
         col = self.resolve_column(column)
