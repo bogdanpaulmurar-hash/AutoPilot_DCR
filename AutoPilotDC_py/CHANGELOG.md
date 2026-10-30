@@ -2,6 +2,10 @@
 
 Pornirea aplicației: **`AutoPilot_DC.pyw`** (sau scurtătura „AutoPilot DC” de pe Desktop). Numele fișierelor nu se mai schimbă de la o versiune la alta, deci scurtăturile și pornirea cu Windows rămân valabile.
 
+## 4.16.4 — 2026-10-30
+- **📥 Import AI: Ctrl+V lipea promptul în loc de răspunsul AI-ului.** După 📋 Copiază promptul, fereastra Tk rămânea „proprietarul” clipboard-ului și, la lipire în chenar, punea tot promptul, chiar dacă între timp copiai textul din AI. Acum promptul se pune direct în clipboard-ul Windows, iar Ctrl+V / Shift+Insert în chenar citește clipboard-ul Windows (și înlocuiește textul selectat). Pe alte sisteme rămâne clipboard-ul Tk.
+- Teste (Linux, Python 3.12, Xvfb): `test_import_paste` nou (5: lipirea ia clipboard-ul sistemului, nu promptul; înlocuiește selecția; revine la Tk; Copiază promptul nu mai trece prin Tk; pe Linux funcțiile Windows răspund „nu”). Fără corecție, 2 dintre ele cad. Suita întreagă: aceleași eșecuri vechi (3 failures; erorile sunt modulele care cer Windows/Playwright). Netestat pe Windows: apelurile reale la clipboard.
+
 ## 4.16.3 — 2026-10-30
 - **🎯 Completează obiectele** (nou): după 📥 Import AI, obiectele au doar locatoare deduse din text. Fereastra nouă le ia pe rând pe pagina reală, în ordinea pașilor rutinei:
   - **🧪 Verifică toate**: pe pagina deschisă, fără click (aceleași verificări ca 🩺 Verifică): ✔ găsit, ⚠ mai multe elemente la fel, ✖ negăsit. SAP / Desktop: testul obișnuit.

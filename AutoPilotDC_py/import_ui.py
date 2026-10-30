@@ -11,6 +11,7 @@
 from __future__ import annotations
 
 import os
+import sys
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 from typing import Optional
@@ -27,6 +28,97 @@ except ImportError:  # pragma: no cover
     def tr(text):
         return text
     tr_template = tr
+
+
+# ── clipboard-ul Windows, direct ──
+# Dupa 📋 Copiaza promptul, Tk ramane "proprietarul" clipboard-ului si, la Ctrl+V in aceeasi fereastra,
+# lipea tot promptul in loc de textul copiat intre timp din AI. De aceea scriem si citim direct
+# clipboard-ul din Windows; pe alte sisteme (sau daca nu merge) ramane clipboard-ul Tk.
+_CF_UNICODETEXT = 13
+_GMEM_MOVEABLE = 0x0002
+
+
+def _win_api():
+    import ctypes
+    from ctypes import wintypes
+    u32, k32 = ctypes.windll.user32, ctypes.windll.kernel32
+    u32.OpenClipboard.argtypes = [wintypes.HWND]
+    u32.OpenClipboard.restype = wintypes.BOOL
+    u32.GetClipboardData.argtypes = [wintypes.UINT]
+    u32.GetClipboardData.restype = wintypes.HANDLE
+    u32.SetClipboardData.argtypes = [wintypes.UINT, wintypes.HANDLE]
+    u32.SetClipboardData.restype = wintypes.HANDLE
+    k32.GlobalAlloc.argtypes = [wintypes.UINT, ctypes.c_size_t]
+    k32.GlobalAlloc.restype = wintypes.HGLOBAL
+    k32.GlobalLock.argtypes = [wintypes.HGLOBAL]
+    k32.GlobalLock.restype = ctypes.c_void_p
+    k32.GlobalUnlock.argtypes = [wintypes.HGLOBAL]
+    k32.GlobalFree.argtypes = [wintypes.HGLOBAL]
+    return ctypes, u32, k32
+
+
+def _open_clipboard(u32) -> bool:
+    import time
+    for _ in range(10):   # alta aplicatie il poate tine deschis cateva milisecunde
+        if u32.OpenClipboard(None):
+            return True
+        time.sleep(0.02)
+    return False
+
+
+def win_clipboard_get() -> Optional[str]:
+    """Textul din clipboard-ul Windows; None daca nu e Windows sau nu se poate citi."""
+    if sys.platform != "win32":
+        return None
+    try:
+        ctypes, u32, k32 = _win_api()
+        if not _open_clipboard(u32):
+            return None
+        try:
+            h = u32.GetClipboardData(_CF_UNICODETEXT)
+            if not h:
+                return ""
+            ptr = k32.GlobalLock(h)
+            if not ptr:
+                return None
+            try:
+                return ctypes.wstring_at(ptr)
+            finally:
+                k32.GlobalUnlock(h)
+        finally:
+            u32.CloseClipboard()
+    except Exception:
+        return None
+
+
+def win_clipboard_set(text: str) -> bool:
+    """Pune textul in clipboard-ul Windows (fara ca Tk sa devina proprietar). False = nu s-a putut."""
+    if sys.platform != "win32":
+        return False
+    try:
+        ctypes, u32, k32 = _win_api()
+        data = (text or "").encode("utf-16-le") + b"\x00\x00"
+        if not _open_clipboard(u32):
+            return False
+        try:
+            u32.EmptyClipboard()
+            h = k32.GlobalAlloc(_GMEM_MOVEABLE, len(data))
+            if not h:
+                return False
+            ptr = k32.GlobalLock(h)
+            if not ptr:
+                k32.GlobalFree(h)
+                return False
+            ctypes.memmove(ptr, data, len(data))
+            k32.GlobalUnlock(h)
+            if not u32.SetClipboardData(_CF_UNICODETEXT, h):
+                k32.GlobalFree(h)
+                return False
+            return True   # de aici memoria e a Windows-ului
+        finally:
+            u32.CloseClipboard()
+    except Exception:
+        return False
 
 FONT = "Segoe UI"
 
@@ -80,6 +172,7 @@ class ImportDialog(tk.Toplevel):
         self.text.tag_configure("bad", background="#7A1F1F", foreground="white")
         self.text.tag_configure("warn", background="#6B5200", foreground="white")
         self.text.bind("<<Modified>>", self._on_modified)
+        self.text.bind("<<Paste>>", self._paste)
 
         right = tk.Frame(body, bg=C["bg_main"])
         body.add(right, weight=1)
@@ -115,8 +208,10 @@ class ImportDialog(tk.Toplevel):
         return getattr(i18n, "LANG", "ro") if i18n is not None else "ro"
 
     def copy_prompt(self):
-        self.clipboard_clear()
-        self.clipboard_append(ai_prompt(self._lang(), list(self.p.repo.objects)))
+        prompt = ai_prompt(self._lang(), list(self.p.repo.objects))
+        if not win_clipboard_set(prompt):
+            self.clipboard_clear()
+            self.clipboard_append(prompt)
         self.p.set_status("📋 Promptul e copiat: lipeste-l in AI, apoi adauga textul documentului Word.")
         messagebox.showinfo("📥 Import AI", "Promptul e copiat.\n\nIn AI: lipeste promptul, apoi textul procedurii "
                                            "(sau ataseaza documentul Word). Raspunsul AI-ului il lipesti aici.",
@@ -153,6 +248,22 @@ class ImportDialog(tk.Toplevel):
         self.text.insert("1.0", data)
         self.check()
         self.p.set_status(f"Fisier citit: {os.path.basename(path)}")
+
+    def _paste(self, _e=None):
+        """Ctrl+V / Shift+Insert: textul din clipboard-ul sistemului (vezi win_clipboard_get)."""
+        data = win_clipboard_get()
+        if data is None:
+            try:
+                data = self.clipboard_get()
+            except tk.TclError:
+                return "break"
+        try:
+            self.text.delete("sel.first", "sel.last")
+        except tk.TclError:
+            pass
+        self.text.insert("insert", data)
+        self.text.see("insert")
+        return "break"
 
     # ── verificare ──
     def _on_modified(self, _e=None):
