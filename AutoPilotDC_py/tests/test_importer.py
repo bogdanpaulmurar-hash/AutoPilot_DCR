@@ -15,8 +15,8 @@ sys.path.insert(0, APP)
 import i18n  # noqa: E402
 from rpr.importer import COMMANDS, StepImporter, _EXAMPLE_EN, _EXAMPLE_RO, ai_prompt  # noqa: E402
 from rpr.legacy import merge_typing, recorded_to_nodes  # noqa: E402
-from rpr.model import (ForEachRowNode, IfNode, LegacyStepNode, QuestionNode, Routine, RprAction,  # noqa: E402
-                       TryNode, WriteExcelNode)
+from rpr.model import (ForEachRowNode, IfNode, LegacyStepNode, Locator, LocatorKind, ObjectRepository,  # noqa: E402
+                       QuestionNode, Routine, RprAction, TryNode, UiObject, WriteExcelNode)
 
 
 def _kinds(routine):
@@ -146,6 +146,58 @@ class ImporterTests(unittest.TestCase):
         i18n.load("en")
         res = StepImporter().parse('IF visible text "A"\nEND\nELSE\nEND')
         self.assertTrue(res.errors[0].message.startswith("ELSE after END"), res.errors[0].message)
+
+    def test_todo_ask_value_and_variable_in_block(self):
+        """v4.16.2: # TODO -> avertisment + comentariul pasului; INTREABA VALOARE; VARIABILA in bloc = pas SETEAZA."""
+        text = ('VARIABLE: File = "in.xlsx"\n'
+                'FOR EACH ROW {File}\n'
+                '  # TODO: data vine din NOAH\n'
+                '  ASK VALUE "Delivery date for {Rand.SN}?" -> {Data}\n'
+                '  VARIABLE: Count = "1"\n'
+                '  // TODO verifica eticheta\n'
+                '  CLICK text "{Rand.UEID}"\n'
+                'END')
+        res = StepImporter().parse(text)
+        self.assertEqual(res.errors, [], [(i.line, i.message) for i in res.issues])
+        self.assertEqual(res.todos, 2)
+        todo_lines = [i.line for i in res.issues if i.message.startswith("De facut")]
+        self.assertEqual(todo_lines, [3, 6])
+        loop = res.routine.steps[0]
+        ask, setv, click = loop.body
+        self.assertIsInstance(ask, QuestionNode)
+        self.assertTrue(ask.ask_value)
+        self.assertEqual(ask.output_variable, "Data")
+        self.assertIn("NOAH", ask.comment)
+        self.assertEqual((setv.name, setv.value), ("Count", "1"))
+        self.assertNotIn("Count", res.routine.variables)
+        self.assertIn("verifica", click.comment)
+        self.assertNotIn("Data", res.routine.variables)   # produsa de pas, nu ceruta in ⚙ Rutina
+
+    def test_several_code_blocks_keep_line_numbers(self):
+        text = ("Iata rutina:\n```text\nROUTINE: A\nCLICK button \"OK\"\n# CONTINUED\n```\nContinuare:\n"
+                "```text\nZBOARA\n```\nDE VERIFICAT: nimic")
+        res = StepImporter().parse(text)
+        self.assertEqual([i.line for i in res.errors], [9])
+        self.assertEqual(res.routine.name, "A")
+
+    def test_reuses_scanned_object_by_text(self):
+        repo = ObjectRepository()
+        repo.add(UiObject(name="Btn_Salvare", object_type="Buton", captured_text="Save",
+                          locators=[Locator(LocatorKind.Css, "#save")]))
+        res = StepImporter(repo).parse('CLICK button "Save"\nCLICK button "Cancel"')
+        self.assertEqual(res.routine.steps[0].target, "Btn_Salvare")
+        self.assertEqual([o.name for o in res.new_objects], ["Buton_Cancel"])
+
+    def test_prompt_lists_library_objects_and_todo_rule(self):
+        repo = ObjectRepository()
+        repo.add(UiObject(name="Btn_Salvare", object_type="Buton", captured_text="Save"))
+        p = ai_prompt("ro", repo.objects)
+        self.assertIn("[Btn_Salvare]", p)
+        self.assertIn("# TODO", p)
+        i18n.load("en")
+        p = ai_prompt("en", repo.objects)
+        self.assertIn("IF THE SOURCE IS CODE", p)
+        self.assertIn("ASK VALUE", p)
 
     def test_prompt_lists_every_command(self):
         for lang in ("ro", "en"):

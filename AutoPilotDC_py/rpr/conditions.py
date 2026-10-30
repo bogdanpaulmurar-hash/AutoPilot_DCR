@@ -13,7 +13,7 @@ from decimal import Decimal, InvalidOperation
 from typing import Optional, Tuple
 
 from .drivers.base import DriverProvider, RprStepException
-from .model import CompareOperator, Condition, ConditionKind, ObjectRepository, UiObject
+from .model import CompareOperator, Condition, ConditionKind, ObjectRepository, UiObject, with_variables
 from .variables import VariableStore
 
 _NUM_RE = re.compile(r"^[+-]?[\d.,]+$")
@@ -138,4 +138,4 @@ class ConditionEvaluator:
         obj = self._repo.find(name)
         if obj is None:
             raise RprStepException(f"Conditia foloseste obiectul [{name}], care nu exista in Object Repository.")
-        return self._repo.link_parents(obj)
+        return with_variables(self._repo.link_parents(obj), self._vars.resolve)

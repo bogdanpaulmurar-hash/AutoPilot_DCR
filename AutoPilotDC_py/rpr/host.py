@@ -105,6 +105,10 @@ class RunHost:
         """Intrebare cu butoane personalizate. Fara utilizator: primul buton."""
         return buttons[0] if buttons else ""
 
+    def ask_value(self, title: str, text: str, initial: str = "") -> Optional[str]:
+        """Camp de tastat (v4.16.2). Fara utilizator: valoarea de acum a variabilei. None = oprire."""
+        return initial
+
     def ask_on_error(self, node: RprNode, error: str, inside_excel_loop: bool) -> ErrorDecision:
         """Fara utilizator: in Excel sarim randul, altfel oprim."""
         return ErrorDecision.SKIP_ROW if inside_excel_loop else ErrorDecision.STOP

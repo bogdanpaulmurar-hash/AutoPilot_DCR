@@ -18,7 +18,7 @@ import re
 import uuid
 from dataclasses import dataclass, field, fields
 from enum import Enum
-from typing import Any, Dict, Iterable, Iterator, List, Optional, Tuple, Type
+from typing import Any, Callable, Dict, Iterable, Iterator, List, Optional, Tuple, Type
 
 
 def _t(text: str) -> str:
@@ -635,8 +635,11 @@ class QuestionNode(RprNode):
     output_variable: str = "Raspuns"
     stop_button: str = "Opreste"
     skip_button: str = "Sari"
+    ask_value: bool = False   # v4.16.2 (doar Python): camp de tastat; valoarea scrisa intra in variabila
 
     def auto_title(self) -> str:
+        if self.ask_value:
+            return _t("Intreaba valoare") + f": \"{self.text}\" → {{{self.output_variable}}}"
         return _t("Intreaba") + f": \"{self.text}\" [{self.buttons}]"
 
 
@@ -882,6 +885,22 @@ class Locator(_Json):
 
     def __str__(self) -> str:
         return f"{self.kind}: {self.value}"
+
+
+def with_variables(obj: "UiObject", resolve: Callable[[str], str]) -> "UiObject":
+    """v4.16.2: locatoarele cu variabile (ex. text "{Rand.UEID}") primesc valoarea de acum.
+    Intoarce o copie (biblioteca nu se schimba); fara {…} intoarce chiar obiectul."""
+    if not any("{" in l.value for l in obj.locators):
+        return obj
+    import copy
+    new = copy.copy(obj)
+    new.locators = []
+    for l in obj.locators:
+        c = copy.copy(l)
+        if "{" in c.value:
+            c.value = resolve(c.value)
+        new.locators.append(c)
+    return new
 
 
 @dataclass

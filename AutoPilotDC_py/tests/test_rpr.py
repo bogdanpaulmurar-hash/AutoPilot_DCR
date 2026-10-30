@@ -237,6 +237,31 @@ class Flow(unittest.TestCase):
         self.assertTrue(result.success)  # oprire voita, nu eroare
         self.assertNotIn("Ajuns", result.final_variables)
 
+    def test_ask_value_sets_variable(self):
+        """v4.16.2: INTREABA VALOARE — omul tasteaza; Anuleaza (None) opreste rutina."""
+        engine, _, host, _ = create()
+        host.ask_value = lambda title, text, initial="": "15.12.2026"
+        result = engine.run(new_routine(QuestionNode(text="Data?", ask_value=True, output_variable="Data")))
+        self.assertEqual(result.final_variables.get("Data"), "15.12.2026")
+        host.ask_value = lambda title, text, initial="": None
+        result = engine.run(new_routine(QuestionNode(text="Data?", ask_value=True, output_variable="Data"),
+                                        SetVariableNode(name="Ajuns", value="da")))
+        self.assertNotIn("Ajuns", result.final_variables)
+
+    def test_locator_with_variable(self):
+        """v4.16.2: locatorul text "{Rand.UEID}" primeste valoarea la rulare; biblioteca ramane neschimbata."""
+        engine, driver, _, repo = create()
+        seen = []
+        repo.add(UiObject(name="Rand_ID", locators=[Locator(LocatorKind.Text, "{Id}")]))
+        driver.screen["Rand_ID"] = "x"
+        orig = driver.execute
+        driver.execute = lambda r, stop: (seen.append(r.target.locators[0].value), orig(r, stop))[1]
+        result = engine.run(new_routine(SetVariableNode(name="Id", value="A-17"),
+                                        ActionNode(action=RprAction.Click, target="Rand_ID")))
+        self.assertTrue(result.success)
+        self.assertEqual(seen, ["A-17"])
+        self.assertEqual(repo.find("Rand_ID").locators[0].value, "{Id}")
+
     def test_condition_element_exists_and_text(self):
         engine, *_ = create()
         i = IfNode(condition=Condition(kind=ConditionKind.AllOf, children=[

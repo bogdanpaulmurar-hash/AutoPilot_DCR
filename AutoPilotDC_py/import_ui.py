@@ -116,7 +116,7 @@ class ImportDialog(tk.Toplevel):
 
     def copy_prompt(self):
         self.clipboard_clear()
-        self.clipboard_append(ai_prompt(self._lang()))
+        self.clipboard_append(ai_prompt(self._lang(), list(self.p.repo.objects)))
         self.p.set_status("📋 Promptul e copiat: lipeste-l in AI, apoi adauga textul documentului Word.")
         messagebox.showinfo("📥 Import AI", "Promptul e copiat.\n\nIn AI: lipeste promptul, apoi textul procedurii "
                                            "(sau ataseaza documentul Word). Raspunsul AI-ului il lipesti aici.",
@@ -128,7 +128,7 @@ class ImportDialog(tk.Toplevel):
                                             filetypes=[("Text", "*.txt")])
         if path:
             with open(path, "w", encoding="utf-8") as f:
-                f.write(ai_prompt(self._lang()))
+                f.write(ai_prompt(self._lang(), list(self.p.repo.objects)))
             self.p.set_status(f"Promptul a fost salvat: {path}")
 
     def load_example(self):
@@ -199,6 +199,8 @@ class ImportDialog(tk.Toplevel):
                 res.routine.name, res.step_count(), len(res.new_objects))
             if res.errors:
                 msg += "  ·  " + tr_template("{0} erori: corecteaza randurile marcate cu rosu").format(len(res.errors))
+            if res.todos:
+                msg += "  ·  " + tr_template("{0} locuri de completat de tine (# TODO, in galben)").format(res.todos)
             self.summary.configure(text=msg, fg=self.C["danger"] if res.errors else self.C["text"])
         self.btn_create.configure(state="normal" if res.ok else "disabled")
 

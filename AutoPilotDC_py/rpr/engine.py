@@ -39,7 +39,7 @@ from . import subroutine
 from .model import (ActionNode, BreakNode, CellColor, ErrorPolicy, ForEachRowNode, GroupNode, IfNode,
                     LegacyStepNode, LogNode, LoopMode, LoopNode, ObjectRepository, QuestionNode, Routine,
                     RoutineSettings, RprAction, RprLogLevel, RprNode, RuleAfter, RuleNode, RunRoutineNode, SetVariableNode, StopNode, TryNode,
-                    UiTechnology, VariableOperation, WaitMode, WaitNode, WriteExcelNode, action_info)
+                    UiTechnology, VariableOperation, WaitMode, WaitNode, WriteExcelNode, action_info, with_variables)
 from .variables import VariableStore
 
 
@@ -498,6 +498,7 @@ class RprEngine:
             if obj is None:
                 raise RprStepException(f"Obiectul [{a.target}] nu exista in Object Repository.")
             self._repo.link_parents(obj)   # cautare in containerul obiectului (biblioteca)
+            obj = with_variables(obj, self._vars.resolve)   # v4.16.2: text "{Rand.UEID}" -> valoarea randului
         elif info.needs_target:
             raise RprStepException(f"Pasul \"{info.label}\" are nevoie de un obiect. Alege-l in proprietatile pasului.")
 
@@ -810,6 +811,15 @@ class RprEngine:
 
     # ── Intrebare ──────────────────────────────────────────────
     def _execute_question(self, q: QuestionNode) -> None:
+        if q.ask_value:   # v4.16.2: omul tasteaza o valoare (ex. o data luata din alt sistem)
+            var = q.output_variable.strip() or "Raspuns"
+            value = self._host.ask_value(self._routine.name, self._vars.resolve(q.text), self._vars.get(var) or "")
+            self._check_stop()
+            if value is None:
+                raise _StopSignal("Oprit de utilizator.", False)
+            self._vars.set(var, value)
+            self._log(RprLogLevel.Info, q, f"{{{var}}} = \"{_shorten(value)}\"")
+            return
         buttons = [b.strip() for b in q.buttons.split(",") if b.strip()] or ["OK"]
         answer = self._host.ask(self._routine.name, self._vars.resolve(q.text), buttons)
         self._check_stop()

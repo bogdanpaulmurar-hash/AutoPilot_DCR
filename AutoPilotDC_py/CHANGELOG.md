@@ -2,6 +2,16 @@
 
 Pornirea aplicației: **`AutoPilot_DC.pyw`** (sau scurtătura „AutoPilot DC” de pe Desktop). Numele fișierelor nu se mai schimbă de la o versiune la alta, deci scurtăturile și pornirea cu Windows rămân valabile.
 
+## 4.16.2 — 2026-10-30
+- **📥 Import AI: promptul nou** pentru surse mai mari. Sursa poate fi o procedură (cu sau fără poze) sau **cod** (C#, VBA, Python, Selenium, SilkTest, UiPath). AI-ul păstrează selectorii din cod (`id`, `css`, `xpath`, `sap`), traduce doar ce se face pe ecran și în Excel, folosește pozele doar pentru textele exacte și primește lista obiectelor din 📚 Bibliotecă (le folosește ca `[Nume]`). Răspunsul: blocul cu rutina și o listă „De verificat”. Un răspuns prea lung continuă în mesajul următor (`# CONTINUARE`); la import blocurile se unesc, iar numerele rândurilor rămân cele din text.
+- **`# TODO: …` = locurile unde intervii tu** (selector ghicit, valoare din alt sistem, decizie neclară). La import apar în galben în lista de probleme (click = rândul), nu blochează crearea și rămân în comentariul pasului (💬 în arbore).
+- **Pas nou `INTREABA VALOARE "text" -> {Var}`** (`ASK VALUE`): la rulare apare un câmp de tastat, iar valoarea intră în variabilă. Anulează oprește rutina; fără utilizator, variabila își păstrează valoarea. În Studio: 💬 Întrebare cu bifa „Câmp de tastat”. Câmp nou `ask_value` în pasul `question`, doar în Python (C# îl ignoră).
+- **Variabile în locatoare**: `CLICK text "{Rand.UEID}"` caută la rulare valoarea din rândul Excel (și în condiții). Biblioteca păstrează textul cu `{…}`.
+- `VARIABILA:` din interiorul unui bloc devine pasul `SETEAZA` (înainte dădea doar valoarea de start a rutinei, deci nu se schimba la fiecare rând).
+- Obiectele scanate sau marcate cu 🎯 Spy se refolosesc la import și după text (eticheta / textul lor), cu toate locatoarele; înainte se potriveau doar dacă primul locator era identic.
+- Instrucțiuni: capitolul 33, în RO / EN / DE.
+- Teste (Linux, Python 3.12, Xvfb): 183 rulate, 8 sărite; aceleași eșecuri vechi. Teste noi: `test_importer` (4: TODO, INTREABA VALOARE, VARIABILA în bloc; mai multe blocuri de cod; obiect scanat refolosit după text; promptul cu biblioteca), `test_rpr` (2: INTREABA VALOARE, locator cu variabilă). Netestat pe Windows: fereastra de tastat la rulare.
+
 ## 4.16.1 — 2026-10-30
 - **📥 Import AI: butonul ✅ Creează rutina nu se vedea** pe ecranele mai mici (sau cu scalare 125–150 %): bara de jos era așezată ultima și rămânea în afara ferestrei. Acum e așezată prima, jos, iar textul și lista de pași se micșorează în locul ei. Nou: **Ctrl + Enter** creează rutina.
 - **DACA / ALTFEL în textul de la AI**:
