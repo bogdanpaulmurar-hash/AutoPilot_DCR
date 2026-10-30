@@ -821,6 +821,7 @@ class UiObject(_Json):
     site: str = ""                                          # aplicatia / site-ul (grup de link-uri similare)
     page: str = ""                                          # pagina / ecranul din site
     parent: str = ""                                        # containerul in care se cauta obiectul (gol = toata pagina)
+    folder: str = ""                                        # v4.11: folderul din tree-ul aplicatiei ("Comenzi/Export"); doar grupeaza, nu schimba cautarea
     url_patterns: List[str] = field(default_factory=list)   # link-uri unde e valid (* = orice); gol = ale site-ului
     tags: List[str] = field(default_factory=list)
     extra: Dict[str, Any] = field(default_factory=dict, repr=False)

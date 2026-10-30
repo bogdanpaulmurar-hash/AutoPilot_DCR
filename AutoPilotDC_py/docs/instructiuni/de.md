@@ -287,7 +287,7 @@ Jedes Kapitel erklärt kurz einen Ablauf, Schritt für Schritt, mit einem Beispi
 
 1. 📚 Bibliothek → **＋ Neu**: Namen der Anwendung eingeben; AutoPilot schlägt `OneDrive\AutoPilotDC\obiecte\<Anwendung>\obiecte.json` vor (ohne OneDrive: in Dokumente). Jeder andere Ordner ist möglich.
 2. **🔍 Website scannen**: Adresse eingeben, der AutoPilot-Browser öffnet sich. Melden Sie sich an, öffnen Sie die gewünschte Seite und wählen Sie **🔍 Automatisch scannen**.
-3. Sie erhalten die Liste der sichtbaren Schaltflächen, Felder, Listen, Kontrollkästchen und Links (auch in iframes, höchstens 500). Klick auf eine Zeile = an-/abhaken; **Ohne Links** entfernt Navigationsmenüs. **💾 Zur Bibliothek hinzufügen** speichert sie.
+3. Sie erhalten die Liste der sichtbaren Schaltflächen, Felder, Listen, Kontrollkästchen und Links (auch in iframes, höchstens 500). Klick auf eine Zeile **markiert sie im Browser** (so sehen Sie, welche Schaltfläche es ist); der Haken in der ersten Spalte behält sie oder lässt sie weg (oder Leertaste / **☑ Behalten / entfernen**). **✎ Umbenennen** (F2, Doppelklick auf den Namen) ändert den Namen. Oben wählen Sie **Seite** und **Ordner**, unter denen sie landen (siehe Kapitel 28). **Ohne Links** entfernt Navigationsmenüs. **💾 Zur Bibliothek hinzufügen** speichert sie.
 4. Öffnen Sie ein anderes Menü oder einen anderen Tab im Browser und wählen Sie **🔍 Erneut scannen**. Objekte, die schon in der Bibliothek sind, werden übersprungen.
 5. **🖐 3-s-Erfassung**: Mauszeiger 3 Sekunden auf einem Feld oder einer Schaltfläche halten (blauer Rahmen, Countdown), es wird automatisch gespeichert; dann zum nächsten. Klicks funktionieren normal, Menüs lassen sich also öffnen. Esc im Browser oder **Fertig** beendet.
 - Der Scan liest nur die bereits geladene Seite: kein Klick, keine Eingabe, nichts wird an den Server gesendet, die Anwendung wird also nicht belastet. Ausgeblendete Elemente (geschlossene Menüs, andere Tabs) erscheinen erst, wenn Sie sie öffnen.
@@ -307,3 +307,16 @@ Jedes Kapitel erklärt kurz einen Ablauf, Schritt für Schritt, mit einem Beispi
 - Bei einem ⚠ „Verdeckt“-Element liegt meist ein Fenster oder eine Meldung darüber: schließen und erneut prüfen. Bleibt es, braucht die Routine vorher einen Schritt (Meldung schließen).
 
 > Beispiel: Nach einem Update der Anwendung öffnen Sie die Bestellseite und drücken 🩺 Prüfen. „Speichern“ ist ✅, „Senden“ ist ⚠ deaktiviert (normal, bis das Formular ausgefüllt ist) und „Export“ ist ❌: Sie erfassen es mit einem Klick neu und die Export-Routine funktioniert wieder.
+
+## 28. Ordner in der Bibliothek (Abschnitte unter derselben Seite)
+
+Manche Web-Anwendungen wechseln ihre „Ordner“ (Menü, Baum links), ohne die Adresse zu ändern: immer `…/otwg20`. Damit nicht alle Schaltflächen zusammen liegen, legen Sie jedes Objekt in einen **benannten Ordner**:
+
+1. Bei **🔍 Website scannen** wählen Sie im Ergebnisfenster oben die **Seite** und den **Ordner** (z. B. `Bestellungen/Export`; `/` erzeugt Unterordner). Bereits verwendete Ordner erscheinen in der Liste. Den zuletzt gewählten Ordner nutzt auch **🖐 3-s-Erfassung**.
+2. In der Bibliothek wird der Baum zu **Website · Seite · 📁 Ordner · Schaltfläche**.
+3. Für ein vorhandenes Objekt: Rechtsklick → **📁 In Ordner verschieben...** oder das Feld **Ordner** in **Bearbeiten**.
+4. Rechtsklick auf einen Ordner: **✎ Ordner umbenennen...** (benennt auch die Unterordner um) und **🩺 Objekte des Ordners prüfen**.
+- Ein Ordner gruppiert nur. Er ändert nicht, wo das Element auf der Seite gesucht wird (das macht der **Container**). Routinen ändern sich nicht: Schritte verwenden weiter den Objektnamen.
+- Fenster (Objekt, Scan, Prüfung, Zeitplan) scrollen mit dem Mausrad, und die Schaltflächen **Speichern / Hinzufügen / Schließen** bleiben unten fest, sodass Sie die Fenster nicht mehr vergrößern müssen.
+
+> Beispiel: In der Bestellanwendung hat der Ordner `Bestellungen/Import` die Schaltflächen „Datei hochladen“ und „Validieren“, und `Bestellungen/Export` hat „Excel exportieren“. Sie öffnen den Ordner in der Anwendung, scannen, wählen den Ordner, und die Schaltflächen landen am richtigen Platz.

@@ -287,7 +287,7 @@ Each chapter briefly explains one procedure, step by step, with an example. Pick
 
 1. 📚 Library → **＋ New**: type the application name; AutoPilot suggests `OneDrive\AutoPilotDC\obiecte\<Application>\obiecte.json` (without OneDrive: in Documents). You can pick any other folder.
 2. **🔍 Scan site**: type the address and the AutoPilot browser opens. Sign in and open the page you want, then choose **🔍 Scan automatically**.
-3. You get the list of visible buttons, fields, lists, checkboxes and links (also inside iframes, up to 500). Click a row to tick / untick it; **No links** removes navigation menus. **💾 Add to library** saves them.
+3. You get the list of visible buttons, fields, lists, checkboxes and links (also inside iframes, up to 500). Click a row to **mark it in the browser** (so you see which button it is); the tick in the first column keeps or drops it (or Space / **☑ Keep / remove**). **✎ Rename** (F2, double-click on the name) changes the name. At the top choose the **Page** and **Folder** they go under (see chapter 28). **No links** removes navigation menus. **💾 Add to library** saves them.
 4. Open another menu or tab in the browser and choose **🔍 Scan again**. Objects already in the library are skipped.
 5. **🖐 3 s capture**: hold the cursor 3 seconds on a field or button (blue outline, countdown) and it is saved by itself; then move to the next one. Clicks work normally, so you can open menus. Esc in the browser or **Done** stops it.
 - The scan only reads the page already loaded: it does not click, type or send anything to the server, so it does not load the application. Hidden elements (closed menus, other tabs) are not seen until you open them.
@@ -307,3 +307,16 @@ Each chapter briefly explains one procedure, step by step, with an example. Pick
 - For a ⚠ "Covered" element, usually a window or message sits on top of it: close it and check again. If it stays, the routine needs a step before (close the message).
 
 > Example: after an application update you open the orders page and press 🩺 Check. "Save" is ✅, "Send" is ⚠ disabled (normal until you fill in the form) and "Export" is ❌: you recapture it with one click and the export routine works again.
+
+## 28. Folders in the library (sections under the same page)
+
+Some web applications change their "folders" (menu, tree on the left) without changing the address: always `…/otwg20`. So that not all buttons sit together, you put each object in a **named folder**:
+
+1. At **🔍 Scan site**, in the results window choose the **Page** and the **Folder** at the top (e.g. `Orders/Export`; `/` makes subfolders). Folders already used appear in the list. The last chosen folder is also used by **🖐 3 s capture**.
+2. In the library the tree becomes **Site · Page · 📁 Folder · button**.
+3. For an existing object: right-click → **📁 Move to folder...** or the **Folder** field in **Edit**.
+4. Right-click a folder: **✎ Rename the folder...** (also renames its subfolders) and **🩺 Check the folder's objects**.
+- A folder only groups. It does not change where the element is searched on the page (that is what a **Container** does). Routines do not change: steps still use the object name.
+- Windows (object, scan, check, schedule) scroll with the mouse wheel and the **Save / Add / Close** buttons stay fixed at the bottom, so you no longer need to enlarge them.
+
+> Example: in the orders application, the folder `Orders/Import` has the buttons "Upload file" and "Validate", and `Orders/Export` has "Export Excel". You open the folder in the application, scan, choose the folder and the buttons land in place.

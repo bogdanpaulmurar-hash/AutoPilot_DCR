@@ -285,7 +285,7 @@ Fiecare capitol explică pe scurt o procedură, pas cu pas, cu un exemplu. Alege
 
 1. 📚 Biblioteca → **＋ Noua**: scrii numele aplicației; AutoPilot propune `OneDrive\AutoPilotDC\obiecte\<Aplicație>\obiecte.json` (fără OneDrive: în Documente). Poți alege orice alt folder.
 2. **🔍 Scaneaza site**: scrii adresa, se deschide browserul AutoPilot. Te autentifici și deschizi pagina dorită, apoi alegi **🔍 Scaneaza automat**.
-3. Primești lista cu butoanele, câmpurile, listele, bifele și link-urile vizibile (și din iframe-uri, maxim 500). Click pe un rând îl bifează / debifează; **Fara link-uri** scoate meniurile de navigare. **💾 Adauga in biblioteca** le salvează.
+3. Primești lista cu butoanele, câmpurile, listele, bifele și link-urile vizibile (și din iframe-uri, maxim 500). Click pe un rând îl **marchează în browser** (ca să vezi ce buton e); bifa din prima coloană îl ține sau îl scoate (sau Space / **☑ Tine / scoate**). **✎ Redenumeste** (F2, dublu-click pe nume) schimbă numele. Sus alegi **Pagina** și **Folderul** sub care intră (vezi capitolul 28). **Fara link-uri** scoate meniurile de navigare. **💾 Adauga in biblioteca** le salvează.
 4. Deschizi alt meniu sau alt tab în browser și alegi **🔍 Scaneaza din nou**. Obiectele deja în bibliotecă sunt sărite.
 5. **🖐 Captura 3 s**: ții cursorul 3 secunde pe un câmp sau buton (contur albastru, numărătoare inversă) și se salvează singur; apoi treci la următorul. Click-urile merg normal, deci poți deschide meniuri. Esc în browser sau **Am terminat** oprește.
 - Scanarea doar citește pagina deja încărcată: nu dă click, nu scrie și nu trimite nimic la server, deci nu încarcă aplicația. Elementele ascunse (meniuri închise, alte taburi) nu se văd până nu le deschizi tu.
@@ -305,3 +305,16 @@ Fiecare capitol explică pe scurt o procedură, pas cu pas, cu un exemplu. Alege
 - La un element ⚠ „Acoperit”, de obicei o fereastră sau un mesaj stă peste el: închide-l și verifică din nou. Dacă rămâne, rutina are nevoie de un pas înainte (închide mesajul).
 
 > Exemplu: după o actualizare a aplicației, deschizi pagina de comenzi și apeși 🩺 Verifica. „Salveaza” e ✅, „Trimite” e ⚠ dezactivat (normal până completezi formularul), iar „Export” e ❌: îl recaptezi dintr-un click și rutina de export merge din nou.
+
+## 28. Foldere în bibliotecă (secțiuni sub aceeași pagină)
+
+Unele aplicații web își schimbă „folderele” (meniul, arborele din stânga) fără să schimbe adresa: tot `…/otwg20`. Ca să nu ai toate butoanele la comun, pui fiecare obiect într-un **folder cu nume**:
+
+1. La **🔍 Scaneaza site**, în fereastra cu rezultate alegi sus **Pagina** și **Folderul** (ex. `Comenzi/Export`; `/` face subfoldere). Folderele deja folosite apar în listă. Ultimul folder ales îl folosește și **🖐 Captura 3 s**.
+2. În bibliotecă arborele devine **Site · Pagină · 📁 Folder · buton**.
+3. Pentru un obiect existent: click dreapta → **📁 Muta in folder...** sau câmpul **Folder** din **Editeaza**.
+4. Click dreapta pe un folder: **✎ Redenumeste folderul...** (schimbă și subfolderele) și **🩺 Verifica obiectele folderului**.
+- Folderul doar grupează. Nu schimbă unde se caută elementul pe pagină (asta face **Containerul**). Rutinele nu se schimbă: pașii folosesc tot numele obiectului.
+- Ferestrele (obiect, scanare, verificare, programare) se derulează cu roata mouse-ului, iar butoanele **Salveaza / Adauga / Inchide** rămân fixe jos, deci nu mai trebuie să le măreșți.
+
+> Exemplu: în aplicația de comenzi, folderul `Comenzi/Import` are butoanele „Încarcă fișier” și „Validează”, iar `Comenzi/Export` are „Export Excel”. Deschizi folderul în aplicație, scanezi, alegi folderul și butoanele intră la locul lor.

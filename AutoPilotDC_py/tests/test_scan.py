@@ -262,5 +262,49 @@ class WebCheckTests(unittest.TestCase):
         self.assertTrue(any("scriere" in w for w in why), why)
 
 
+class FolderTests(unittest.TestCase):
+    """v4.11: foldere in biblioteca (Site · Pagina · Folder · obiect)."""
+
+    def _repo(self):
+        a = _wobj("Buton_Import", (LocatorKind.Id, "a"))
+        b = _wobj("Buton_Valideaza", (LocatorKind.Id, "b"))
+        c = _wobj("Buton_Export", (LocatorKind.Id, "c"))
+        d = _wobj("Buton_Fara_Folder", (LocatorKind.Id, "d"))
+        a.folder, b.folder, c.folder = "Comenzi/Import", " Comenzi \\ Import/", "Comenzi/Export"
+        return ObjectRepository(objects=[a, b, c, d])
+
+    def test_normalize_and_parts(self):
+        self.assertEqual("Comenzi/Export", scan.normalize_folder(" Comenzi \\ Export/ "))
+        self.assertEqual([], scan.folder_parts(""))
+        self.assertEqual(["Comenzi", "Import"], scan.folder_parts(self._repo().objects[1]))
+
+    def test_all_folders_include_parents(self):
+        self.assertEqual(["Comenzi", "Comenzi/Export", "Comenzi/Import"], scan.all_folders(self._repo()))
+
+    def test_in_folder_includes_subfolders(self):
+        repo = self._repo()
+        self.assertEqual(["Buton_Import", "Buton_Valideaza", "Buton_Export"],
+                         [o.name for o in repo.objects if scan.in_folder(o, "Comenzi")])
+        self.assertEqual(["Buton_Export"], [o.name for o in repo.objects if scan.in_folder(o, "comenzi/export")])
+        self.assertFalse(scan.in_folder(repo.objects[3], "Comenzi"))
+
+    def test_rename_folder_renames_subfolders_too(self):
+        repo = self._repo()
+        n = scan.rename_folder(repo.objects, "Comenzi", "Orders")
+        self.assertEqual(3, n)
+        self.assertEqual(["Orders/Import", "Orders/Import", "Orders/Export", ""], [o.folder for o in repo.objects])
+        scan.rename_folder(repo.objects, "Orders/Export", "Iesire")
+        self.assertEqual("Orders/Iesire", repo.objects[2].folder)
+
+    def test_folder_survives_save_and_load(self):
+        path = os.path.join(tempfile.mkdtemp(prefix="apdc_fold_"), "obiecte.json")
+        RepositoryStore.save(self._repo(), path)
+        loaded = RepositoryStore.load(path)
+        self.assertEqual("Comenzi/Export", next(o for o in loaded.objects if o.name == "Buton_Export").folder)
+        import json
+        with open(path, encoding="utf-8") as f:   # cheia noua e doar un camp in plus (C# il ignora)
+            self.assertIn("folder", json.dumps(json.load(f)))
+
+
 if __name__ == "__main__":
     unittest.main()
