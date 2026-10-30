@@ -127,6 +127,10 @@ Jedes Kapitel erklärt kurz einen Ablauf, Schritt für Schritt, mit einem Beispi
 - **Desktop**: Anwendung starten, Fenster verbinden, Fenster schließen.
 - In jedem Schritt: **Maximal auf das Objekt warten (ms)**, **Bei Fehler**, **Vorher / nachher warten**, **Kommentar**, **Schritt aktiv**.
 - **▶ Schritt testen** führt nur den gewählten Schritt aus, mit den Variablen der letzten Ausführung.
+- **🎯 Neu markieren** (neben ▶ Schritt testen): Hat der Schritt das falsche Element gefunden, klicken Sie auf das richtige (SAP / Desktop: F2). Sie wählen:
+  - **Locatoren ersetzen**: Das Objekt behält seinen Namen, alle Schritte, die es verwenden, suchen das neue Element (das Fenster zeigt, wie viele);
+  - **Neues Objekt nur für diesen Schritt**: Das alte Objekt bleibt unverändert, der Schritt erhält das neue Objekt (im selben Ordner).
+  Ein Schritt ohne Objekt erhält direkt ein neues Objekt. Die Bibliothek wird gespeichert; danach erneut ▶ Schritt testen. Ein anderes vorhandenes Objekt wählen Sie in der Liste „An welchem Objekt“.
 
 > Beispiel: „Text lesen“ auf der Bestätigungsmeldung, gespeichert in der Variable `Mesaj`, danach „Log“ mit `Erhalten: {Mesaj}`.
 

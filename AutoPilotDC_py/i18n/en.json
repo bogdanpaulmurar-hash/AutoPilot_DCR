@@ -2008,5 +2008,17 @@
  "Rutina ruleaza de la inceput, doar pe primul rand din Excel. Cand un obiect nu e gasit, rularea se opreste si poti alege 🎯 Marcheaza acum: dai click pe element, iar pasul se reia.\n\nAtentie: pasii se fac de-adevaratelea (Save, Trigger...). Foloseste un rand de test.": "The routine runs from the start, on the first Excel row only. When an object is not found, the run stops and you can choose 🎯 Mark now: click the element and the step is retried.\n\nCareful: the steps are really performed (Save, Trigger...). Use a test row.",
  "🎯 Marcheaza acum": "🎯 Mark now",
  "🎯 Marcheaza acum [{0}] pe pagina, apoi pasul se reia.": "🎯 Mark now [{0}] on the page, then the step is retried.",
- "▶ Ruleaza si marcheaza s-a terminat: verifica lista, apoi ruleaza rutina normal.": "▶ Run and mark finished: check the list, then run the routine normally."
+ "▶ Ruleaza si marcheaza s-a terminat: verifica lista, apoi ruleaza rutina normal.": "▶ Run and mark finished: check the list, then run the routine normally.",
+ "🎯 Remarcheaza": "🎯 Re-mark",
+ "Pasul a gasit alt element? Da click pe elementul corect: obiectul primeste locatoarele noi (sau faci un obiect nou doar pentru acest pas)": "Did the step find the wrong element? Click the right one: the object gets the new locators (or you make a new object just for this step)",
+ "Inlocuieste locatoarele: obiectul [{0}] pastreaza numele, deci toti cei {1} pasi care il folosesc vor cauta elementul nou.\nObiect nou doar pentru acest pas: [{0}] ramane neschimbat pentru ceilalti pasi.": "Replace the locators: the object [{0}] keeps its name, so all {1} steps that use it will look for the new element.\nNew object just for this step: [{0}] stays unchanged for the other steps.",
+ "🎯 Remarcheaza obiectul": "🎯 Re-mark the object",
+ "Ce faci cu [{0}]?": "What do you want to do with [{0}]?",
+ "Inlocuieste locatoarele": "Replace the locators",
+ "Obiect nou doar pentru acest pas": "New object just for this step",
+ "obiect nou": "new object",
+ "🎯 Click pe element (SAP / Desktop: F2). Esc = anulare.": "🎯 Click the element (SAP / Desktop: F2). Esc = cancel.",
+ "🎯 Obiect nou": "🎯 New object",
+ "Numele obiectului nou:": "Name of the new object:",
+ "🎯 [{0}] are acum {1} locatoare. Apasa ▶ Testeaza pasul ca sa verifici.": "🎯 [{0}] now has {1} locators. Press ▶ Test the step to check."
 }

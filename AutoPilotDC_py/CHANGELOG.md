@@ -2,6 +2,14 @@
 
 Pornirea aplicației: **`AutoPilot_DC.pyw`** (sau scurtătura „AutoPilot DC” de pe Desktop). Numele fișierelor nu se mai schimbă de la o versiune la alta, deci scurtăturile și pornirea cu Windows rămân valabile.
 
+## 4.19.0 — 2026-10-30
+- **🎯 Remarchează direct din pas** (nou): lângă ▶ Testează pasul (și la ⏱ Așteaptă un obiect). Dacă testul arată că pasul a găsit alt element, nu mai trebuie să mergi în 📚 Bibliotecă: dai click pe elementul corect (SAP / Desktop: F2) și alegi:
+  - **Înlocuiește locatoarele**: obiectul își păstrează numele (deci și pașii), locatoarele greșite dispar; fereastra spune câți pași folosesc obiectul;
+  - **Obiect nou doar pentru acest pas**: obiectul vechi rămâne neschimbat, pasul primește un obiect nou (nume propus `<vechi>_2`, același folder).
+  - Pasul fără obiect primește direct un obiect nou. Biblioteca se salvează; apoi ▶ Testează pasul din nou. Esc = anulare, nimic nu se schimbă.
+- Instrucțiuni: capitolul 11 în RO / EN / DE; texte noi în i18n.
+- Teste (Linux, Python 3.12, Xvfb): `test_remark_step` nou (7: obiectul pasului inclusiv Așteaptă, câți pași îl folosesc, înlocuire păstrează numele, obiect nou doar pentru pas, pas fără obiect, Esc nu schimbă nimic, butonul din Studio real cu browser fals). Suita întreagă: 224 rulate, aceleași eșecuri vechi ca înainte (2 failures, 2 errors care cer Windows). Netestat pe Windows: Spy-ul real din pas (Edge / SAP F2).
+
 ## 4.17.0 — 2026-10-30
 - **🎯 Completează obiectele → ▶ Rulează și marchează** (nou): obiectele de pe alte tab-uri sau secțiuni (ex. General, Contracts) nu se văd pe pagina deschisă, deci 🧪 Verifică toate le dădea ✖. Acum rutina însăși face navigarea:
   - rulează de la început, **doar pe primul rând din Excel**;

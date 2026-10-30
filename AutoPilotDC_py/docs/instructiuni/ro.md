@@ -125,6 +125,10 @@ Fiecare capitol explică pe scurt o procedură, pas cu pas, cu un exemplu. Alege
 - **Desktop**: Pornește aplicație, Atașează fereastra, Închide fereastra.
 - În fiecare pas: **Așteaptă obiectul maxim (ms)**, **La eroare**, **Așteaptă înainte / după**, **Comentariu**, **Pas activ**.
 - **▶ Testează pasul** execută doar pasul selectat, cu variabilele ultimei rulări.
+- **🎯 Remarchează** (lângă ▶ Testează pasul): dacă pasul a găsit alt element, dai click pe cel corect (SAP / Desktop: F2). Alegi:
+  - **Înlocuiește locatoarele**: obiectul își păstrează numele, deci toți pașii care îl folosesc caută elementul nou (fereastra spune câți sunt);
+  - **Obiect nou doar pentru acest pas**: obiectul vechi rămâne neschimbat, pasul primește obiectul nou (în același folder).
+  Pasul fără obiect primește direct un obiect nou. Biblioteca se salvează; apoi apasă din nou ▶ Testează pasul. Alt obiect existent se alege din lista „Pe ce obiect”.
 
 > Exemplu: „Citește textul” pe mesajul de confirmare, salvat în variabila `Mesaj`, apoi „Log” cu `Am primit: {Mesaj}`.
 
