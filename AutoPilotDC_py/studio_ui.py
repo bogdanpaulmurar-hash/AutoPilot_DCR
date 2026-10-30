@@ -824,6 +824,7 @@ class StudioPanel(tk.Frame):
                                 "(dublu-click)"),
                                ("📥 Ca pasi", self.insert_routine_steps,
                                 "Copiaza pasii rutinei in rutina curenta (ii poti edita; nu mai urmaresc originalul)"),
+                               ("✎ Nume", self.rename_routine_entry, "Schimba numele rutinei alese"),
                                ("📂 Deschide", self.open_selected_routine, "Deschide rutina pentru editare")]:
             self._btn(row, text, cmd, tip=tip).pack(side="left", padx=1)
         hint = tk.Label(host, text="Ai deja o rutina de cativa pasi? Adaug-o aici ca pas si pune intre ele doar pasii "
@@ -980,6 +981,7 @@ class StudioPanel(tk.Frame):
         m = tk.Menu(self, tearoff=0, bg=C["bg_card"], fg=C["text"], activebackground=C["primary"])
         m.add_command(label="➕ Adauga ca pas („Ruleaza rutina”)", command=self.add_routine_step)
         m.add_command(label="📥 Insereaza ca pasi (copie)", command=self.insert_routine_steps)
+        m.add_command(label="✎ Redenumeste...", command=self.rename_routine_entry)
         m.add_separator()
         m.add_command(label="📂 Deschide pentru editare", command=self.open_selected_routine)
         m.tk_popup(ev.x_root, ev.y_root)
@@ -1052,6 +1054,32 @@ class StudioPanel(tk.Frame):
         self.mark_dirty()
         self.rebuild_tree(steps[0] if steps else None)
         self.set_status(f"Pasul a fost inlocuit cu cei {len(steps)} pasi ai rutinei [{sub.name}].")
+
+    def rename_routine_entry(self):
+        """Schimba numele afisat al rutinei alese direct in fisier (fara s-o deschizi)."""
+        e = self._sel_routine_entry()
+        if e is None:
+            self.set_status("Alege o rutina din lista.")
+            return
+        if self._is_current_routine(e.path):
+            messagebox.showinfo("Rutine", "Rutina e deschisa acum: schimba numele din ⚙ Rutina (campul Nume) si salveaz-o.",
+                                parent=self)
+            return
+        sub = self._load_for_copy(e.path)
+        if sub is None:
+            return
+        new = input_dialog(self, "✎ Redenumeste rutina", "Numele rutinei:", sub.name, self.C)
+        new = (new or "").strip()
+        if not new or new == sub.name:
+            return
+        sub.name = new
+        try:
+            RoutineStore.save(sub, e.path)
+        except Exception as ex:  # noqa: BLE001
+            messagebox.showerror("Rutine", f"Nu am putut salva:\n{ex}", parent=self)
+            return
+        self.set_status(f"Rutina a fost redenumita: [{new}].")
+        self.refresh_routines()
 
     def open_selected_routine(self):
         e = self._sel_routine_entry()
