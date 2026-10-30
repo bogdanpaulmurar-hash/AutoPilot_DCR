@@ -52,6 +52,7 @@ class ImportResult:
     new_objects: List[UiObject] = field(default_factory=list)
     issues: List[ImportIssue] = field(default_factory=list)
     source: str = "text"      # "text" sau "json"
+    todos: int = 0            # randuri "# TODO:" (locurile unde intervine omul)
 
     @property
     def errors(self) -> List[ImportIssue]:
@@ -194,6 +195,9 @@ COMMANDS: List[Command] = [
     Command("end", ("sfarsit", "gata bloc"), ("end",), "SFARSIT", "END", "Inchide DACA / REPETA / PENTRU / INCEARCA."),
     Command("set", ("seteaza",), ("set",), "SETEAZA {Variabila} = <valoare>", "SET {Variable} = <value>",
             "Da o valoare unei variabile."),
+    Command("ask_value", ("intreaba valoare",), ("ask value",), "INTREABA VALOARE \"<text>\" -> {Variabila}",
+            "ASK VALUE \"<text>\" -> {Variable}",
+            "Omul tasteaza o valoare (ex. o data din alt sistem); intra in variabila."),
     Command("ask", ("intreaba",), ("ask",), "INTREABA \"<text>\" [BUTOANE A, B]", "ASK \"<text>\" [BUTTONS A, B]",
             "Intreaba utilizatorul; raspunsul in {Raspuns}."),
     Command("manual", ("manual",), ("manual",), "MANUAL \"<ce face omul>\"", "MANUAL \"<what the person does>\"",
@@ -310,10 +314,18 @@ class StepImporter:
         self._url = ""
         # stiva: (nod, lista curenta, randul unde a inceput)
         self._stack: List[Tuple[Optional[RprNode], List[RprNode], int]] = [(None, res.routine.steps, 0)]
+        self._todo: List[str] = []          # TODO-urile de pus in comentariul pasului urmator
         self._chained: set = set()          # DACA-urile deschise de ALTFEL DACA
         self._end_if = 0                    # randul SFARSIT-ului care tocmai a inchis un DACA fara ALTFEL
         self._prev_end_if = 0
         for no, raw in enumerate(text.split("\n"), 1):
+            todo = _TODO.match(raw)
+            if todo:   # locurile unde trebuie sa intervina omul (le marcheaza AI-ul)
+                res.issues.append(ImportIssue(no, raw.strip(), _t("De facut: {0}").format(
+                    todo.group(1).strip() or raw.strip()), error=False))
+                res.todos += 1
+                self._todo.append("TODO: " + (todo.group(1).strip() or raw.strip()))
+                continue
             line = _clean_line(raw)
             if not line:
                 continue
@@ -334,6 +346,9 @@ class StepImporter:
         return res
 
     def _add(self, node: RprNode) -> None:
+        if self._todo:   # in Studio, TODO-ul ramane in comentariul pasului
+            node.comment = "\n".join(([node.comment] if node.comment else []) + self._todo)
+            self._todo = []
         self._stack[-1][1].append(node)
 
     def _open(self, node: RprNode, lst: List[RprNode], no: int) -> None:
@@ -362,6 +377,9 @@ class StepImporter:
 
     def _c_variable(self, no, rest):
         name, val = _split_eq(rest, _t("VARIABILA: Nume = valoare"))
+        if len(self._stack) > 1:   # in interiorul unui bloc e un pas (altfel valoarea ar fi doar cea de start)
+            self._add(SetVariableNode(name=_var_name(name), value=_unquote(val)))
+            return
         self._res.routine.variables[_var_name(name)] = _unquote(val)
 
     # ── browser / aplicatii ──
@@ -570,6 +588,11 @@ class StepImporter:
         buttons = ",".join(b.strip() for b in m.group(1).split(",") if b.strip()) if m else "Continua,Opreste"
         self._add(QuestionNode(text=text.strip(), buttons=buttons))
 
+    def _c_ask_value(self, no, rest):
+        text, var = _split_arrow(rest)
+        self._add(QuestionNode(text=_unquote(text), ask_value=True, output_variable=_var_name(var) or "Raspuns",
+                               buttons="OK", stop_button="", skip_button=""))
+
     def _c_manual(self, no, rest):
         text = _unquote(rest)
         self._add(QuestionNode(text=_t("Pas manual: {0}\n\nFa pasul, apoi apasa Continua.").format(text),
@@ -654,6 +677,18 @@ class StepImporter:
                     and o.active_locators[0].value == locs[0].value:
                 self._new[key] = o
                 return o
+        # v4.16.2: obiect scanat / marcat cu Spy (alte locatoare, acelasi text) -> il refolosim, cu toate locatoarele lui
+        if "{" not in value:
+            v = value.strip().lower()
+            for o in self.repo.objects:
+                if o.technology != tech or (otype and o.object_type and o.object_type != otype):
+                    continue
+                texts = {o.captured_text.strip().lower()} | {l.value.split("|")[-1].strip().lower()
+                                                               for l in o.active_locators
+                                                               if l.kind in _TEXT_KINDS}
+                if v in texts:
+                    self._new[key] = o
+                    return o
         base = sanitize_name(f"{_KIND_PREFIX[kind]}_{value}")[:48] or "Obiect"
         taken = {o.name.lower() for o in self.repo.objects} | {o.name.lower() for o in self._new.values()}
         name, k = base, 2
@@ -702,10 +737,24 @@ def _declare_missing_variables(res: ImportResult) -> None:
 # ─────────────────────────────────────────────────────────────
 # Ajutoare de text
 # ─────────────────────────────────────────────────────────────
+_TEXT_KINDS = {LocatorKind.Text, LocatorKind.Label, LocatorKind.Role, LocatorKind.Placeholder, LocatorKind.Name,
+               LocatorKind.UiaName}
+_TODO = re.compile(r"^\s*(?:#|//)\s*(?:TODO|DE FACUT|DE FĂCUT|DE COMPLETAT|DE VERIFICAT)\b\s*:?\s*(.*)$", re.I)
+
+
 def _strip_fence(text: str) -> str:
-    """AI-ul pune des textul intre ``` ... ```: pastram doar interiorul primului bloc."""
-    m = re.search(r"```[^\n]*\n(.*?)```", text, re.S)
-    return m.group(1) if m else text
+    """AI-ul pune des textul intre ``` ... ```: pastram doar interiorul blocurilor (explicatiile din jur se ignora).
+    Un raspuns lung, continuat in mai multe mesaje, are mai multe blocuri: se lipesc unul dupa altul, cu
+    randurile de fara bloc inlocuite de randuri goale, ca numerele randurilor sa ramana cele din text."""
+    blocks = list(re.finditer(r"```[^\n]*\n(.*?)```", text, re.S))
+    if not blocks:
+        return text
+    out, pos = [], 0
+    for m in blocks:
+        out.append("\n" * text.count("\n", pos, m.start(1)))
+        out.append(m.group(1))
+        pos = m.end(1)
+    return "".join(out)
 
 
 def _clean_line(raw: str) -> str:
@@ -771,32 +820,66 @@ def _split_arrow(rest: str) -> Tuple[str, str]:
 # ─────────────────────────────────────────────────────────────
 # Promptul pentru AI (in limba aplicatiei)
 # ─────────────────────────────────────────────────────────────
-def ai_prompt(lang: str = "ro") -> str:
-    """Textul de dat AI-ului impreuna cu documentul Word: explica formatul si regulile."""
+# Textele promptului (RO); traducerea EN e in i18n (promptul in germana ramane in engleza, AI-ul il intelege).
+_P_INTRO = [
+    "Esti un asistent care transforma o procedura sau un program intr-o rutina pentru AutoPilot DC, un tool RPA "
+    "care lucreaza pe ecran (browser, SAP GUI, aplicatii Windows) si cu fisiere Excel.",
+    "",
+    "SURSA poate fi: o procedura (Word, PDF, e-mail, notite), cu sau fara capturi de ecran; cod care automatizeaza "
+    "aceeasi aplicatie (C#, VBA, Python, Selenium, SilkTest, UiPath...); sau ambele.",
+    "",
+    "CE INTORCI:",
+    "1. Un bloc de cod ```text ... ``` cu rutina completa, in formatul de mai jos.",
+    "2. Dupa bloc, o lista scurta DE VERIFICAT: fiecare # TODO din rutina, cu ce trebuie facut. Nimic altceva.",
+    "- Daca rutina nu incape intr-un raspuns, opreste-te dupa un SFARSIT, scrie # CONTINUARE si continua in "
+    "raspunsul urmator cu un bloc ```text nou (fara antet). Blocurile se lipesc unul dupa altul la import.",
+    "",
+    "REGULI:",
+    "- Un pas pe rand. Fiecare rand incepe cu o comanda din lista de mai jos (litere mari sau mici).",
+    "- Textele de pe ecran (butoane, campuri, optiuni) se scriu EXACT ca in sursa, intre ghilimele.",
+    "- VARIABILA: Nume = valoare doar in antet, pentru valorile date inainte de rulare (fisiere, adrese, "
+    "utilizatori). In interiorul pasilor foloseste SETEAZA {Nume} = valoare.",
+    "- Daca procedura se repeta pentru mai multe randuri dintr-un Excel, foloseste PENTRU FIECARE RAND; "
+    "valoarea unei coloane este {Rand.Coloana}. Variabilele merg si in textul obiectelor: text \"{Rand.ID}\".",
+    "- Nu inventa adrese, coduri, selectori sau texte care nu sunt in sursa: pune o variabila sau textul probabil "
+    "si un # TODO.",
+    "- Blocurile DACA / REPETA / PENTRU FIECARE RAND / INCEARCA se inchid cu SFARSIT.",
+    "- DACA ... ALTFEL ... SFARSIT are un singur SFARSIT, dupa ramura ALTFEL; nu pune SFARSIT inainte de "
+    "ALTFEL. Un DACA in interiorul altui DACA se inchide cu propriul SFARSIT. Pentru mai multe variante "
+    "foloseste ALTFEL DACA <conditie> (tot un singur SFARSIT la final).",
+    "- Indenteaza cu 2 spatii pasii din interiorul unui bloc, ca sa se vada unde se inchide fiecare.",
+    "- Conditiile > si < compara numere. Daca textul citit are si litere (ex. \"Contracts (3)\"), foloseste "
+    "contine sau pune un # TODO.",
+    "- Randurile care incep cu # sunt comentarii.",
+    "",
+    "UNDE INTERVINE OMUL: pune un rand # TODO: <ce trebuie facut si de ce> deasupra pasului, cand:",
+    "- textul sau selectorul obiectului e ghicit ori lipseste;",
+    "- o valoare vine din alt sistem, un API, un calcul sau o baza de date: foloseste INTREABA VALOARE \"...\" -> "
+    "{Variabila} (omul o tasteaza la rulare) sau MANUAL \"...\";",
+    "- o decizie din sursa nu e clara sau un pas nu are comanda potrivita.",
+    "AutoPilot arata fiecare # TODO in lista de probleme; click pe el duce la rand.",
+    "",
+    "DACA SURSA E COD:",
+    "- Pastreaza exact selectorii din cod: id \"...\", css \"...\", xpath \"...\", sap \"wnd[0]/...\", "
+    "desktop \"...\" (nu-i inlocui cu texte).",
+    "- Tradu doar ce se face pe ecran si in Excel: click, scriere, citire, asteptari, conditii, bucle. Ignora "
+    "logging-ul tehnic, try/catch de infrastructura, pornirea driverului, conexiunile, clasele ajutatoare.",
+    "- O metoda folosita in mai multe locuri: scrie pasii in fiecare loc (sau # TODO: rutina separata, apoi "
+    "RULEAZA RUTINA).",
+    "- Mesajele pe care codul le scrie in Excel sau in log se pastreaza (SCRIE IN EXCEL, LOG).",
+    "- Calculele (date, numere, texte) pe care comenzile nu le fac: # TODO + INTREABA VALOARE.",
+    "",
+    "DACA SURSA ARE POZE: foloseste-le doar ca sa afli textul exact al butoanelor, campurilor si coloanelor; "
+    "nu descrie pozele.",
+]
+
+
+def ai_prompt(lang: str = "ro", objects: Optional[List[UiObject]] = None) -> str:
+    """Textul de dat AI-ului impreuna cu sursa (document Word, cod, poze): explica formatul si regulile.
+    `objects`: biblioteca curenta; AI-ul foloseste [Nume] pentru obiectele care exista deja."""
     en = lang != "ro"
     t = _t
-    lines = [
-        t("Esti un asistent care transforma o procedura (document Word) in pasi pentru AutoPilot DC, un tool RPA."),
-        t("Raspunde DOAR cu pasii, intr-un singur bloc de cod ```text ... ```, fara explicatii."),
-        "",
-        t("REGULI:"),
-        t("- Un pas pe rand. Fiecare rand incepe cu o comanda din lista de mai jos (litere mari sau mici)."),
-        t("- Textele de pe ecran (butoane, campuri, optiuni) se scriu EXACT ca in document, intre ghilimele."),
-        t("- Valorile care se schimba de la o rulare la alta devin variabile: VARIABILA: Nume = valoare, apoi {Nume}."),
-        t("- Daca procedura se repeta pentru mai multe randuri dintr-un Excel, foloseste PENTRU FIECARE RAND; "
-          "valoarea unei coloane este {Rand.Coloana}."),
-        t("- Ce nu se poate automatiza (o decizie, o semnatura, un telefon) devine MANUAL \"...\"."),
-        t("- Nu inventa adrese, coduri sau texte care nu sunt in document; daca lipsesc, pune o variabila si un "
-          "comentariu # pe randul de deasupra."),
-        t("- Blocurile DACA / REPETA / PENTRU FIECARE RAND / INCEARCA se inchid cu SFARSIT."),
-        t("- DACA ... ALTFEL ... SFARSIT are un singur SFARSIT, dupa ramura ALTFEL; nu pune SFARSIT inainte de "
-          "ALTFEL. Un DACA in interiorul altui DACA se inchide cu propriul SFARSIT. Pentru mai multe variante "
-          "foloseste ALTFEL DACA <conditie> (tot un singur SFARSIT la final)."),
-        t("- Indenteaza cu 2 spatii pasii din interiorul unui bloc, ca sa se vada unde se inchide fiecare."),
-        t("- Randurile care incep cu # sunt comentarii."),
-        "",
-        t("COMENZI:"),
-    ]
+    lines = [t(x) if x else "" for x in _P_INTRO] + ["", t("COMENZI:")]
     for c in COMMANDS:
         lines.append(f"  {c.syntax_en if en else c.syntax_ro}  —  {t(c.help)}")
     lines += ["", t("OBIECTE (<obiect> in comenzi):")]
@@ -806,9 +889,15 @@ def ai_prompt(lang: str = "ro") -> str:
               "  {Var} = \"x\" · {Var} != \"x\" · {Var} " + ("contains" if en else "contine") + " \"x\" · {Var} > 10 · "
               + ("visible" if en else "vizibil") + " <obj> · " + ("exists" if en else "exista") + " <obj> · "
               + ("not exists" if en else "nu exista") + " <obj> · A " + ("AND" if en else "SI") + " B · A "
-              + ("OR" if en else "SAU") + " B",
-              "", t("EXEMPLU:"), "```text", _EXAMPLE_EN if en else _EXAMPLE_RO, "```", "",
-              t("Procedura de transformat:"), ""]
+              + ("OR" if en else "SAU") + " B"]
+    objs = [o for o in (objects or []) if o.name and not o.is_container][:300]
+    if objs:
+        lines += ["", t("OBIECTE DEJA IN BIBLIOTECA (foloseste [Nume] cand se potrivesc):")]
+        for o in objs:
+            hint = o.captured_text or (str(o.active_locators[0].value) if o.active_locators else "")
+            lines.append(f"  [{o.name}]  —  {o.object_type or o.technology}" + (f": \"{hint[:60]}\"" if hint else ""))
+    lines += ["", t("EXEMPLU:"), "```text", _EXAMPLE_EN if en else _EXAMPLE_RO, "```", "",
+              t("Sursa de transformat:"), ""]
     return "\n".join(lines)
 
 

@@ -462,6 +462,9 @@ class StudioRunHost(RunHost):
     def ask(self, title, text, buttons):
         return self._p.call_ui(lambda: choice_dialog(self._p, title, text, list(buttons), C=self._p.C))
 
+    def ask_value(self, title, text, initial=""):
+        return self._p.call_ui(lambda: input_dialog(self._p, title, text, initial, C=self._p.C))
+
     def ask_on_error(self, node, error, inside_excel_loop):
         btns = ["Reincearca", "Sari pasul"] + (["Sari randul"] if inside_excel_loop else []) + ["Opreste"]
         ans = self._p.call_ui(lambda: self._p.paused_dialog(
@@ -4105,6 +4108,8 @@ class PropertyEditor:
             self.combo(node, "Culoare celula", CELL_COLORS, lambda: node.color, lambda v: setattr(node, "color", v))
         elif isinstance(node, QuestionNode):
             self.text(node, "Intrebarea", lambda: node.text, lambda v: setattr(node, "text", v), multiline=True)
+            self.check(node, "Camp de tastat: valoarea scrisa intra in variabila (fara butoane)",
+                       lambda: node.ask_value, lambda v: setattr(node, "ask_value", v))
             self.text(node, "Butoane (separate prin virgula)", lambda: node.buttons, lambda v: setattr(node, "buttons", v), vars_=False)
             self.text(node, "Raspunsul se salveaza in variabila", lambda: node.output_variable,
                       lambda v: setattr(node, "output_variable", v), vars_=False)
