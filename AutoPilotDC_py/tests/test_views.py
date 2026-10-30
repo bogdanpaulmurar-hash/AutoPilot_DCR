@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ============================================================
 # AutoPilot DC v4.15 — Teste: bara de activitati, tab-uri pentru rutine,
-# cronologia rularii, ecranul Excel (reia randul), fluxul (v4.18: zoom, harta, restrangere, export).
+# cronologia rularii, ecranul Excel (reia randul), fluxul (v4.20: zoom, harta, restrangere, export).
 #   Rulare:  py -m unittest tests.test_views
 # ============================================================
 

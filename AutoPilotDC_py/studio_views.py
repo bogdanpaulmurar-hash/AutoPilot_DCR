@@ -627,7 +627,7 @@ class ExcelRunView(tk.Frame):
 class FlowView(tk.Frame):
     """Pasii ca un flux de carduri legate; ramurile (Atunci / Altfel...) stau una langa alta.
     Click pe card = pasul se alege in arbore (proprietatile in dreapta); dublu-click = inapoi la lista de pasi.
-    v4.18: zoom (Ctrl + rotita, − / +), tragere pe fundal, Potriveste, harta mica, ramuri restranse, export PNG / SVG.
+    v4.20: zoom (Ctrl + rotita, − / +), tragere pe fundal, Potriveste, harta mica, ramuri restranse, export PNG / SVG.
 
     Desenul se face o data in coordonate „logice” (zoom 100 %) intr-o lista de primitive (self._prims);
     canvasul, harta mica si exportul le deseneaza pe aceleasi, la scara lor."""
