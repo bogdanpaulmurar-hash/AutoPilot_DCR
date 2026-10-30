@@ -180,7 +180,7 @@ class VideoController:
         path = filedialog.askopenfilename(title=tr("Deschide un film"), initialdir=self.settings.folder,
                                           filetypes=[(tr("Filme AutoPilot"), "*" + sr.EXT), (tr("Toate fisierele"), "*.*")])
         if path:
-            VideoEditor(self.root, self.C, path)
+            open_video(self.root, self.C, path, on_status=self.on_status)
 
 
 # ─────────────────────────────────────────────────────────────
@@ -198,7 +198,7 @@ class WindowPicker(tk.Toplevel):
         tk.Label(self, text=tr("🎥 Click pe fereastra pe care vrei s-o inregistrezi (doar ea apare in film).  Esc = anuleaza"),
                  bg=C["primary"], fg="white", font=("Segoe UI", 10, "bold"), padx=12, pady=6).pack(side="left")
         tk.Button(self, text=tr("Anuleaza"), command=lambda: self._finish(0), bg="white", fg=C["primary"], relief="flat",
-                  font=("Segoe UI", 9, "bold")).pack(side="left", padx=8, pady=4)
+                  font=("Segoe UI", 10, "bold")).pack(side="left", padx=8, pady=4)
         self.update_idletasks()
         self.geometry(f"+{(self.winfo_screenwidth() - self.winfo_reqwidth()) // 2}+8")
         _exclude_from_capture(self)
@@ -254,7 +254,7 @@ class RecordingBar(tk.Toplevel):
                                 font=("Segoe UI", 10, "bold"), padx=8, cursor="hand2")
         self._pause.pack(side="left", padx=2, pady=4)
         tk.Button(self, text="⏹ " + tr("Stop"), command=lambda: ctl.stop(), relief="flat", bg="#C0392B", fg="white",
-                  font=("Segoe UI", 9, "bold"), padx=8, cursor="hand2").pack(side="left", padx=(2, 8), pady=4)
+                  font=("Segoe UI", 10, "bold"), padx=8, cursor="hand2").pack(side="left", padx=(2, 8), pady=4)
         self.update_idletasks()
         self.geometry(f"+{self.winfo_screenwidth() // 2 - self.winfo_reqwidth() // 2}+4")
         _exclude_from_capture(self)
@@ -304,8 +304,9 @@ class VideoEditor(tk.Toplevel):
             return
         self.title(("🎬 " if readonly else "🎥 ") + self.v.m.get("title", os.path.basename(path)))
         self.configure(bg=C["bg_main"])
-        self.geometry("1180x760")
-        self.minsize(820, 520)
+        import ui_theme
+        ui_theme.fit_window(self, 1180, 760)   # v4.14: incape si pe un laptop 1366 x 768
+        self.minsize(min(820, self.winfo_screenwidth() - 40), min(520, self.winfo_screenheight() - 90))
         self.playing = False
         self.out_t = 0.0
         self.speed = 1.0
@@ -325,7 +326,7 @@ class VideoEditor(tk.Toplevel):
         C = self.C
         bg = color or C["bg_input"]
         b = tk.Button(parent, text=text, command=cmd, bg=bg, fg="white" if color else C["text"], relief="flat",
-                      bd=0, font=("Segoe UI", 9, "bold"), padx=8, pady=3, cursor="hand2",
+                      bd=0, font=("Segoe UI", 10, "bold"), padx=8, pady=3, cursor="hand2",
                       activebackground=C["primary"], activeforeground="white")
         return b
 
@@ -368,7 +369,7 @@ class VideoEditor(tk.Toplevel):
         tk.Label(right, text=tr("Capitole"), bg=C["bg_card"], fg=C["primary"], font=("Segoe UI", 10, "bold")).pack(
             anchor="w", padx=10, pady=(8, 2))
         self.chapters = tk.Listbox(right, height=6, bg=C["bg_input"], fg=C["text"], relief="flat",
-                                   selectbackground=C["primary"], font=("Segoe UI", 9), exportselection=False)
+                                   selectbackground=C["primary"], font=("Segoe UI", 10), exportselection=False)
         self.chapters.pack(fill="x", padx=10)
         self.chapters.bind("<<ListboxSelect>>", lambda e: self._goto_chapter())
         if not self.readonly:
@@ -379,7 +380,7 @@ class VideoEditor(tk.Toplevel):
         C = self.C
         tk.Label(right, text=tr("Editare"), bg=C["bg_card"], fg=C["primary"], font=("Segoe UI", 10, "bold")).pack(
             anchor="w", padx=10, pady=(10, 2))
-        self.ab_lbl = tk.Label(right, text=tr("Selectie A–B: —"), bg=C["bg_card"], fg=C["text_dim"], font=("Segoe UI", 9))
+        self.ab_lbl = tk.Label(right, text=tr("Selectie A–B: —"), bg=C["bg_card"], fg=C["text_dim"], font=("Segoe UI", 10))
         self.ab_lbl.pack(anchor="w", padx=10)
         grid = tk.Frame(right, bg=C["bg_card"])
         grid.pack(fill="x", padx=10, pady=4)
@@ -398,7 +399,7 @@ class VideoEditor(tk.Toplevel):
         idle = tk.Frame(right, bg=C["bg_card"])
         idle.pack(fill="x", padx=10, pady=(4, 0))
         tk.Label(idle, text=tr("Scurteaza pauzele mai lungi de (s, 0 = nu):"), bg=C["bg_card"], fg=C["text_dim"],
-                 font=("Segoe UI", 9)).pack(side="left")
+                 font=("Segoe UI", 10)).pack(side="left")
         self.idle = tk.StringVar(value=str(self.v.edits.get("idle") or 0))
         e = tk.Entry(idle, textvariable=self.idle, width=4, bg=C["bg_input"], fg=C["text"], relief="flat")
         e.pack(side="left", padx=4)
@@ -407,7 +408,7 @@ class VideoEditor(tk.Toplevel):
         tk.Label(right, text=tr("Editari"), bg=C["bg_card"], fg=C["primary"], font=("Segoe UI", 10, "bold")).pack(
             anchor="w", padx=10, pady=(10, 2))
         self.edits_lb = tk.Listbox(right, height=5, bg=C["bg_input"], fg=C["text"], relief="flat",
-                                   selectbackground=C["primary"], font=("Segoe UI", 9), exportselection=False)
+                                   selectbackground=C["primary"], font=("Segoe UI", 10), exportselection=False)
         self.edits_lb.pack(fill="x", padx=10)
         self._btn(right, "🗑 " + tr("Sterge editarea"), self._del_edit).pack(anchor="w", padx=10, pady=4)
         tk.Label(right, text=tr("Salvare / export"), bg=C["bg_card"], fg=C["primary"], font=("Segoe UI", 10, "bold")).pack(
@@ -418,7 +419,7 @@ class VideoEditor(tk.Toplevel):
         self._btn(ex, "GIF", lambda: self._export("gif")).pack(side="left", padx=1)
         self._btn(ex, "MP4", lambda: self._export("mp4")).pack(side="left", padx=1)
         self._btn(ex, "📂", lambda: os.startfile(os.path.dirname(self.v.path))).pack(side="left", padx=1)
-        self.info = tk.Label(right, text="", bg=C["bg_card"], fg=C["text_dim"], font=("Segoe UI", 8), wraplength=270,
+        self.info = tk.Label(right, text="", bg=C["bg_card"], fg=C["text_dim"], font=("Segoe UI", 9), wraplength=270,
                              justify="left")
         self.info.pack(anchor="w", padx=10, pady=6)
         self._refresh_edits()
@@ -684,6 +685,182 @@ class VideoEditor(tk.Toplevel):
 
 
 # ─────────────────────────────────────────────────────────────
+# v4.14 — cu ce aplicatie se deschid filmele
+#   "" (implicit)  = playerul / editorul AutoPilot
+#   "system"       = aplicatia din Windows pentru MP4 (Filme si TV, VLC daca e implicit...)
+#   cale .exe      = o aplicatie aleasa (de ex. VLC)
+# Celelalte aplicatii nu cunosc .apvid: filmul se exporta o data in MP4 langa el
+# (sau GIF daca lipseste opencv-python) si se refoloseste cat timp filmul nu se schimba.
+# ─────────────────────────────────────────────────────────────
+PLAYER_CHOICES = [(sr.PLAYER_BUILTIN, "Player AutoPilot (redare + editare)"),
+                  (sr.PLAYER_SYSTEM, "Aplicatia implicita din Windows (MP4)"),
+                  ("exe", "Alta aplicatie de pe laptop (ex. VLC)…")]
+
+
+def player_label(player: str) -> str:
+    p = (player or "").strip()
+    if not p:
+        return PLAYER_CHOICES[0][1]
+    if p == sr.PLAYER_SYSTEM:
+        return PLAYER_CHOICES[1][1]
+    return os.path.basename(p)
+
+
+def export_target(path: str) -> str:
+    """Fisierul exportat refolosit (MP4 daca se poate, altfel GIF) langa film."""
+    base = os.path.splitext(path)[0]
+    return base + (".mp4" if sr.mp4_available() else ".gif")
+
+
+def _export_fresh(path: str, target: str) -> bool:
+    try:
+        return os.path.getmtime(target) >= os.path.getmtime(path)
+    except OSError:
+        return False
+
+
+def launch_external(player: str, file_path: str) -> None:
+    import subprocess
+    if player == sr.PLAYER_SYSTEM:
+        if hasattr(os, "startfile"):
+            os.startfile(file_path)  # noqa: S606 — fisier local, ales de utilizator
+        else:
+            subprocess.Popen(["xdg-open", file_path])
+    else:
+        subprocess.Popen([player, file_path])
+
+
+def open_video(master, C: Dict[str, str], path: str, start_s: float = 0.0,
+               on_status: Optional[Callable[[str], None]] = None, on_done: Optional[Callable[[], None]] = None,
+               player: Optional[str] = None):
+    """Deschide filmul cu aplicatia aleasa in setari (🎬, linkurile din Excel, dublu-click pe .apvid)."""
+    player = (sr.VideoSettings.load().player if player is None else player).strip()
+    status = on_status or (lambda m: None)
+    if player and player != sr.PLAYER_SYSTEM and not os.path.isfile(player):
+        messagebox.showwarning(tr("Video"), tr("Aplicatia aleasa pentru filme nu mai exista:") + f"\n{player}\n\n" +
+                               tr("Filmul se deschide in playerul AutoPilot."), parent=master)
+        player = ""
+    if not player:
+        ed = VideoEditor(master, C, path)
+        if start_s > 0 and ed.winfo_exists():
+            ed.after(300, lambda: ed._seek(ed.v.out_at(start_s)))
+        if on_done:
+            if ed.winfo_exists():
+                ed.bind("<Destroy>", lambda e: master.after(50, on_done) if e.widget is ed else None)
+            else:
+                master.after(50, on_done)
+        return ed
+    target = export_target(path)
+    if _export_fresh(path, target):
+        launch_external(player, target)
+        if on_done:
+            master.after(50, on_done)
+        return None
+    # exportul dureaza cateva secunde: o fereastra mica arata progresul
+    win = tk.Toplevel(master)
+    win.title(tr("Video"))
+    win.configure(bg=C.get("bg_main", "#1E1E2E"))
+    win.resizable(False, False)
+    try:
+        win.attributes("-topmost", True)
+    except tk.TclError:
+        pass
+    lbl = tk.Label(win, text=tr("Pregatesc filmul pentru aplicatia aleasa..."), bg=C.get("bg_main", "#1E1E2E"),
+                   fg=C.get("text", "#FFFFFF"), font=("Segoe UI", 10), padx=18, pady=14)
+    lbl.pack()
+    state = {"p": 0.0, "done": False, "err": None}
+
+    def work():
+        try:
+            v = sr.VideoFile(path)
+            fn = v.export_mp4 if target.endswith(".mp4") else v.export_gif
+            tmp = target + ".tmp" + os.path.splitext(target)[1]
+            fn(tmp, lang=_lang(), progress=lambda p: state.__setitem__("p", p))
+            v.close()
+            os.replace(tmp, target)
+        except Exception as ex:  # noqa: BLE001
+            state["err"] = ex
+        state["done"] = True
+
+    def poll():
+        if not state["done"]:
+            try:
+                lbl.configure(text=f"{tr('Pregatesc filmul pentru aplicatia aleasa...')} {int(state['p'] * 100)}%")
+            except tk.TclError:
+                return
+            master.after(200, poll)
+            return
+        try:
+            win.destroy()
+        except tk.TclError:
+            pass
+        if state["err"] is not None:
+            messagebox.showerror(tr("Video"), str(state["err"]), parent=master)
+        else:
+            try:
+                launch_external(player, target)
+                status(tr("🎬 Film deschis: ") + os.path.basename(target))
+            except OSError as ex:
+                messagebox.showerror(tr("Video"), str(ex), parent=master)
+        if on_done:
+            master.after(50, on_done)
+    threading.Thread(target=work, daemon=True).start()
+    master.after(200, poll)
+    return None
+
+
+def build_player_chooser(parent: tk.Frame, C: Dict[str, str], current: str) -> Callable[[], str]:
+    """Lista "Deschide filmele cu"; returneaza functia care da valoarea aleasa."""
+    bg = parent["bg"]
+    state = {"exe": current if current and current != sr.PLAYER_SYSTEM else ""}
+    labels = [l for _, l in PLAYER_CHOICES]
+    row = tk.Frame(parent, bg=bg)
+    row.pack(fill="x", padx=12, pady=(2, 2))
+    cb = ttk.Combobox(row, values=[tr(l) for l in labels], state="readonly", width=40)
+    cb.pack(side="left")
+    exe_lbl = tk.Label(parent, text="", bg=bg, fg=C.get("text_dim", "#AAAACC"), font=("Segoe UI", 9), anchor="w",
+                       justify="left")
+    exe_lbl.pack(fill="x", padx=14)
+
+    def show():
+        if state["exe"] and cb.current() == 2:
+            exe_lbl.configure(text="→ " + state["exe"])
+        else:
+            exe_lbl.configure(text="")
+
+    def pick_exe():
+        p = filedialog.askopenfilename(parent=parent, title=tr("Alege aplicatia pentru filme"),
+                                       filetypes=[(tr("Aplicatii"), "*.exe"), (tr("Toate fisierele"), "*.*")])
+        if p:
+            state["exe"] = os.path.normpath(p)
+        elif not state["exe"]:
+            cb.current(0)
+        show()
+
+    def on_sel(_e=None):
+        if cb.current() == 2:
+            pick_exe()
+        show()
+    cb.bind("<<ComboboxSelected>>", on_sel)
+    if not current:
+        cb.current(0)
+    elif current == sr.PLAYER_SYSTEM:
+        cb.current(1)
+    else:
+        cb.current(2)
+    show()
+
+    def value() -> str:
+        i = cb.current()
+        if i == 1:
+            return sr.PLAYER_SYSTEM
+        if i == 2 and state["exe"]:
+            return state["exe"]
+        return sr.PLAYER_BUILTIN
+    return value
+
+
+# ─────────────────────────────────────────────────────────────
 # 4. Sectiunea din Setari
 # ─────────────────────────────────────────────────────────────
 def build_settings_section(parent: tk.Frame, C: Dict[str, str]) -> Callable[[], None]:
@@ -741,13 +918,16 @@ def build_settings_section(parent: tk.Frame, C: Dict[str, str]) -> Callable[[], 
         ttk.Combobox(r, textvariable=v, values=[n for _, n in areas], state="readonly", width=26).pack(side="left")
     row(tr("Ce se inregistreaza:"), area_row)
     row(tr("Scurteaza automat pauzele mai lungi de (s):"), lambda r: entry(r, "idle_compress_s"))
+    tk.Label(parent, text=tr("Deschide filmele cu:"), bg=bg, fg=C["text_dim"], font=("Segoe UI", 10),
+             anchor="w").pack(fill="x", padx=12, pady=(6, 0))
+    player_value = build_player_chooser(parent, C, s.player)
     tk.Label(parent, text=tr("Doar fereastra: la 🎥 alegi fereastra cu un click, iar la rulari se inregistreaza doar fereastra "
                              "in care lucreaza rutina — alte aplicatii, notificarile si bara de activitati nu apar in film."),
-             bg=bg, fg=C["text_dim"], font=("Segoe UI", 9), wraplength=720, justify="left").pack(anchor="w", padx=12)
+             bg=bg, fg=C["text_dim"], font=("Segoe UI", 10), wraplength=720, justify="left").pack(anchor="w", padx=12)
     tk.Label(parent, text=tr("Filmele se fac din capturi de ecran salvate doar cand ecranul se schimba (fisiere mici). "
                              "Butonul 🎥 din bara de sus porneste / opreste o inregistrare oricand, fara rutina; "
                              "la final se deschide editorul (taiere, texte, zone ascunse, export GIF / MP4)."),
-             bg=bg, fg=C["text_dim"], font=("Segoe UI", 9), wraplength=720, justify="left").pack(anchor="w", padx=12, pady=(4, 8))
+             bg=bg, fg=C["text_dim"], font=("Segoe UI", 10), wraplength=720, justify="left").pack(anchor="w", padx=12, pady=(4, 8))
 
     def save():
         n = sr.VideoSettings.load()
@@ -760,6 +940,7 @@ def build_settings_section(parent: tk.Frame, C: Dict[str, str]) -> Callable[[], 
             except ValueError:
                 pass
         n.area = next((k for k, name in areas if name == vars_["area"].get()), "window")
+        n.player = player_value()
         n.save()
     return save
 
@@ -826,13 +1007,8 @@ def open_player(path: str, start_s: float = 0.0) -> None:
         pass
     from collections import defaultdict
     C = defaultdict(lambda: "#336699", _PLAYER_COLORS)
-    ed = VideoEditor(root, C, path)
-    if not ed.winfo_exists():
-        root.destroy()
-        return
-    if start_s > 0:
-        ed.after(300, lambda: ed._seek(ed.v.out_at(start_s)))
-    ed.bind("<Destroy>", lambda e: root.after(50, root.destroy) if e.widget is ed else None)
+    # v4.14: aplicatia aleasa in setari (playerul AutoPilot sau alta, de ex. VLC)
+    open_video(root, C, path, start_s, on_done=root.destroy)
     root.mainloop()
 
 

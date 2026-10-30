@@ -352,3 +352,15 @@ Sometimes messages or errors show up that you know about in advance (e.g. "Are y
 - **Demo**: the **Examples** button → **06 Demo - Daca apare si reguli la mesaj** (a local page, no internet): press "Porneste", "Are you sure?" appears, the rule closes it by itself, and "If it appears" carries on when the message is missing. Run it with **⏭ Step by step** to see every step.
 
 > Example: at the start of the routine, a **🧯 Rule** with "Sure" and the step Click on "Yes, close", then *retry the step*; if the message does not appear, the routine runs as before.
+
+## 31. Appearance, drag and drop and where files are saved
+
+**🌐 Studio settings** now has four tabs: 🌐 Browser, 🎨 Appearance, 📁 Where files are saved, 🎬 Videos.
+
+- **🎨 Appearance → Text size**: Small / Normal / Large / Very large, for the whole application (applied after a restart). The width of the Studio panels is remembered as a percentage of the window, so it looks the same on a laptop and on a monitor; **↺ Reset panels** restores the initial layout.
+- On small screens the top bar stays on one row: buttons lose part of their text (the full text is in the tooltip), and rarely used commands (Save as…, Examples, Schedule, Guide) are under **⋯**.
+- **Drag and drop**: drag a step in the tree to another place (a line shows where it lands; over "▸ Then" / "▸ Else" or over the middle of a loop it goes inside). The same way you drag a block from 🧱 Steps, an object from 📚 Library (choose Click / Type text / Read / If it exists) or a routine from 📋 Routines (it becomes a "Run routine" step).
+- **📁 Where files are saved**: choose a **common folder** (e.g. ☁ OneDrive); routines, object libraries, results (screenshots, logs, reports) and videos go to the subfolders `rutine`, `obiecte`, `rezultate`, `filme`. A field filled in for one kind of file takes priority; what you set on a routine (folder of videos / report) or on a library takes priority over everything. Empty fields = as before.
+- **🎬 Videos → Open videos with**: the AutoPilot player (playback + editing), the default Windows application or another application on the laptop (e.g. VLC). For other applications the video is exported once to MP4, next to it (GIF if opencv-python is missing). The same choice is in ⚙ Settings → Video.
+
+> Example: 🌐 Studio settings → 📁 Where files are saved → ☁ OneDrive → Save; a new routine saved with 💾 suggests the folder `OneDrive\AutoPilotDC\rutine`, and videos go to `OneDrive\AutoPilotDC\filme`.

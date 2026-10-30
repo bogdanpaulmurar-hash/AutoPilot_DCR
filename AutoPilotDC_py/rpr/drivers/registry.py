@@ -21,6 +21,10 @@ class StudioSettings:
         self.last_routine_path = ""
         self.routines_folder = ""          # 📂 Managerul de rutine: folderul citit la pornire (gol = rutine\\)
         self.library_path = ""             # 📚 biblioteca de obiecte deschisa ultima data (gol = obiecte.json implicit)
+        # v4.14 (doar Python; C# ignora campurile): 📁 unde se salveaza + aspectul panourilor
+        self.save_base_folder = ""         # folderul comun (gol = ca inainte)
+        self.save_folders = {}             # {"libraries": ..., "results": ...} (gol = in folderul comun)
+        self.layout = {}                   # latimea panourilor Studio, ca procent din fereastra
 
     @staticmethod
     def path() -> str:
@@ -39,6 +43,11 @@ class StudioSettings:
             s.last_routine_path = str(d.get("last_routine_path", ""))
             s.routines_folder = str(d.get("routines_folder", ""))
             s.library_path = str(d.get("library_path", ""))
+            s.save_base_folder = str(d.get("save_base_folder", "") or "")
+            sf, lay = d.get("save_folders"), d.get("layout")
+            s.save_folders = {str(k): str(v) for k, v in sf.items() if v} if isinstance(sf, dict) else {}
+            s.layout = {str(k): float(v) for k, v in lay.items()
+                        if isinstance(v, (int, float))} if isinstance(lay, dict) else {}
         except (OSError, ValueError):
             pass
         return s
@@ -53,15 +62,18 @@ class StudioSettings:
             d = {}
         d.update({"browser": self.browser, "headless": self.headless, "minimize_on_run": self.minimize_on_run,
                   "last_routine_path": self.last_routine_path, "routines_folder": self.routines_folder,
-                  "library_path": self.library_path})
+                  "library_path": self.library_path, "save_base_folder": self.save_base_folder,
+                  "save_folders": dict(self.save_folders), "layout": dict(self.layout)})
         try:
             with open(self.path(), "w", encoding="utf-8") as f:
                 json.dump(d, f, ensure_ascii=False, indent=2)
         except OSError:
             pass
+        from .. import locations
+        locations.reset()
 
     def effective_routines_folder(self) -> str:
-        return self.routines_folder.strip().strip('"') or RprPaths.routines()
+        return self.routines_folder.strip().strip('"') or RprPaths.routines()   # v4.14: sau folderul comun
 
 
 def register_all(provider: DriverProvider, settings: Optional[StudioSettings] = None) -> None:

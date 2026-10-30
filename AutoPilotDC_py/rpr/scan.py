@@ -33,9 +33,11 @@ def app_name_from_url(url: str) -> str:
 
 
 def libraries_root() -> str:
-    """Folderul cu bibliotecile pe aplicatii: in OneDrive daca exista, altfel in Documente."""
+    """Folderul cu bibliotecile pe aplicatii: cel din 🌐 Setari Studio → 📁 Unde se salveaza (v4.14),
+    altfel in OneDrive daca exista, altfel in Documente."""
+    from . import locations
     base = onedrive_folder() or os.path.join(os.path.expanduser("~"), "Documents")
-    return os.path.join(base, "AutoPilotDC", "obiecte")
+    return locations.folder("libraries", os.path.join(base, "AutoPilotDC", "obiecte"))
 
 
 def suggest_library_path(app_name: str) -> str:

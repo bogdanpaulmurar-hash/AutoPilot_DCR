@@ -31,10 +31,27 @@ EXT = ".apvid"
 _SETTINGS = os.path.join(os.environ.get("APPDATA") or os.path.expanduser("~"), "AutoPilotDC", "video.json")
 
 
-def _default_folder() -> str:
+def _legacy_folder() -> str:
     home = os.path.expanduser("~")
     videos = os.path.join(home, "Videos")
     return os.path.join(videos if os.path.isdir(videos) else home, "AutoPilotDC")
+
+
+def _default_folder() -> str:
+    """v4.14: <folderul comun>\filme daca e setat in 🌐 Setari Studio → 📁 Unde se salveaza, altfel Videos."""
+    try:
+        from rpr import locations
+        common = locations.common("videos")
+        if common:
+            return common
+    except Exception:  # noqa: BLE001
+        pass
+    return _legacy_folder()
+
+
+# v4.14: cu ce se deschid filmele (🎬, linkurile din Excel, dublu-click pe .apvid)
+PLAYER_BUILTIN = ""            # playerul / editorul AutoPilot
+PLAYER_SYSTEM = "system"       # aplicatia implicita din Windows pentru MP4 (filmul se exporta intai)
 
 
 # ─────────────────────────────────────────────────────────────
@@ -54,6 +71,7 @@ class VideoSettings:
     show_clicks: bool = True
     max_minutes: int = 60             # protectie: opreste dupa atatea minute
     idle_compress_s: float = 2.0      # la redare / export: pauzele mai lungi se scurteaza la atat (0 = nu)
+    player: str = PLAYER_BUILTIN      # "" = AutoPilot, "system" = aplicatia din Windows, altfel calea unui .exe
 
     @classmethod
     def load(cls) -> "VideoSettings":
@@ -69,12 +87,21 @@ class VideoSettings:
         s.fps = max(1, min(10, int(s.fps)))
         s.scale = max(0.3, min(1.0, float(s.scale)))
         s.quality = max(20, min(95, int(s.quality)))
+        # folderul implicit nu se "ingheata" in fisier: urmeaza folderul comun cand acesta se schimba
+        if not s.folder.strip() or os.path.normcase(os.path.normpath(s.folder)) == \
+                os.path.normcase(os.path.normpath(_legacy_folder())):
+            s.folder = _default_folder()
         return s
 
     def save(self) -> None:
         os.makedirs(os.path.dirname(_SETTINGS), exist_ok=True)
+        d = asdict(self)
+        if os.path.normcase(os.path.normpath(self.folder or ".")) in {
+                os.path.normcase(os.path.normpath(_default_folder())),
+                os.path.normcase(os.path.normpath(_legacy_folder()))}:
+            d["folder"] = ""
         with open(_SETTINGS, "w", encoding="utf-8") as f:
-            json.dump(asdict(self), f, ensure_ascii=False, indent=1)
+            json.dump(d, f, ensure_ascii=False, indent=1)
 
 
 # ─────────────────────────────────────────────────────────────

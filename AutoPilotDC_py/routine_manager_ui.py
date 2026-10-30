@@ -29,8 +29,9 @@ class RoutineManagerDialog(tk.Toplevel):
         self.title("Manager de rutine")
         self.configure(bg=C["bg_main"])
         self.transient(panel.winfo_toplevel())
-        self.geometry("1180x640")
-        self.minsize(900, 480)
+        import ui_theme
+        ui_theme.fit_window(self, 1180, 680)   # v4.14: incape si pe un laptop 1366 x 768
+        self.minsize(min(900, self.winfo_screenwidth() - 40), 480)
         self.prep = Preparation()
         self.lib: RoutineLibrary = shared_library()
 
@@ -44,7 +45,7 @@ class RoutineManagerDialog(tk.Toplevel):
         b(top, "⟳ Reciteste", self.refresh).pack(side="right", padx=2)
         b(top, "Deschide folderul", lambda: self._startfile(self.folder_var.get())).pack(side="right", padx=2)
         tk.Label(top, textvariable=self.folder_var, bg=C["bg_main"], fg=C["text_dim"],
-                 font=("Segoe UI", 9)).pack(side="right", padx=8)
+                 font=("Segoe UI", 10)).pack(side="right", padx=8)
 
         paned = ttk.PanedWindow(self, orient="horizontal", style="Studio.TPanedwindow")
         paned.pack(fill="both", expand=True, padx=8, pady=4)
@@ -75,21 +76,21 @@ class RoutineManagerDialog(tk.Toplevel):
         head.pack(fill="x", padx=6, pady=(6, 2))
         tk.Label(head, text="Pregatire", bg=C["bg_card"], fg=C["accent"],
                  font=("Segoe UI", 10, "bold")).pack(side="left")
-        self.prep_combo = ttk.Combobox(head, state="readonly", width=34, style="Studio.TCombobox")
-        self.prep_combo.pack(side="left", padx=6)
+        b(head, "💾 Salveaza", self.save_prep, color=C["primary"]).pack(side="right", padx=2)
+        b(head, "Noua", self.new_prep).pack(side="right", padx=2)
+        self.prep_combo = ttk.Combobox(head, state="readonly", width=20, style="Studio.TCombobox")
+        self.prep_combo.pack(side="left", padx=6, fill="x", expand=True)
         self.prep_combo.bind("<<ComboboxSelected>>", lambda e: self.load_selected_prep())
-        b(head, "Noua", self.new_prep).pack(side="left", padx=2)
-        b(head, "💾 Salveaza", self.save_prep, color=C["primary"]).pack(side="left", padx=2)
 
         form = tk.Frame(right, bg=C["bg_card"])
         form.pack(fill="x", padx=6)
-        tk.Label(form, text="Nume", bg=C["bg_card"], fg=C["text_dim"], font=("Segoe UI", 9)).grid(row=0, column=0, sticky="w")
+        tk.Label(form, text="Nume", bg=C["bg_card"], fg=C["text_dim"], font=("Segoe UI", 10)).grid(row=0, column=0, sticky="w")
         self.name_var = tk.StringVar()
         tk.Entry(form, textvariable=self.name_var, **panel.editor._entry_style()).grid(row=0, column=1, sticky="we", pady=2)
-        tk.Label(form, text="Descriere", bg=C["bg_card"], fg=C["text_dim"], font=("Segoe UI", 9)).grid(row=1, column=0, sticky="w")
+        tk.Label(form, text="Descriere", bg=C["bg_card"], fg=C["text_dim"], font=("Segoe UI", 10)).grid(row=1, column=0, sticky="w")
         self.desc_var = tk.StringVar()
         tk.Entry(form, textvariable=self.desc_var, **panel.editor._entry_style()).grid(row=1, column=1, sticky="we", pady=2)
-        tk.Label(form, text="Folder rezultate", bg=C["bg_card"], fg=C["text_dim"], font=("Segoe UI", 9)).grid(row=2, column=0, sticky="w")
+        tk.Label(form, text="Folder rezultate", bg=C["bg_card"], fg=C["text_dim"], font=("Segoe UI", 10)).grid(row=2, column=0, sticky="w")
         self.out_var = tk.StringVar()
         out_row = tk.Frame(form, bg=C["bg_card"])
         out_row.grid(row=2, column=1, sticky="we", pady=2)
@@ -100,7 +101,7 @@ class RoutineManagerDialog(tk.Toplevel):
         for text, var in (("🎥 Film pentru fiecare rutina", self.video_var),
                           ("📊 Raport Excel pentru fiecare rutina", self.report_var)):
             tk.Checkbutton(right, text=text, variable=var, bg=C["bg_card"], fg=C["text"], selectcolor=C["bg_input"],
-                           activebackground=C["bg_card"], font=("Segoe UI", 9), anchor="w").pack(fill="x", padx=6)
+                           activebackground=C["bg_card"], font=("Segoe UI", 10), anchor="w").pack(fill="x", padx=6)
 
         self.items = ttk.Treeview(right, columns=("on", "name", "err"), show="headings", style="Studio.Treeview",
                                   selectmode="browse")
@@ -119,10 +120,10 @@ class RoutineManagerDialog(tk.Toplevel):
         tk.Label(right, text="Rutinele ruleaza una dupa alta, cu intrebarile si sistemul de preventie ca la o rulare "
                              "normala. La final: un folder cu rezumatul Excel, documentatia (Documentatie.html), "
                              "rapoartele si filmele fiecarei rutine.", bg=C["bg_card"], fg=C["text_dim"],
-                 font=("Segoe UI", 8), wraplength=480, justify="left").pack(fill="x", padx=6, pady=4)
+                 font=("Segoe UI", 9), wraplength=480, justify="left").pack(fill="x", padx=6, pady=4)
         b(right, "▶ Ruleaza pregatirea", self.run_prep, color=C["success"]).pack(anchor="e", padx=6, pady=(0, 8))
 
-        self.status = tk.Label(self, text="", bg=C["bg_main"], fg=C["text_dim"], font=("Segoe UI", 9), anchor="w")
+        self.status = tk.Label(self, text="", bg=C["bg_main"], fg=C["text_dim"], font=("Segoe UI", 10), anchor="w")
         self.status.pack(fill="x", padx=12, pady=(0, 8))
         if self.lib.scanned_at is None or os.path.normcase(self.lib.folder) != os.path.normcase(self.folder_var.get()):
             self.refresh()
