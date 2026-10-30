@@ -91,6 +91,9 @@ Each chapter briefly explains one procedure, step by step, with an example. Pick
 5. **🎯 SAP**: mouse over the field (red outline) and **F2**. If the position cannot be determined, click into the field and press F2.
 6. **🟦 SAP: key** (Enter, F3, F8, Shift+F4, Ctrl+S) and **🟦 SAP: status bar** (`S:` success, `E:` error, `W:` warning).
 7. Tables: **SAP: read table cell** with `row|column` (e.g. `0|MATNR`); the table scrolls to the row by itself.
+8. **🟦 SAP: scroll table**: pick the table (🎯 SAP on the table) and write the row (`1` = first, or `{Repetare}` in a loop), `+1` / `-1`, `start` or `end`. The row moves to the top as far as possible, and its position on screen (`0` = first visible row) goes into `{Pozitie}`. Put it in the cell ID: `btnDEL[5,{Pozitie}]` (in 📚 Library, on the object's Id locator; untick the Name|Type backup locator, otherwise it may find the bin on another row). At the end of the list the table stops moving but the position keeps growing, so the loop reaches the last row without the scroll arrow.
+
+> Example (rows that stay in the list after deleting): **🔁 Repeat** as many times as you have rows; inside: SAP: scroll table = `{Repetare}`, Click the bin `...btnDEL[5,{Pozitie}]`, Click "Yes" in the first window, Click "Yes" in the second.
 
 > Example: routine 04 "SAP VA03" reads the order numbers from Excel and writes the status into the Status column.
 

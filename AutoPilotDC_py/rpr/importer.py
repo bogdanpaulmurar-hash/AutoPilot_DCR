@@ -211,6 +211,11 @@ COMMANDS: List[Command] = [
             "Trimite o tasta catre SAP (Enter, F3, F8...)."),
     Command("sap_status", ("sap citeste stare",), ("sap read status",), "SAP CITESTE STARE -> {Variabila}",
             "SAP READ STATUS -> {Variable}", "Citeste bara de stare SAP."),
+    Command("sap_scroll", ("sap deruleaza",), ("sap scroll",),
+            "SAP DERULEAZA <tabel> = <rand | +1 | -1 | inceput | sfarsit> [-> {Variabila}]",
+            "SAP SCROLL <table> = <row | +1 | -1 | start | end> [-> {Variable}]",
+            "Deruleaza un tabel SAP (randul 1 = primul); pozitia randului pe ecran intra in variabila "
+            "(implicit {Pozitie}), pentru ID-ul celulei: btnDEL[5,{Pozitie}]."),
     Command("start_app", ("porneste aplicatie",), ("start app",), "PORNESTE APLICATIE <cale.exe>",
             "START APP <path.exe>", "Porneste un program Windows."),
     Command("attach", ("ataseaza fereastra",), ("attach window",), "ATASEAZA FEREASTRA <titlu>",
@@ -415,6 +420,13 @@ class StepImporter:
         _, var = _split_arrow(rest)
         self._add(ActionNode(action=RprAction.SapReadStatusBar, technology=UiTechnology.Sap,
                              output_variable=var or "StareSAP"))
+
+    def _c_sap_scroll(self, no, rest):
+        left, var = _split_arrow(rest)
+        tgt, val = _split_eq(left, _t("SAP DERULEAZA <tabel> = <rand>"))
+        obj = self._target(tgt)
+        self._add(ActionNode(action=RprAction.SapScrollTable, target=obj.name, technology=obj.technology,
+                             value=_unquote(val) or "+1", output_variable=var or "Pozitie"))
 
     def _c_run_routine(self, no, rest):
         self._add(RunRoutineNode(path=_unquote(rest)))

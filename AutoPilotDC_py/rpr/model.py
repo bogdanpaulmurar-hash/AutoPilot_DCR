@@ -125,6 +125,7 @@ class RprAction(_StrEnum):
     SapReadStatusBar = "SapReadStatusBar"
     SapGridReadCell = "SapGridReadCell"
     SapGridRowCount = "SapGridRowCount"
+    SapScrollTable = "SapScrollTable"   # v4.22: doar in Python
     LaunchApp = "LaunchApp"
     AttachWindow = "AttachWindow"
     CloseWindow = "CloseWindow"
@@ -246,6 +247,8 @@ ACTIONS: List[ActionInfo] = [
     ActionInfo(A.SapReadStatusBar, "SAP: citeste bara de stare", False, False, None, True, _SAP),
     ActionInfo(A.SapGridReadCell, "SAP: citeste celula tabel", True, False, "rand|coloana", True, _SAP),
     ActionInfo(A.SapGridRowCount, "SAP: numar randuri tabel", True, False, None, True, _SAP),
+    ActionInfo(A.SapScrollTable, "SAP: deruleaza tabelul", True, False,
+               "Randul (1 = primul) sau +1 / -1 / inceput / sfarsit", True, _SAP),
     ActionInfo(A.LaunchApp, "Porneste aplicatie", False, False, "Cale .exe [argumente]", False, _DESK),
     ActionInfo(A.AttachWindow, "Ataseaza fereastra", False, False, "Titlu (regex) sau proces:nume.exe", False, _DESK),
     ActionInfo(A.CloseWindow, "Inchide fereastra", False, False, None, False, _DESK),
