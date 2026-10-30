@@ -714,6 +714,9 @@ class StudioPanel(tk.Frame):
         self._btn(srow, "🖐 Captura 3 s", self.hover_capture,
                   tip="Tii cursorul 3 secunde pe un camp / buton si se salveaza singur; apoi treci la urmatorul").pack(
             side="left", padx=1)
+        self._btn(srow, "🩺 Verifica", lambda: self.check_saved(),
+                  tip="Verifica daca butoanele salvate mai merg pe pagina din browser: simulare fara click").pack(
+            side="left", padx=1)
         top = tk.Frame(host, bg=C["bg_main"])
         top.pack(fill="x", padx=4, pady=(4, 2))
         self._obj_filter = tk.StringVar()
@@ -1027,15 +1030,20 @@ class StudioPanel(tk.Frame):
             a = choice_dialog(self, "Pagina e gata?",
                               "Browserul e deschis. Autentifica-te si deschide pagina dorita (meniu, tab, formular), "
                               "apoi alege:",
-                              ["🔍 Scaneaza automat", "🖐 Captura 3 s", "Anuleaza"], C=self.C)
+                              ["🔍 Scaneaza automat", "🖐 Captura 3 s", "🩺 Verifica butoanele salvate", "Anuleaza"],
+                              C=self.C)
             if a == "🔍 Scaneaza automat":
                 what = "scan"
             elif a == "🖐 Captura 3 s":
                 what = "hover"
+            elif a == "🩺 Verifica butoanele salvate":
+                what = "check"
             else:
                 return
         if what == "scan":
             self._scan_now()
+        elif what == "check":
+            self._check_start(None)
         else:
             self._hover_start()
 
@@ -1081,6 +1089,130 @@ class StudioPanel(tk.Frame):
             self._scan_now()
         elif a == "🖐 Captura 3 s":
             self._hover_start()
+
+    # ── v4.10: 🩺 verificarea butoanelor salvate, fara click ──
+    def check_saved(self, objs: Optional[List[UiObject]] = None):
+        """Obiectele salvate mai merg pe pagina din browser? Simulare: verificarile unui click, fara click."""
+        if self.busy:
+            self.set_status("Asteapta sa se termine operatia curenta.")
+            return
+        if self._recording:
+            self.record_web()
+        if not self._browser_url():
+            url = self._ask_url_if_closed()
+            if url is False:
+                return
+            self._check_objs = objs
+            self._open_then(url, "check")
+            return
+        self._check_start(objs)
+
+    def _check_start(self, objs: Optional[List[UiObject]]):
+        objs = objs if objs is not None else getattr(self, "_check_objs", None)
+        self._check_objs = None
+        url = self._browser_url()
+        if objs is None:
+            here = rpr_scan.objects_to_check(self.repo, url)
+            site = rpr_scan.objects_to_check(self.repo, url, whole_site=True)
+            if not site:
+                messagebox.showinfo("🩺 Verifica", "Nu ai obiecte salvate pentru site-ul deschis in browser.",
+                                    parent=self)
+                return
+            objs = here
+            if len(site) > len(here):
+                a = choice_dialog(self, "🩺 Verifica",
+                                  f"Pe pagina deschisa ({rpr_scan.page_of_url(url)}) ai {len(here)} obiecte salvate, "
+                                  f"pe tot site-ul {len(site)}. Ce verific?",
+                                  [f"Pagina curenta ({len(here)})", f"Tot site-ul ({len(site)})", "Anuleaza"], C=self.C)
+                if a.startswith("Tot"):
+                    objs = site
+                elif not a.startswith("Pagina") or not here:
+                    return
+        for o in objs:
+            self.repo.link_parents(o)
+        self.busy = True
+        cancel = threading.Event()
+        self._show_spy_hint("🩺 Verific butoanele salvate: simulez click-ul, fara sa apas nimic.",
+                            on_cancel=cancel.set)
+        web = self.web()
+
+        def work():
+            results = []
+            try:
+                for i, o in enumerate(objs, 1):
+                    if cancel.is_set():
+                        break
+                    self.post("check_progress", f"🩺 Verific {i}/{len(objs)}: [{o.name}]")
+                    try:
+                        res = web.check_object(o)
+                    except Exception as ex:  # noqa: BLE001
+                        res = {"found": False, "counts": [], "error": str(ex)}
+                    results.append((o, res))
+                self.post("check_done", (results, url, None))
+            except Exception as ex:  # noqa: BLE001
+                self.post("check_done", (results, url, str(ex)))
+        threading.Thread(target=work, daemon=True, name="Check").start()
+
+    def _check_done(self, results, url: str, error: Optional[str]):
+        self.busy = False
+        self._hide_spy_hint()
+        if error and not results:
+            messagebox.showerror("🩺 Verifica", f"Verificarea nu a reusit:\n{error}", parent=self)
+            return
+        rows = [(o, res) + rpr_scan.diagnose(o, res, url) for o, res in results]
+        n = {k: sum(1 for r in rows if r[2] == k) for k in (rpr_scan.OK, rpr_scan.WARN, rpr_scan.REMAP)}
+        self.set_status(f"🩺 Verificare: {n['ok']} merg, {n['warn']} cu impedimente, {n['remap']} de recaptat.")
+        dlg = getattr(self, "_check_dlg", None)
+        if dlg is not None and dlg.winfo_exists():
+            dlg.update_rows(rows)
+        else:
+            self._check_dlg = CheckResultDialog(self, rows, url)
+
+    def recheck(self, objs: List[UiObject]):
+        if objs:
+            self._check_start(list(objs))
+
+    def fix_object_locators(self, obj: UiObject, used) -> bool:
+        if rpr_scan.fix_locators(obj, used):
+            self.save_repository()
+            self.refresh_objects()
+            self.set_status(f"[{obj.name}]: locatorul care merge e acum primul.")
+            return True
+        return False
+
+    def recapture(self, obj: UiObject):
+        """Recapteaza elementul: click pe el in browser; numele ramane, deci rutinele merg mai departe."""
+        if self.busy:
+            self.set_status("Asteapta sa se termine operatia curenta.")
+            return
+        self.busy = True
+        self._show_spy_hint(f"🎯 Recaptare [{obj.name}]: du mouse-ul peste element in browser si da CLICK.  "
+                            "Esc in browser = anuleaza.")
+        web = self.web()
+
+        def work():
+            try:
+                new = web.capture_object("Click = captureaza · Esc = anuleaza", RprPaths.object_images())
+                self.post("recapture_done", (obj, new, None))
+            except Exception as ex:  # noqa: BLE001
+                self.post("recapture_done", (obj, None, str(ex)))
+        self.set_status(f"Recaptare [{obj.name}]: click pe element in browser. Esc = anulare.")
+        threading.Thread(target=work, daemon=True, name="Recapture").start()
+
+    def _recapture_done(self, obj: UiObject, new: Optional[UiObject], error: Optional[str]):
+        self.busy = False
+        self._hide_spy_hint()
+        if error:
+            messagebox.showerror("Recaptare", error, parent=self)
+            return
+        if new is None:
+            self.set_status("Recaptare anulata.")
+            return
+        rpr_scan.apply_recapture(obj, new)
+        self.save_repository()
+        self.refresh_objects()
+        self.set_status(f"[{obj.name}] recaptat: am pastrat numele, verific din nou...")
+        self._check_start([obj])
 
     def _hover_start(self):
         self.busy = True
@@ -1485,6 +1617,8 @@ class StudioPanel(tk.Frame):
         C = self.C
         m = tk.Menu(self, tearoff=0, bg=C["bg_card"], fg=C["text"], activebackground=C["primary"])
         m.add_command(label="🧪 Testeaza pe pagina din browser", command=self.test_object)
+        if rpr_scan.is_web(obj):
+            m.add_command(label="🩺 Verifica fara click (merge? impedimente?)", command=lambda: self.check_saved([obj]))
         m.add_separator()
         m.add_command(label="➕ Adauga in rutina: Click", command=lambda: self._obj_step(RprAction.Click))
         m.add_command(label="➕ Adauga in rutina: Scrie text", command=lambda: self._obj_step(RprAction.TypeText))
@@ -2017,6 +2151,12 @@ class StudioPanel(tk.Frame):
                 self._hover_finished(p)
             elif kind == "test_result":
                 self._test_finished(*p)
+            elif kind == "check_progress":
+                self.set_status(p)
+            elif kind == "check_done":
+                self._check_done(*p)
+            elif kind == "recapture_done":
+                self._recapture_done(*p)
             elif kind == "recorded":
                 self._add_recorded(p)
             elif kind == "record_started":
@@ -3337,6 +3477,119 @@ def list_dialog(parent, title: str, prompt: str, options: List[str], C=None) -> 
     dlg.grab_set()
     dlg.wait_window()
     return res["v"]
+
+
+class CheckResultDialog(tk.Toplevel):
+    """Rezultatul 🩺 Verifica (v4.10): pe fiecare obiect ✅ merge / ⚠ impedimente / ❌ de recaptat.
+    Fereastra nu blocheaza Studio: poti lucra in browser si apoi Verifica din nou."""
+
+    def __init__(self, panel: "StudioPanel", rows, url: str):
+        super().__init__(panel)
+        self.p, self.rows = panel, []
+        C = panel.C
+        self.title("🩺 Verificare fara click")
+        self.configure(bg=C["bg_main"])
+        self.transient(panel.winfo_toplevel())
+        tk.Label(self, text="🩺  Butoanele salvate pe pagina din browser", bg=C["bg_main"], fg=C["primary"],
+                 font=("Segoe UI", 13, "bold")).pack(anchor="w", padx=14, pady=(12, 2))
+        self._summary = tk.Label(self, text="", bg=C["bg_main"], fg=C["text_dim"], font=("Segoe UI", 9),
+                                 justify="left", wraplength=760)
+        self._summary.pack(anchor="w", padx=14)
+        box = tk.Frame(self, bg=C["bg_main"])
+        box.pack(fill="both", expand=True, padx=14, pady=6)
+        cols = ("stare", "nume", "tip", "pagina", "motiv")
+        self.tree = ttk.Treeview(box, columns=cols, show="headings", style="Studio.Treeview", height=14)
+        for c, title, w, stretch in [("stare", "", 34, False), ("nume", "Nume", 200, False), ("tip", "Tip", 80, False),
+                                     ("pagina", "Pagina", 110, False), ("motiv", "Ce am gasit", 380, True)]:
+            self.tree.heading(c, text=title, anchor="w")
+            self.tree.column(c, width=w, stretch=stretch, anchor="w")
+        vsb = ttk.Scrollbar(box, orient="vertical", command=self.tree.yview)
+        self.tree.configure(yscrollcommand=vsb.set)
+        vsb.pack(side="right", fill="y")
+        self.tree.pack(side="left", fill="both", expand=True)
+        self.tree.bind("<<TreeviewSelect>>", lambda e: self._show_detail())
+        self.tree.bind("<Double-1>", lambda e: self._mark())
+        self._detail = tk.Label(self, text="", bg=C["bg_main"], fg=C["text"], font=("Segoe UI", 9), justify="left",
+                                wraplength=760, anchor="w")
+        self._detail.pack(fill="x", padx=14)
+        tk.Label(self, text="Simulare: aceleasi verificari ca la un click real (gasit, vizibil, activ, nu se misca, "
+                            "nu e acoperit), dar fara apasare. Un element care apare doar dupa o actiune (meniu, tab) "
+                            "se verifica dupa ce il deschizi in browser.",
+                 bg=C["bg_main"], fg=C["text_dim"], font=("Segoe UI", 8), wraplength=760, justify="left").pack(
+            anchor="w", padx=14, pady=(4, 0))
+        row = tk.Frame(self, bg=C["bg_main"])
+        row.pack(fill="x", padx=14, pady=(6, 12))
+        panel._btn(row, "👁 Arata in browser", self._mark).pack(side="left", padx=2)
+        panel._btn(row, "🔧 Repara locatorii", self._fix,
+                   tip="Locatorul care merge trece primul (ceilalti raman)").pack(side="left", padx=2)
+        panel._btn(row, "🎯 Recapteaza", self._recapture,
+                   tip="Click pe element in browser; numele ramane, rutinele merg mai departe").pack(side="left", padx=2)
+        panel._btn(row, "Inchide", self.destroy).pack(side="right", padx=2)
+        panel._btn(row, "🔄 Verifica din nou", self._again, color=C["success"]).pack(side="right", padx=2)
+        self.update_rows(rows)
+        self.update_idletasks()
+        self.geometry(f"+{max(0, (self.winfo_screenwidth() - self.winfo_reqwidth()) // 2)}+60")
+
+    def update_rows(self, rows):
+        """rows: (obiect, rezultat, stare, motive). Un obiect deja in lista e actualizat pe loc."""
+        by_name = {r[0].name: i for i, r in enumerate(self.rows)}
+        for r in rows:
+            if r[0].name in by_name:
+                self.rows[by_name[r[0].name]] = r
+            else:
+                self.rows.append(r)
+        self.tree.delete(*self.tree.get_children())
+        order = {rpr_scan.REMAP: 0, rpr_scan.WARN: 1, rpr_scan.OK: 2, rpr_scan.OTHER_PAGE: 3}
+        for i, (o, res, st, why) in sorted(enumerate(self.rows), key=lambda x: order.get(x[1][2], 9)):
+            self.tree.insert("", "end", iid=str(i), values=(rpr_scan.STATUS_ICON.get(st, ""), o.name, o.object_type,
+                                                            o.page, why[0] if why else "Merge"))
+        n = {k: sum(1 for r in self.rows if r[2] == k) for k in rpr_scan.STATUS_ICON}
+        text = (f"✅ {n['ok']} merg   ⚠ {n['warn']} cu impedimente   ❌ {n['remap']} de recaptat")
+        if n["other_page"]:
+            text += f"   · {n['other_page']} pe alta pagina"
+        self._summary.configure(text=text)
+        self.lift()
+
+    def _sel(self):
+        s = self.tree.selection()
+        return self.rows[int(s[0])] if s else None
+
+    def _show_detail(self):
+        r = self._sel()
+        if r is None:
+            return
+        o, res, st, why = r
+        lines = [f"[{o.name}]"] + [f"• {w}" for w in why] if why else [f"[{o.name}]: merge, nimic de semnalat."]
+        if res.get("used") is not None:
+            lines.append(f"Gasit prin: {res['used']}")
+        self._detail.configure(text="\n".join(tr(x) for x in lines))
+
+    def _mark(self):
+        r = self._sel()
+        if r is None:
+            return
+        web = self.p.web()
+        threading.Thread(target=lambda: web.show_object(r[0]), daemon=True).start()
+
+    def _fix(self):
+        r = self._sel()
+        if r is None:
+            return
+        o, res = r[0], r[1]
+        if self.p.fix_object_locators(o, res.get("used")):
+            self.p.recheck([o])
+        else:
+            messagebox.showinfo("🔧 Repara locatorii", "Aici nu am ce repara automat: primul locator merge deja "
+                                                     "sau niciun locator nu gaseste elementul (atunci Recapteaza).",
+                                parent=self)
+
+    def _recapture(self):
+        r = self._sel()
+        if r is not None:
+            self.p.recapture(r[0])
+
+    def _again(self):
+        self.p.recheck([r[0] for r in self.rows])
 
 
 class TestResultDialog(tk.Toplevel):

@@ -295,3 +295,15 @@ Jedes Kapitel erklärt kurz einen Ablauf, Schritt für Schritt, mit einem Beispi
 - Hat OneDrive auf dem anderen Laptop einen anderen Pfad, wird die Bibliothek an derselben Stelle im OneDrive dieses PCs gefunden.
 
 > Beispiel: Für die Bestellanwendung legen Sie die Bibliothek „Bestellungen“ in OneDrive an, scannen die Suchseite und das Bestellformular und fügen mit der 3-s-Erfassung die Schaltfläche aus dem Menü hinzu, das nur beim Überfahren erscheint. Neue Routinen für diese Anwendung nutzen die Bibliothek „Bestellungen“.
+
+## 27. Gespeicherte Schaltflächen prüfen (Simulation ohne Klick)
+
+1. Öffnen Sie die Seite der Anwendung im AutoPilot-Browser (anmelden, Menü / Tab mit den Schaltflächen öffnen).
+2. 📚 Bibliothek → **🩺 Prüfen** (oder nach 🔍 Website scannen **🩺 Gespeicherte Schaltflächen prüfen** wählen). Hat die Website auch Objekte auf anderen Seiten, wählen Sie **Aktuelle Seite** oder **Ganze Website**.
+3. Für jedes Objekt macht AutoPilot einen „Probeklick“: dieselben Prüfungen wie bei einem echten Klick (gefunden, sichtbar, aktiv, bewegt sich nicht, nicht von einem anderen Fenster verdeckt), aber es **drückt nicht** und sendet nichts an den Server.
+4. Sie erhalten die Liste: **✅** funktioniert · **⚠** funktioniert, aber mit Hindernissen (von einem Overlay verdeckt, deaktiviert, mehrfach gefunden, nur der Ersatz-Locator funktioniert, anderer Text) · **❌** muss neu erfasst werden · **·** auf einer anderen Seite. Klick auf eine Zeile zeigt die Gründe.
+5. **👁 Im Browser zeigen** markiert das Element. **🔧 Locatoren reparieren** setzt den funktionierenden Locator an die erste Stelle. **🎯 Neu erfassen**: Element im Browser anklicken; der Name bleibt, Routinen, die es verwenden, funktionieren weiter. **🔄 Erneut prüfen**, nachdem Sie im Browser etwas geändert haben.
+- Der Probeklick kann die Seite bis zum Element scrollen, drückt aber nichts. Eine Schaltfläche, die erst nach einer Aktion erscheint (Menü, Tab, Filter), wird geprüft, nachdem Sie sie geöffnet haben.
+- Bei einem ⚠ „Verdeckt“-Element liegt meist ein Fenster oder eine Meldung darüber: schließen und erneut prüfen. Bleibt es, braucht die Routine vorher einen Schritt (Meldung schließen).
+
+> Beispiel: Nach einem Update der Anwendung öffnen Sie die Bestellseite und drücken 🩺 Prüfen. „Speichern“ ist ✅, „Senden“ ist ⚠ deaktiviert (normal, bis das Formular ausgefüllt ist) und „Export“ ist ❌: Sie erfassen es mit einem Klick neu und die Export-Routine funktioniert wieder.
