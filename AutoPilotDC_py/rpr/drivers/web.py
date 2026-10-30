@@ -565,7 +565,7 @@ class PlaywrightDriver(UiDriver):
                 l.scroll_into_view_if_needed(timeout=2000)
             except Exception:
                 pass
-            self._highlight(obj, 2000, None)
+            self._highlight(obj, 8000, None)   # 8 s: sectiunile mari trebuie sa apuci sa le vezi
         return {"url": page.url, "found": l is not None, "used": used, "rows": rows,
                 "container": parent.name if parent is not None else "",
                 "container_found": scope is not None if parent is not None else None}
