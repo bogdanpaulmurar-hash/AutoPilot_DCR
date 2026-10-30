@@ -3,4 +3,4 @@
 # Schema: MAJOR.MINOR.PATCH
 #   MINOR = functii noi (ex: driverul Web)   PATCH = reparatii
 # Ce s-a schimbat in fiecare versiune: CHANGELOG.md
-__version__ = "4.12.0"
+__version__ = "4.12.1"

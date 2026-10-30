@@ -809,6 +809,11 @@ class StudioPanel(tk.Frame):
         self.routines_tree.bind("<Double-1>", lambda e: self.add_routine_step())
         self.routines_tree.bind("<<TreeviewSelect>>", lambda e: self._routine_detail())
         self.routines_tree.bind("<Button-3>", self._routine_menu)
+        sbox = tk.Frame(host, bg=C["bg_main"])
+        sbox.pack(fill="x", padx=4, pady=(2, 0))
+        tk.Label(sbox, text="Pasii rutinei alese (doar citire)", bg=C["bg_main"], fg=C["text_dim"],
+                 font=("Segoe UI", 8, "bold"), anchor="w").pack(fill="x", padx=2)
+        self.routine_steps_tree = self._steps_preview(sbox, 7)
         self._rt_info = tk.Label(host, text="", bg=C["bg_main"], fg=C["text_dim"], font=("Segoe UI", 8), anchor="w",
                                  justify="left", wraplength=230)
         self._rt_info.pack(fill="x", padx=6)
@@ -917,8 +922,48 @@ class StudioPanel(tk.Frame):
         from rpr.batch import shared_library
         return shared_library().find(sel[0][2:])
 
+    def _steps_preview(self, host, height):
+        """Arbore de citire cu pasii unei rutine (structura Daca / bucle pastrata)."""
+        box = tk.Frame(host, bg=self.C["bg_main"])
+        box.pack(fill="x")
+        tv = ttk.Treeview(box, show="tree", style="Studio.Treeview", selectmode="none", height=height)
+        vsb = ttk.Scrollbar(box, orient="vertical", command=tv.yview)
+        tv.configure(yscrollcommand=vsb.set)
+        vsb.pack(side="right", fill="y")
+        tv.pack(fill="x", expand=True)
+        tv.tag_configure("disabled", foreground=self.C["text_dim"])
+        tv.tag_configure("branch", foreground=self.C["accent"])
+        return tv
+
+    def _fill_steps_preview(self, tv, path: str):
+        tv.delete(*tv.get_children())
+        if not path or not os.path.isfile(path):
+            return
+        try:
+            sub = RoutineStore.load(path, self.repo)
+        except Exception as ex:  # noqa: BLE001
+            tv.insert("", "end", text=f"⚠ {ex}")
+            return
+
+        def add(node, parent):
+            iid = tv.insert(parent, "end", text=f"{icon_for(node)}  {node.title}", open=True,
+                            tags=() if node.enabled else ("disabled",))
+            br = node.branches()
+            for name, lst in br:
+                par = iid
+                if len(br) > 1:
+                    par = tv.insert(iid, "end", text=f"▸ {name}", open=True, tags=("branch",))
+                for ch in lst:
+                    add(ch, par)
+        for n in sub.steps:
+            add(n, "")
+        if not sub.steps:
+            tv.insert("", "end", text="(fara pasi)")
+
     def _routine_detail(self):
         e = self._sel_routine_entry()
+        if hasattr(self, "routine_steps_tree"):
+            self._fill_steps_preview(self.routine_steps_tree, e.path if e is not None and not e.error else "")
         if e is None:
             self._rt_info.configure(text="")
             return
@@ -3091,6 +3136,10 @@ class PropertyEditor:
             ("📥 Inlocuieste cu pasii ei", lambda: self.p.expand_run_routine(node), None,
              "Copiaza pasii rutinei aici (nu mai urmaresc fisierul original)"),
         ])
+        if path and os.path.isfile(path):
+            self._hint("Pasii rutinei apelate (doar citire):", None, self.C["text_dim"])
+            tv = self.p._steps_preview(self._host, 8)
+            self.p._fill_steps_preview(tv, path)
 
     def button_row(self, buttons):
         row = tk.Frame(self._host, bg=self._host["bg"])
