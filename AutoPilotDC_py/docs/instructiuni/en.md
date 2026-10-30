@@ -127,6 +127,10 @@ Each chapter briefly explains one procedure, step by step, with an example. Pick
 - **Desktop**: Start application, Attach window, Close window.
 - In every step: **Wait for the object at most (ms)**, **On error**, **Wait before / after**, **Comment**, **Step active**.
 - **▶ Test the step** executes only the selected step, with the variables of the last run.
+- **🎯 Re-mark** (next to ▶ Test the step): if the step found the wrong element, click the right one (SAP / Desktop: F2). You choose:
+  - **Replace the locators**: the object keeps its name, so every step that uses it looks for the new element (the window says how many);
+  - **New object just for this step**: the old object stays unchanged, the step gets the new object (in the same folder).
+  A step without an object gets a new object directly. The library is saved; then press ▶ Test the step again. Another existing object is chosen from the "On which object" list.
 
 > Example: "Read the text" on the confirmation message, saved in the variable `Mesaj`, then "Log" with `Received: {Mesaj}`.
 

@@ -663,6 +663,128 @@ class StudioPanel(tk.Frame):
         self.call_ui(apply)
         return True
 
+    # ── v4.18 🎯 Remarcheaza din pas: dupa ▶ Testeaza pasul, obiectul gresit se corecteaza pe loc ──
+    @staticmethod
+    def step_object_name(node) -> str:
+        """Numele obiectului folosit de pas (Click, Scrie, Citeste... sau Asteapta obiectul)."""
+        if isinstance(node, ActionNode):
+            return node.target.strip()
+        if isinstance(node, WaitNode) and node.mode != WaitMode.Seconds:
+            return node.condition.target.strip()
+        return ""
+
+    @staticmethod
+    def set_step_object(node, name: str) -> None:
+        if isinstance(node, ActionNode):
+            node.target = name
+        elif isinstance(node, WaitNode):
+            node.condition.target = name
+
+    def step_technology(self, node) -> UiTechnology:
+        obj = self.repo.find(self.step_object_name(node))
+        if obj is not None:
+            return obj.technology
+        if isinstance(node, ActionNode):
+            info = action_info(node.action)
+            return node.technology if node.technology in info.technologies else info.technologies[0]
+        return UiTechnology.Web
+
+    def steps_using(self, name: str) -> int:
+        low = name.lower()
+        return sum(1 for n in flatten(self.routine.steps) if self.step_object_name(n).lower() == low)
+
+    def remark_step(self, node):
+        """🎯 Remarcheaza: Spy pe element; obiectul pasului primeste locatoarele noi
+        (sau pasul primeste un obiect nou, doar pentru el). Biblioteca se salveaza."""
+        if self.busy:
+            self.set_status(tr("Asteapta sa se termine operatia curenta."))
+            return
+        name = self.step_object_name(node)
+        obj = self.repo.find(name) if name else None
+        mode = "new"
+        if obj is not None:
+            used = self.steps_using(obj.name)
+            detail = tr_template("Inlocuieste locatoarele: obiectul [{0}] pastreaza numele, deci toti cei {1} pasi "
+                                 "care il folosesc vor cauta elementul nou.\n"
+                                 "Obiect nou doar pentru acest pas: [{0}] ramane neschimbat pentru ceilalti pasi.").format(
+                obj.name, used)
+            a = choice_dialog(self, "🎯 Remarcheaza obiectul",
+                              tr_template("Ce faci cu [{0}]?").format(obj.name),
+                              ["Inlocuieste locatoarele", "Obiect nou doar pentru acest pas", "Anuleaza"], detail,
+                              C=self.C)
+            if a == "Anuleaza" or not a:
+                return
+            mode = "replace" if a == "Inlocuieste locatoarele" else "new"
+        tech = obj.technology if obj is not None else self.step_technology(node)
+        web = tech in (UiTechnology.Web, UiTechnology.WebSelenium)
+        url = None
+        if web:
+            url = self._ask_url_if_closed()
+            if url is False:
+                return
+        driver = self.web() if web else self.drivers.get(tech)
+        self.busy = True
+        self._spy_driver = None if web else driver
+        label = obj.name if obj is not None else tr("obiect nou")
+        self._show_spy_hint(tr_template("🎯 [{0}]: du mouse-ul peste element si da CLICK (SAP / Desktop: F2). "
+                                        "Esc = anuleaza.").format(label))
+
+        def work():
+            try:
+                if url:
+                    driver.open(url)
+                hint = "Click = captureaza · Esc = anuleaza" if web else "F2 = captureaza · Esc = anuleaza"
+                captured = driver.capture_object(hint, RprPaths.object_images())
+                self.post("ui", lambda: self._remark_done(node, obj, mode, captured, None))
+            except Exception as ex:  # noqa: BLE001
+                err = str(ex)
+                self.post("ui", lambda: self._remark_done(node, obj, mode, None, err))
+        self.set_status(tr("🎯 Click pe element (SAP / Desktop: F2). Esc = anulare."))
+        threading.Thread(target=work, daemon=True, name="Remark").start()
+
+    def _remark_done(self, node, obj: Optional[UiObject], mode: str, captured: Optional[UiObject],
+                     error: Optional[str], ask_name: bool = True):
+        self.busy = False
+        self._hide_spy_hint()
+        if error:
+            messagebox.showerror("🎯", error, parent=self)
+            return
+        if captured is None:
+            self.set_status(tr("Marcare anulata."))
+            return
+        if mode == "replace" and obj is not None:
+            rpr_scan.apply_recapture(obj, captured)
+            if obj.context:
+                self.repo.classify(obj)
+            final = obj
+        else:
+            self.repo.classify(captured)
+            if obj is not None:   # acelasi folder ca obiectul vechi; numele pornesc de la el
+                captured.folder = obj.folder
+                base = obj.name
+            else:
+                base = captured.name
+            suggestion = self.repo.make_unique_name(base)
+            name = input_dialog(self, "🎯 Obiect nou", tr("Numele obiectului nou:"), suggestion, C=self.C) \
+                if ask_name else suggestion
+            if name is None or not name.strip():
+                self.set_status(tr("Obiect nesalvat."))
+                return
+            captured.name = name.strip()
+            final = self.repo.add(captured)
+            self.set_step_object(node, final.name)
+            self.mark_dirty()
+            self.refresh_node(node)
+        self.save_repository()
+        self.refresh_objects()
+        try:
+            if self.editor._target is node:
+                self.editor.show(node)
+        except Exception:  # noqa: BLE001
+            pass
+        self.set_status(tr_template("🎯 [{0}] are acum {1} locatoare. Apasa ▶ Testeaza pasul ca sa verifici.").format(
+            final.name, len(final.locators)))
+
     def web(self):
         """Driverul Web (acelasi browser pentru Spy, inregistrare si rulare)."""
         d = self.drivers.get(UiTechnology.Web)
@@ -4154,6 +4276,10 @@ class PropertyEditor:
                 self.number(node, "Timp maxim (ms)", lambda: node.timeout_ms, lambda v: setattr(node, "timeout_ms", v))
                 self.check(node, "Daca nu se indeplineste in timp: eroare (debifat = continua)",
                            lambda: node.fail_on_timeout, lambda v: setattr(node, "fail_on_timeout", v))
+                if self.p.step_object_name(node):
+                    self.button_row([("🎯 Remarcheaza", lambda: self.p.remark_step(node), None,
+                                      "Pasul a gasit alt element? Da click pe elementul corect: obiectul primeste "
+                                      "locatoarele noi (sau faci un obiect nou doar pentru acest pas)")])
         elif isinstance(node, SetVariableNode):
             self.text(node, "Numele variabilei", lambda: node.name, lambda v: setattr(node, "name", v.strip("{} ")), vars_=False)
             self._report_check(node, lambda: node.name)
@@ -4324,8 +4450,13 @@ class PropertyEditor:
             self.number(a, "Asteapta obiectul maxim (ms)", lambda: a.timeout_ms, lambda v: setattr(a, "timeout_ms", v))
             self.check(a, "Mod direct (fara miscarea vizibila a mouse-ului, unde e posibil)",
                        lambda: a.direct_mode, lambda v: setattr(a, "direct_mode", v))
-        self.button_row([("▶ Testeaza pasul", lambda: self.p.test_node(a), self.C["success"],
-                          "Executa doar acest pas acum (cu variabilele ultimei rulari)")])
+        buttons = [("▶ Testeaza pasul", lambda: self.p.test_node(a), self.C["success"],
+                    "Executa doar acest pas acum (cu variabilele ultimei rulari)")]
+        if info.needs_target or info.target_optional:
+            buttons.append(("🎯 Remarcheaza", lambda: self.p.remark_step(a), None,
+                            "Pasul a gasit alt element? Da click pe elementul corect: obiectul primeste "
+                            "locatoarele noi (sau faci un obiect nou doar pentru acest pas)"))
+        self.button_row(buttons)
 
     def _build_for_each(self, f: ForEachRowNode):
         self._hint("Pasii din interior ruleaza o data pentru fiecare rand. Valorile randului sunt variabile: "
