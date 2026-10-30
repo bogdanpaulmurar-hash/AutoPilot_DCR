@@ -95,6 +95,7 @@ class CompleteObjectsDialog(tk.Toplevel):
         self.btn_mark = self._b(foot, "🎯 Marcheaza in browser", self.mark, C["success"])
         self.btn_mark.pack(side="left", padx=2)
         self._b(foot, "⏭ Urmatorul negasit", self.next_missing).pack(side="left", padx=2)
+        self._b(foot, "▶ Ruleaza si marcheaza", self.run_and_mark).pack(side="left", padx=2)
         self._b(foot, "Inchide", self.destroy).pack(side="right", padx=2)
         self.summary = tk.Label(self, text="", bg=C["bg_main"], fg=C["text"], font=(FONT, 10, "bold"), anchor="w")
         self.summary.pack(side="bottom", fill="x", padx=14)
@@ -233,6 +234,32 @@ class CompleteObjectsDialog(tk.Toplevel):
         if counts and min(counts) > 1:
             return "⚠ " + tr_template("{0} elemente la fel").format(min(counts))
         return "✔ " + tr("gasit")
+
+    # ── ▶ Ruleaza si marcheaza (v4.17): rutina insasi deschide tab-urile si sectiunile ──
+    def run_and_mark(self):
+        if self._busy():
+            return
+        if not messagebox.askokcancel(
+                "▶ Ruleaza si marcheaza",
+                "Rutina ruleaza de la inceput, doar pe primul rand din Excel. Cand un obiect nu e gasit, rularea se "
+                "opreste si poti alege 🎯 Marcheaza acum: dai click pe element, iar pasul se reia.\n\n"
+                "Atentie: pasii se fac de-adevaratelea (Save, Trigger...). Foloseste un rand de test.",
+                parent=self):
+            return
+        self.withdraw()
+        self.p.run(learn=True)
+        if not self.p.busy:   # rularea nu a pornit (rutina goala etc.)
+            self.deiconify()
+
+    def object_marked(self, obj: UiObject, n: int):
+        for i, o in enumerate(self.objs):
+            if o is obj or o.name == obj.name:
+                self._set(i, "🎯 " + tr_template("marcat: {0} locatoare noi").format(n))
+
+    def learn_finished(self, result):
+        self.deiconify()
+        self.lift()
+        self.p.set_status(tr("▶ Ruleaza si marcheaza s-a terminat: verifica lista, apoi ruleaza rutina normal."))
 
     # ── 🎯 Marcheaza (Spy pentru obiectul ales) ──
     def mark(self):

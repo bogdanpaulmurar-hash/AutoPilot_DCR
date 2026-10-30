@@ -2003,5 +2003,10 @@
  "🎯 Acum": "🎯 Now",
  "Mai tarziu": "Later",
  "Rutina deschisa nu foloseste niciun obiect din biblioteca.": "The open routine does not use any object from the library.",
- "🎯 Completeaza obiectele rutinei…": "🎯 Complete the routine's objects…"
+ "🎯 Completeaza obiectele rutinei…": "🎯 Complete the routine's objects…",
+ "▶ Ruleaza si marcheaza": "▶ Run and mark",
+ "Rutina ruleaza de la inceput, doar pe primul rand din Excel. Cand un obiect nu e gasit, rularea se opreste si poti alege 🎯 Marcheaza acum: dai click pe element, iar pasul se reia.\n\nAtentie: pasii se fac de-adevaratelea (Save, Trigger...). Foloseste un rand de test.": "The routine runs from the start, on the first Excel row only. When an object is not found, the run stops and you can choose 🎯 Mark now: click the element and the step is retried.\n\nCareful: the steps are really performed (Save, Trigger...). Use a test row.",
+ "🎯 Marcheaza acum": "🎯 Mark now",
+ "🎯 Marcheaza acum [{0}] pe pagina, apoi pasul se reia.": "🎯 Mark now [{0}] on the page, then the step is retried.",
+ "▶ Ruleaza si marcheaza s-a terminat: verifica lista, apoi ruleaza rutina normal.": "▶ Run and mark finished: check the list, then run the routine normally."
 }

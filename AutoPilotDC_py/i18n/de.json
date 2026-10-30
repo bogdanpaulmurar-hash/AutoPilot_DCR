@@ -2003,5 +2003,10 @@
  "🎯 Acum": "🎯 Jetzt",
  "Mai tarziu": "Später",
  "Rutina deschisa nu foloseste niciun obiect din biblioteca.": "Die geöffnete Routine verwendet kein Objekt aus der Bibliothek.",
- "🎯 Completeaza obiectele rutinei…": "🎯 Objekte der Routine vervollständigen…"
+ "🎯 Completeaza obiectele rutinei…": "🎯 Objekte der Routine vervollständigen…",
+ "▶ Ruleaza si marcheaza": "▶ Ausführen und markieren",
+ "Rutina ruleaza de la inceput, doar pe primul rand din Excel. Cand un obiect nu e gasit, rularea se opreste si poti alege 🎯 Marcheaza acum: dai click pe element, iar pasul se reia.\n\nAtentie: pasii se fac de-adevaratelea (Save, Trigger...). Foloseste un rand de test.": "Die Routine läuft von Anfang an, nur für die erste Excel-Zeile. Wird ein Objekt nicht gefunden, hält der Lauf an und Sie können 🎯 Jetzt markieren wählen: Element anklicken, der Schritt wird wiederholt.\n\nAchtung: Die Schritte werden wirklich ausgeführt (Save, Trigger...). Verwenden Sie eine Testzeile.",
+ "🎯 Marcheaza acum": "🎯 Jetzt markieren",
+ "🎯 Marcheaza acum [{0}] pe pagina, apoi pasul se reia.": "🎯 Jetzt [{0}] auf der Seite markieren, danach wird der Schritt wiederholt.",
+ "▶ Ruleaza si marcheaza s-a terminat: verifica lista, apoi ruleaza rutina normal.": "▶ Ausführen und markieren beendet: Liste prüfen, dann die Routine normal ausführen."
 }
