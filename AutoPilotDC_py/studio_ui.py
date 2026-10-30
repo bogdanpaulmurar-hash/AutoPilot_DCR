@@ -663,7 +663,7 @@ class StudioPanel(tk.Frame):
         self.call_ui(apply)
         return True
 
-    # ── v4.18 🎯 Remarcheaza din pas: dupa ▶ Testeaza pasul, obiectul gresit se corecteaza pe loc ──
+    # ── v4.19 🎯 Remarcheaza din pas: dupa ▶ Testeaza pasul, obiectul gresit se corecteaza pe loc ──
     @staticmethod
     def step_object_name(node) -> str:
         """Numele obiectului folosit de pas (Click, Scrie, Citeste... sau Asteapta obiectul)."""

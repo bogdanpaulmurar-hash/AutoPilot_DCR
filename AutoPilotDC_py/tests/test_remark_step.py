@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # ============================================================
-# AutoPilot DC — Teste: 🎯 Remarcheaza din pas (v4.18)
+# AutoPilot DC — Teste: 🎯 Remarcheaza din pas (v4.19)
 #   Rulare:  py -m unittest tests.test_remark_step
 # ============================================================
 

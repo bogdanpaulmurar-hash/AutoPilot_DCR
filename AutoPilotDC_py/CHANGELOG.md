@@ -2,7 +2,7 @@
 
 Pornirea aplicației: **`AutoPilot_DC.pyw`** (sau scurtătura „AutoPilot DC” de pe Desktop). Numele fișierelor nu se mai schimbă de la o versiune la alta, deci scurtăturile și pornirea cu Windows rămân valabile.
 
-## 4.18.0 — 2026-10-30
+## 4.19.0 — 2026-10-30
 - **🎯 Remarchează direct din pas** (nou): lângă ▶ Testează pasul (și la ⏱ Așteaptă un obiect). Dacă testul arată că pasul a găsit alt element, nu mai trebuie să mergi în 📚 Bibliotecă: dai click pe elementul corect (SAP / Desktop: F2) și alegi:
   - **Înlocuiește locatoarele**: obiectul își păstrează numele (deci și pașii), locatoarele greșite dispar; fereastra spune câți pași folosesc obiectul;
   - **Obiect nou doar pentru acest pas**: obiectul vechi rămâne neschimbat, pasul primește un obiect nou (nume propus `<vechi>_2`, același folder).
