@@ -2,6 +2,18 @@
 
 Pornirea aplicației: **`AutoPilot_DC.pyw`** (sau scurtătura „AutoPilot DC” de pe Desktop). Numele fișierelor nu se mai schimbă de la o versiune la alta, deci scurtăturile și pornirea cu Windows rămân valabile.
 
+## 4.18.0 — 2026-10-30
+- **🔀 Flux pentru rutine mari** (ex. 145 de pași): până acum se putea doar derula. Bara nouă de deasupra fluxului:
+  - **zoom**: Ctrl + rotița (în jurul mouse-ului), **−** / **+**, Ctrl + / Ctrl −; între 5 % și 200 %. Sub ~40 % textul se ascunde și rămâne forma rutinei;
+  - **tragere pe fundal** (sau cu rotița apăsată) ca pe o hartă; click pe card face ce făcea (alege pasul);
+  - **⤢ Potrivește** (Ctrl + 0) = toată rutina pe ecran; **↔ Lățime** (Ctrl + 2) = toată lățimea, derulezi doar în jos; **1:1** (Ctrl + 1);
+  - **🗺 Harta** mică din colț (apare singură când rutina nu încape): toată rutina și dreptunghiul vizibil; click / tragere = sari acolo;
+  - **▾ / ▸** pe cardurile Dacă / Buclă / Pentru fiecare rând ascund ramurile („+N” pași ascunși); **▸ Restrânge tot** / **▾ Extinde tot**. Pasul ales în listă sau din cronologie deschide singur ramura lui; la rulare, dacă pasul curent e ascuns, fluxul urmărește cardul restrâns. Starea e doar în sesiune, fișierul `.rpr.json` nu se schimbă;
+  - **⬇ Export** PNG (de 2 ori mărimea de pe ecran, plafonat la ~40 de milioane de pixeli) sau SVG (vectorial, se deschide în browser cu zoom oricât); se deschide după salvare.
+- Desenul fluxului se face o dată, la 100 %, într-o listă de forme; ecranul, harta și exportul le desenează la scara lor (`studio_views.FlowView`).
+- Instrucțiuni: capitolul 32, în RO / EN / DE; textele noi în EN / DE.
+- Teste (Linux, Python 3.12, Xvfb): `test_views` +4 (zoom păstrează cardul sub mouse, Potrivește / Lățime, limitele; harta + click jos + tragere; restrângere, Restrânge tot, pas ascuns ales = se deschide; export SVG + PNG de 2×, plafonul la rutine uriașe). Suita: 221 rulate, 20 sărite; aceleași 4 eșecuri vechi ca pe main (`test_windows`, `test_schedule.test_weekdays`, 2 × `test_video`). Netestat pe Windows: Ctrl + rotița, iconițele emoji în PNG (fontul Segoe UI Emoji), deschiderea imaginii după export.
+
 ## 4.17.0 — 2026-10-30
 - **🎯 Completează obiectele → ▶ Rulează și marchează** (nou): obiectele de pe alte tab-uri sau secțiuni (ex. General, Contracts) nu se văd pe pagina deschisă, deci 🧪 Verifică toate le dădea ✖. Acum rutina însăși face navigarea:
   - rulează de la început, **doar pe primul rând din Excel**;

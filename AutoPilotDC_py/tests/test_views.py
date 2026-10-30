@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ============================================================
 # AutoPilot DC v4.15 — Teste: bara de activitati, tab-uri pentru rutine,
-# cronologia rularii, ecranul Excel (reia randul), fluxul.
+# cronologia rularii, ecranul Excel (reia randul), fluxul (v4.18: zoom, harta, restrangere, export).
 #   Rulare:  py -m unittest tests.test_views
 # ============================================================
 
@@ -242,6 +242,110 @@ class StudioViewsTests(unittest.TestCase):
         p.show_center("steps", select=c.id)
         self.assertEqual((c.id,), p.tree.selection())
 
+
+    def _big_flow(self, n_if=30):
+        """O rutina mare: n_if blocuri Daca, fiecare cu 3 pasi in Atunci si 1 in Altfel (~150 de pasi)."""
+        steps, ifs = [], []
+        for i in range(n_if):
+            iff = IfNode(condition=Condition(kind=ConditionKind.Compare, left="1", right="1"))
+            iff.then.extend([LogNode(message=f"t{i}.{k}") for k in range(3)])
+            iff.else_.append(LogNode(message=f"e{i}"))
+            steps.append(iff)
+            ifs.append(iff)
+        r = Routine(name="Mare")
+        r.steps = steps
+        p = self.p
+        p.routine = r
+        p.rebuild_tree()
+        p.show_center("flow")
+        self.root.update()
+        return p._flow, ifs
+
+    def test_flow_zoom_keeps_point_under_mouse_and_fit_shows_all(self):
+        f, ifs = self._big_flow()
+        self.assertEqual(150, len(f.cards))
+        cv = f.canvas
+        x1, y1, x2, y2 = cv.coords(f.cards[ifs[3].id])
+        sx, sy = (x1 + x2) / 2 - cv.canvasx(0), (y1 + y2) / 2 - cv.canvasy(0)
+        f._zoom_at(1.25, sx, sy)
+        self.root.update()
+        self.assertAlmostEqual(1.25, f.z)
+        x1, y1, x2, y2 = cv.coords(f.cards[ifs[3].id])
+        self.assertAlmostEqual(250 * 1.25, x2 - x1, delta=0.5)
+        # acelasi card ramane sub mouse
+        self.assertAlmostEqual(sx, (x1 + x2) / 2 - cv.canvasx(0), delta=3)
+        self.assertAlmostEqual(sy, (y1 + y2) / 2 - cv.canvasy(0), delta=3)
+        f.fit()
+        self.root.update()
+        bbox = cv.bbox("flow")
+        self.assertLessEqual(bbox[3] - bbox[1], cv.winfo_height() + 2)
+        self.assertLessEqual(bbox[2] - bbox[0], cv.winfo_width() + 2)
+        self.assertEqual(f"{round(f.z * 100)} %", f._zoom_lbl.cget("text"))
+        f.fit(width_only=True)
+        self.root.update()
+        bbox = cv.bbox("flow")
+        self.assertLessEqual(bbox[2] - bbox[0], cv.winfo_width() + 2)
+        self.assertEqual(0.0, cv.yview()[0])
+        f.zoom_by(0.0001)          # limita de jos
+        self.assertAlmostEqual(f.ZMIN, f.z)
+        f.set_zoom(1.0)
+        self.assertAlmostEqual(1.0, f.z)
+
+    def test_flow_minimap_and_pan(self):
+        f, ifs = self._big_flow()
+        self.root.update()
+        self.assertTrue(f.minimap.winfo_ismapped())            # rutina nu incape: harta apare
+        self.assertTrue(f.minimap.find_withtag("view"))
+        cv = f.canvas
+        f._map_jump(type("E", (), {"x": f.MAP_W // 2, "y": f.MAP_H - 5})())
+        self.root.update()
+        self.assertGreater(cv.yview()[0], 0.5)                  # click jos pe harta = sfarsitul rutinei
+        top = cv.canvasy(0)
+        ev = lambda x, y: type("E", (), {"x": x, "y": y})()     # noqa: E731
+        f._start_pan(ev(200, 300))
+        f._move(ev(200, 400))                                   # trage in jos = urca in rutina
+        f._release()
+        self.assertLess(cv.canvasy(0), top)
+        f.toggle_map()
+        self.root.update()
+        self.assertFalse(f.minimap.winfo_ismapped())
+        f.toggle_map()
+
+    def test_flow_collapse_hides_branches_and_reveals_selected_step(self):
+        f, ifs = self._big_flow()
+        hidden = ifs[0].then[1]
+        f.toggle(ifs[0].id)
+        self.assertNotIn(hidden.id, f.cards)
+        self.assertEqual(ifs[0].id, f._owner[hidden.id])
+        f.collapse_all()
+        self.assertEqual(30, len(f.cards))
+        f.select(hidden.id)                                     # pas ascuns ales din lista: ramura se deschide
+        self.assertIn(hidden.id, f.cards)
+        self.assertNotIn(ifs[1].then[0].id, f.cards)
+        f.expand_all()
+        self.assertEqual(150, len(f.cards))
+        f.collapsed.add("nu-exista")
+        f.refresh()
+        self.assertNotIn("nu-exista", f.collapsed)
+
+    def test_flow_export_svg_and_png(self):
+        f, ifs = self._big_flow(5)
+        f.toggle(ifs[1].id)
+        svg = os.path.join(self.d, "flux.svg")
+        f.export_svg(svg)
+        import xml.dom.minidom
+        doc = xml.dom.minidom.parse(svg)
+        texts = [t.firstChild.data for t in doc.getElementsByTagName("text") if t.firstChild]
+        self.assertIn("Mare", texts)
+        self.assertEqual(len(f.cards), sum(1 for r in doc.getElementsByTagName("rect")
+                                            if r.getAttribute("width") == "250.0"))
+        png = os.path.join(self.d, "flux.png")
+        f.export_png(png)
+        from PIL import Image
+        with Image.open(png) as im:
+            w, h = f._size
+            self.assertEqual((int(w * 2), int(h * 2)), im.size)  # de 2 ori mai mare decat pe ecran
+        self.assertLess(f._png_scale(4000, 40000), 1.0)          # rutina uriasa: poza ramane rezonabila
 
 if __name__ == "__main__":
     unittest.main()
