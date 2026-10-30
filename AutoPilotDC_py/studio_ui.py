@@ -1076,6 +1076,9 @@ class StudioPanel(tk.Frame):
         self._btn(srow, "🩺 Verifica", lambda: self.check_saved(),
                   tip="Verifica daca butoanele salvate mai merg pe pagina din browser: simulare fara click").pack(
             side="left", padx=1)
+        self._btn(srow, "🎯 Completeaza", lambda: self.show_complete_objects(),
+                  tip="Obiectele rutinei deschise, pe rand, pe pagina reala: verifici si marchezi cu click "
+                      "(dupa 📥 Import AI)").pack(side="left", padx=1)
         top = tk.Frame(host, bg=C["bg_main"])
         top.pack(fill="x", padx=4, pady=(4, 2))
         self._obj_filter = tk.StringVar()
@@ -1265,7 +1268,30 @@ class StudioPanel(tk.Frame):
         self._update_title()
         self.set_status(tr_template("📥 Rutina \"{0}\" importata: {1} pasi, {2} obiecte noi. Verifica obiectele cu 🧪 Test, "
                            "apoi salveaz-o (💾).").format(routine.name, sum(1 for _ in routine.all_nodes()), added))
+        if added:
+            self.after(200, self._offer_complete)
         return True
+
+    # v4.16.3: 🎯 Completeaza obiectele — dupa import, obiectele se verifica / marcheaza pe pagina reala
+    def _offer_complete(self):
+        a = choice_dialog(self, "🎯 Completeaza obiectele",
+                          "Obiectele noi au doar locatoare deduse din text. Le verifici acum pe pagina reala "
+                          "(si le marchezi cu click pe cele negasite)?",
+                          ["🎯 Acum", "Mai tarziu"], C=self.C)
+        if a.startswith("🎯"):
+            self.show_complete_objects()
+
+    def show_complete_objects(self, objects: Optional[List[UiObject]] = None):
+        from complete_ui import CompleteObjectsDialog, objects_of_routine
+        objs = objects if objects is not None else objects_of_routine(self.routine, self.repo)
+        if not objs:
+            messagebox.showinfo("🎯 Completeaza obiectele", "Rutina deschisa nu foloseste niciun obiect din biblioteca.",
+                                parent=self)
+            return
+        w = getattr(self, "_complete_win", None)
+        if w is not None and w.winfo_exists():
+            w.destroy()
+        self._complete_win = CompleteObjectsDialog(self, objs)
 
     def show_side(self, key: str):
         """Deschide o pagina din panoul lateral (si din cod: ex. Biblioteca dupa o captura)."""
