@@ -2,6 +2,10 @@
 
 Pornirea aplicației: **`AutoPilot_DC.pyw`** (sau scurtătura „AutoPilot DC” de pe Desktop). Numele fișierelor nu se mai schimbă de la o versiune la alta, deci scurtăturile și pornirea cu Windows rămân valabile.
 
+## 4.12.2 — 2026-10-30
+- **✎ Redenumește rutina din 📋 Rutine** (buton **✎ Nume** sau click dreapta → Redenumeste...): schimbă numele afișat direct în fișier, fără să deschizi rutina. Rutina deschisă acum se redenumește din ⚙ Rutina (câmpul Nume).
+- Teste: fără schimbări de logică (doar interfață); verificat în Studio (Xvfb) că numele se scrie în fișier și lista se reface. Netestat pe Windows.
+
 ## 4.12.1 — 2026-10-30
 - **Pașii rutinei se văd înainte s-o adaugi**: în 📋 Rutine, sub listă, apare arborele de pași al rutinei alese (cu structura Dacă / bucle, doar citire); același arbore în editorul pasului „Ruleaza rutina”.
 - Teste (Linux, Python 3.12): fără schimbări de logică, doar interfață. Verificat în Studio (Xvfb): arborele din editorul pasului. Previzualizarea din tab folosește aceeași funcție, dar nu am văzut-o pe ecran; netestat pe Windows.
