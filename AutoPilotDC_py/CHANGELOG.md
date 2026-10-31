@@ -2,6 +2,18 @@
 
 Pornirea aplicației: **`AutoPilot_DC.pyw`** (sau scurtătura „AutoPilot DC” de pe Desktop). Numele fișierelor nu se mai schimbă de la o versiune la alta, deci scurtăturile și pornirea cu Windows rămân valabile.
 
+## 4.29.0 — 2026-10-31
+- **📱 Teste pe telefon Android** (etapa 1): tehnologie nouă **Mobil (Android)**, prin Appium. Appium e un program separat și pornește doar când rutina are pași pe telefon; pachetul Python `appium` se încarcă abia la conectare, deci AutoPilot nu devine mai lent.
+  - Pași noi: **📱 Mobil: conectează telefonul** (`telefon | pachet/activitate`; gol = primul telefon), **glisează** (sus / jos / stânga / dreapta), **înapoi**, **captură ecran**, **închide aplicația**. Pașii obișnuiți merg și pe telefon: Click (atingere), Dublu click, Click dreapta (apăsare lungă), Scrie / adaugă text, Golește, Citește, Bifează, Alege din listă, Apasă tasta (Enter, Back, Home, keycode). „Mouse deasupra” dă un mesaj clar.
+  - Locatori noi: **AccessibilityId**, **ResourceId**, **UiAutomator**; merg și XPath, Text, Id.
+  - **Verificarea telefonului** înainte de rulare (și butonul **📱 Verifică telefonul** pe pasul de conectare, fără rulare): adb, telefon conectat și autorizat, ecran deblocat, aplicația instalată, bateria (doar atenționare sub 20%), pachetul Appium și serverul Appium (pornit automat dacă e instalat). Dacă ceva lipsește, rutina se oprește cu lista problemelor și nu atinge nimic.
+  - **Rezultate**: `<rezultate>\mobil\<data_ora>_<rutina>\<telefon>\` cu `capturi\`, `ecran_telefon.mp4`, `logcat.txt`, `telefon.txt` și raportul Excel al rulării (când raportul nu are folder propriu).
+  - Fără interfață: `py -m rpr device "R58M12 | com.firma.app"` face doar verificarea.
+  - iOS (telefon și tabletă) nu e inclus: are nevoie de un Mac sau de o fermă de telefoane în cloud.
+- Format: valori noi, opționale (tehnologia `Mobile`, locatorii și acțiunile noi); rutinele și bibliotecile vechi se deschid neschimbate. Motor: `rpr/mobile.py`, `rpr/drivers/mobile.py`.
+- Instrucțiuni: capitolul 37, în RO / EN / DE; textele noi în EN / DE.
+- Teste (Linux, Python 3.12, Xvfb): `test_mobile` nou (17: ținta din pas, lista adb, verificarea cu telefon lipsă / neautorizat / blocat / fără aplicație / baterie / fără Appium, folderul rulării, locatori și taste, acțiunile pe o sesiune Appium simulată, conectarea refuzată când telefonul nu e pregătit, captura și logcat la final, motorul pregătește și închide folderul doar pentru rutinele cu pași pe telefon, salvare / citire, în Studio real: pasul de conectare cu butonul de verificare). Suita: 295 rulate, 20 sărite; aceleași 4 eșecuri vechi ca pe main (Windows / video). Netestat pe un telefon real și pe Windows.
+
 ## 4.28.0 — 2026-10-31
 - **🧩 Obiecte cu parametru** (etapa 3b „mai puține obiecte”): un singur obiect pentru toate butoanele de același fel. În locatori scrii `{Text}`; fiecare pas (acțiune sau condiție) dă valoarea în câmpul nou **Parametru: Text** (merge și o variabilă, ex. `{Rand.Nume}`). Titlul pasului arată valoarea: „Click Buton_cu_Text (Text=Salvează)”.
   - Click dreapta în 📚 Bibliotecă → **🧩 Fă un obiect cu parametru din acesta...**: copie a obiectului în care textul butonului devine `{Text}`; locatorii fără text (id, css, xpath, SAP id…) se dezactivează. ✎ Editează are câmpul **Parametri**.

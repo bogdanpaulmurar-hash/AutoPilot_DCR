@@ -201,8 +201,11 @@ class RprEngine:
         self._depth = 0
         self._call_stack, self._call_names = [], []
         self._report = None
+        self._mobile = self._begin_mobile(routine)   # 📱 v4.29: folderul rularii pe telefon (sau None)
         try:
             self._report = RunReport.create(routine, self._output)   # 📊 raportul Excel al rularii (daca e pornit)
+            if self._report is not None and self._mobile is not None and not self._report.s.folder.strip():
+                self._report.folder = self._mobile[1]   # raportul sta langa capturile si filmul telefonului
         except Exception as ex:  # noqa: BLE001 — raportul nu are voie sa opreasca rutina
             self._log(RprLogLevel.Warning, None, f"Raportul nu poate fi pregatit: {ex}")
         t0 = time.monotonic()
@@ -274,6 +277,7 @@ class RprEngine:
             self._result.final_variables = dict(self._vars.all)
             self.last_variables = self._result.final_variables
             self._finish_report()
+            self._end_mobile()
             r = self._result
             rows = (f", randuri OK: {r.rows_ok}, esuate: {r.rows_failed}, sarite: {r.rows_skipped}"
                     if r.rows_ok + r.rows_failed + r.rows_skipped > 0 else "")
@@ -938,6 +942,36 @@ class RprEngine:
         if not ok:
             raise RprStepException(err or "Pasul vechi a esuat.")
         self._log(RprLogLevel.Info, ls, "OK")
+
+    # =========================================================
+    # 📱 Mobil (v4.29): un folder pe rulare, cate un subfolder pe telefon
+    # =========================================================
+    def _begin_mobile(self, routine: Routine):
+        try:
+            from . import mobile
+            if not mobile.uses_mobile(routine, self._repo.find):
+                return None
+            root = mobile.run_root(self._output, routine.name or "rutina")
+            driver = self._drivers.get(UiTechnology.Mobile)
+            begin = getattr(driver, "begin_run", None)
+            if begin is None:
+                return None
+            begin(root)
+            return driver, root
+        except Exception as ex:  # noqa: BLE001
+            self._log(RprLogLevel.Warning, None, f"Folderul rularii pe telefon nu poate fi pregatit: {ex}")
+            return None
+
+    def _end_mobile(self) -> None:
+        mob, self._mobile = getattr(self, "_mobile", None), None
+        if mob is None:
+            return
+        try:
+            mob[0].end_run()
+            if os.path.isdir(mob[1]):
+                self._log(RprLogLevel.Info, None, f"📱 Rezultatele de pe telefon: {mob[1]}")
+        except Exception as ex:  # noqa: BLE001
+            self._log(RprLogLevel.Warning, None, f"Rezultatele de pe telefon nu s-au salvat complet: {ex}")
 
     # =========================================================
     # Raportul Excel al rularii (rpr/report.py)

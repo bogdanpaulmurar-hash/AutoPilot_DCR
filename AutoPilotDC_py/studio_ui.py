@@ -118,6 +118,7 @@ TECHNOLOGIES = [
     (UiTechnology.WebSelenium, "Web (Selenium)"),
     (UiTechnology.Sap, "SAP GUI"),
     (UiTechnology.Desktop, "Aplicatie desktop"),
+    (UiTechnology.Mobile, "Mobil (Android)"),
 ]
 WAIT_MODES = [(WaitMode.Seconds, "Un numar de secunde"), (WaitMode.UntilTrue, "Pana cand o conditie e adevarata")]
 LOOP_MODES = [
@@ -146,6 +147,8 @@ _WEB_ACTIONS = {RprAction.OpenBrowser, RprAction.Navigate, RprAction.Back, RprAc
 _SAP_ACTIONS = {RprAction.SapConnect, RprAction.SapTransaction, RprAction.SapSendKey, RprAction.SapReadStatusBar,
                 RprAction.SapGridReadCell, RprAction.SapGridRowCount, RprAction.SapScrollTable}
 _DESK_ACTIONS = {RprAction.LaunchApp, RprAction.AttachWindow, RprAction.CloseWindow}
+_MOB_ACTIONS = {RprAction.MobileConnect, RprAction.MobileBack, RprAction.MobileSwipe, RprAction.MobileScreenshot,
+                RprAction.MobileCloseApp}
 
 
 def icon_for(node: RprNode) -> str:
@@ -157,6 +160,8 @@ def icon_for(node: RprNode) -> str:
             return "🟦"
         if a in _DESK_ACTIONS:
             return "🖥"
+        if a in _MOB_ACTIONS:
+            return "📱"
         if a in (RprAction.TypeText, RprAction.AppendText, RprAction.Clear):
             return "⌨"
         if a in (RprAction.ReadText, RprAction.ReadValue, RprAction.ReadAttribute):
@@ -197,6 +202,14 @@ TOOLBOX: List[Tuple[str, List[Tuple[str, str, Callable[[], RprNode]]]]] = [
          lambda: ActionNode(action=RprAction.LaunchApp, technology=UiTechnology.Desktop)),
         ("🖥  Ataseaza fereastra", "Lucreaza intr-o fereastra deja deschisa",
          lambda: ActionNode(action=RprAction.AttachWindow, technology=UiTechnology.Desktop, value="proces:")),
+        ("📱  Mobil: conecteaza telefonul", "Verifica telefonul Android si porneste aplicatia (prin Appium)",
+         lambda: ActionNode(action=RprAction.MobileConnect, technology=UiTechnology.Mobile, value=" | ")),
+        ("📱  Mobil: gliseaza", "Gliseaza pe ecranul telefonului (sus / jos / stanga / dreapta)",
+         lambda: ActionNode(action=RprAction.MobileSwipe, technology=UiTechnology.Mobile, value="sus")),
+        ("📱  Mobil: inapoi", "Butonul Inapoi al telefonului",
+         lambda: ActionNode(action=RprAction.MobileBack, technology=UiTechnology.Mobile)),
+        ("📱  Mobil: captura ecran", "Salveaza ecranul telefonului in folderul rularii",
+         lambda: ActionNode(action=RprAction.MobileScreenshot, technology=UiTechnology.Mobile)),
     ]),
     ("Flux (conditii si repetari)", [
         ("⏱  Asteapta", "Secunde sau pana apare / dispare ceva", WaitNode),
@@ -3226,6 +3239,25 @@ class StudioPanel(tk.Frame):
         self._object_preview()
         self.set_status(tr_template("🔎 {0} obiecte salvate pentru acelasi element: probabil dubluri.").format(len(objs)))
 
+    # ── 📱 v4.29: verificarea telefonului (fara rulare) ──
+    def check_phone(self, value: str = ""):
+        from rpr import mobile as rpr_mobile
+        self.set_status(tr("📱 Verific telefonul..."))
+
+        def work():
+            try:
+                res = rpr_mobile.check_device(rpr_mobile.parse_target(value))
+                text, ok = res.text(), res.ok
+            except Exception as ex:  # noqa: BLE001
+                text, ok = str(ex), False
+
+            def show():
+                title = tr("📱 Telefonul e pregatit") if ok else tr("📱 Telefonul nu e pregatit")
+                (messagebox.showinfo if ok else messagebox.showwarning)(title, text, parent=self)
+                self.set_status(title)
+            self.after(0, show)
+        threading.Thread(target=work, daemon=True).start()
+
     def _testlib_menu(self, widget):
 
         C = self.C
@@ -4931,8 +4963,9 @@ class PropertyEditor:
         # 1. actiunea (grupata pe tehnologii)
         options = []
         for ai in ACTIONS:
-            grp = "Pe obiect" if len(ai.technologies) == 4 else "SAP" if UiTechnology.Sap in ai.technologies else \
-                "Desktop" if UiTechnology.Desktop in ai.technologies else "Browser"
+            grp = "Pe obiect" if len(ai.technologies) > 2 else "SAP" if UiTechnology.Sap in ai.technologies else \
+                "Desktop" if UiTechnology.Desktop in ai.technologies else \
+                "Mobil" if UiTechnology.Mobile in ai.technologies else "Browser"
             options.append((ai.action, f"{tr(grp)}  ·  {tr(ai.label)}"))
 
         def set_action(v):
@@ -4972,6 +5005,9 @@ class PropertyEditor:
                 RprAction.AttachWindow: "Ex: proces:notepad.exe  sau  ^Calculator$ (titlu, expresie regulata).",
                 RprAction.LaunchApp: "Ex: notepad.exe  sau  \"C:\\Program Files\\App\\app.exe\" /param",
                 RprAction.SapConnect: "Gol = prima sesiune. \"1\" = a doua sesiune. \"1/0\" = conexiunea 2, sesiunea 1.",
+                RprAction.MobileConnect: "Telefonul (numarul din adb devices; gol = primul conectat) | pachetul "
+                                         "aplicatiei/activitatea. Ex: R58M12 | com.firma.app/.MainActivity",
+                RprAction.MobileSwipe: "sus = degetul urca (lista coboara), jos, stanga, dreapta.",
             }.get(a.action)
             if hint:
                 self._hint(hint)
@@ -4997,6 +5033,10 @@ class PropertyEditor:
             buttons.append(("🎯 Remarcheaza", lambda: self.p.remark_step(a), None,
                             "Pasul a gasit alt element? Da click pe elementul corect: obiectul primeste "
                             "locatoarele noi (sau faci un obiect nou doar pentru acest pas)"))
+        if a.action == RprAction.MobileConnect:
+            buttons.append(("📱 Verifica telefonul", lambda: self.p.check_phone(a.value), None,
+                            "Verifica fara sa ruleze nimic: adb, telefonul conectat si deblocat, aplicatia "
+                            "instalata, bateria, Appium"))
         self.button_row(buttons)
 
     def _build_for_each(self, f: ForEachRowNode):
