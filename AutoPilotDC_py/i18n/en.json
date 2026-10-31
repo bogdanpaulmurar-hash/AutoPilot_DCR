@@ -2165,5 +2165,18 @@
  "{0} obiecte. Favoritele si containerele cu obiecte inauntru nu apar. „Nefolosit” = in nicio rutina din folderul rutinelor.": "{0} objects. Favorites and containers with objects inside are not listed. \"Unused\" = in no routine of the routines folder.",
  "Sterge obiectele": "Delete objects",
  "Sterg {0} obiecte din biblioteca? (se face intai o copie de rezerva)": "Delete {0} objects from the library? (a backup copy is made first)",
- "🗑 {0} obiecte sterse. Copie de rezerva: {1}": "🗑 {0} objects deleted. Backup copy: {1}"
+ "🗑 {0} obiecte sterse. Copie de rezerva: {1}": "🗑 {0} objects deleted. Backup copy: {1}",
+ "  [Nume](Text=Salveaza) = obiect cu parametru: un singur obiect pentru toate butoanele de acelasi fel; dai valoarea parametrului in paranteze.": "  [Name](Text=Save) = object with a parameter: one object for all buttons of the same kind; give the parameter value in brackets.",
+ "📌 Comun (toate ecranele)": "📌 Shared (all screens)",
+ "🧩 Obiect cu parametru": "🧩 Object with a parameter",
+ "Numele parametrului (in locatori devine {{Nume}}). Textul \"{0}\" se inlocuieste cu el; fiecare pas da alta valoare.": "Parameter name (in the locators it becomes {{Name}}). The text \"{0}\" is replaced by it; each step gives another value.",
+ "Niciun locator nu contine textul \"{0}\". Obiectul nou are parametrul {{{1}}}, dar scrie-l tu in locatori (✎ Editeaza).": "No locator contains the text \"{0}\". The new object has the parameter {{{1}}}, but write it into the locators yourself (✎ Edit).",
+ "🧩 [{0}]: {1} locatori cu {{{2}}}. In pas alegi obiectul si scrii valoarea parametrului.": "🧩 [{0}]: {1} locators with {{{2}}}. In the step choose the object and write the parameter value.",
+ "📌 [{0}] e comun pe toata aplicatia {1}.": "📌 [{0}] is shared across the whole application {1}.",
+ "🧩 Fa un obiect cu parametru din acesta...": "🧩 Make an object with a parameter from this...",
+ "📌 Comun pe toata aplicatia (toate ecranele)": "📌 Shared across the whole application (all screens)",
+ "Valoarea parametrului {0}:": "Value of parameter {0}:",
+ "Parametru: {0}": "Parameter: {0}",
+ "Valoarea intra in locatorii obiectului in locul {Parametru}. Poti folosi variabile, ex: {Rand.Nume}.": "The value goes into the object's locators in place of {Parametru}. You can use variables, e.g. {Rand.Nume}.",
+ "Parametri (v4.28; separati prin virgula, ex: Text). In locatori scrii {Text}; valoarea o da fiecare pas.": "Parameters (v4.28; comma separated, e.g. Text). In the locators write {Text}; each step gives the value."
 }

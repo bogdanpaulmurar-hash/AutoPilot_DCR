@@ -13,7 +13,7 @@ from decimal import Decimal, InvalidOperation
 from typing import Optional, Tuple
 
 from .drivers.base import DriverProvider, RprStepException
-from .model import CompareOperator, Condition, ConditionKind, ObjectRepository, UiObject, with_variables
+from .model import CompareOperator, Condition, ConditionKind, ObjectRepository, UiObject, with_params, with_variables
 from .variables import VariableStore
 
 _NUM_RE = re.compile(r"^[+-]?[\d.,]+$")
@@ -108,7 +108,7 @@ class ConditionEvaluator:
         if k == ConditionKind.Compare:
             return compare(self._vars.resolve(c.left), c.operator, self._vars.resolve(c.right), c.ignore_case)
 
-        obj = self._require(c.target)
+        obj = self._require(c.target, c.params)
         driver = self._drivers.get(obj.technology)
 
         # 3. NU exista: asteptam pana dispare (pana la timeout_ms)
@@ -134,8 +134,8 @@ class ConditionEvaluator:
             return st.exists and compare(st.text or st.value, c.operator, self._vars.resolve(c.right), c.ignore_case)
         return False
 
-    def _require(self, name: str) -> UiObject:
+    def _require(self, name: str, params=None) -> UiObject:
         obj = self._repo.find(name)
         if obj is None:
             raise RprStepException(f"Conditia foloseste obiectul [{name}], care nu exista in Object Repository.")
-        return with_variables(self._repo.link_parents(obj), self._vars.resolve)
+        return with_params(self._repo.link_parents(obj), params, self._vars.resolve)

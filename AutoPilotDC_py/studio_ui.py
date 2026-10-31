@@ -45,7 +45,7 @@ from rpr.model import (ACTIONS, ActionNode, BreakNode, CellColor, CompareOperato
                        LogNode, LoopMode, LoopNode, ObjectRepository, QuestionNode, Routine, RprAction, RprLogLevel, RunRoutineNode,
                        RprNode, RuleAfter, RuleNode, SetVariableNode, StopNode, TryNode, UiObject, UiTechnology, VariableOperation,
                        WaitMode, WaitNode, WriteExcelNode, action_info, flatten, sanitize_name,
-                       OBJECT_TYPES, CONTAINER_TYPES, SiteGroup)
+                       OBJECT_TYPES, CONTAINER_TYPES, SiteGroup, param_names_in, with_params)
 from rpr import report as rpr_report
 from rpr import resume as rpr_resume
 from rpr import scan as rpr_scan
@@ -54,6 +54,7 @@ from rpr import libclean
 from rpr import testlib
 from rpr import subroutine as rpr_sub
 from rpr.storage import Examples, ExcelInfo, RepositoryStore, RoutineStore, RprPaths, RunLogExporter
+COMMON_PAGE = "📌 Comun (toate ecranele)"   # v4.28: grupul obiectelor fara pagina (valabile pe toate ecranele)
 import ui_theme   # v4.14: contrast automat, texte care se rup dupa latime
 import studio_views   # v4.15: bara de activitati, tab-uri, cronologie, ecranul Excel, fluxul
 
@@ -574,6 +575,7 @@ class StudioPanel(tk.Frame):
         super().__init__(master, bg=colors["bg_main"])
         self.C = colors
         self._on_help = on_help     # v4.16: ❓ deschide 📖 Instructiuni (RO / EN / DE)
+        self._last_param_values: Dict[str, str] = {}   # v4.28: ultimele valori date la 🧪 / 👁
         self.video = video          # VideoController (🎥 film la rulare) sau None
         self._dnd_allowed = dnd_allowed or (lambda: True)
         self._run_frame = run_frame
@@ -2851,7 +2853,7 @@ class StudioPanel(tk.Frame):
                 continue
             if o.parent and o.parent.lower() in names:
                 continue   # apare sub containerul lui
-            tree.setdefault(site_of(o), {}).setdefault(o.page or "(fara pagina)", []).append(o)
+            tree.setdefault(site_of(o), {}).setdefault(o.page or COMMON_PAGE, []).append(o)
 
         def add_obj(parent_iid, o):
             iid = "obj:" + o.name
@@ -3063,6 +3065,48 @@ class StudioPanel(tk.Frame):
             return
         ObjectUsageDialog(self, o, self._obj_usage.get(o.name.lower(), []))
 
+    # ── v4.28: 🧩 obiect cu parametru, 📌 parti comune pe aplicatie ──
+    def make_param_object(self, obj: Optional[UiObject] = None):
+        """Un obiect pentru toate butoanele de acelasi fel: textul vizibil devine {Parametru}."""
+        obj = obj or self._sel_object()
+        if obj is None:
+            return
+        label = libsearch.object_label(obj)
+        pname = input_dialog(self, "🧩 Obiect cu parametru",
+                             tr_template("Numele parametrului (in locatori devine {{Nume}}). Textul \"{0}\" se inlocuieste "
+                                         "cu el; fiecare pas da alta valoare.").format(label or "?"), "Text", C=self.C)
+        if not pname or not pname.strip().strip("{}"):
+            return
+        pname = sanitize_name(pname.strip().strip("{}")) or "Text"
+        base = re.sub(r"_+", "_", (obj.object_type.split()[0] if obj.object_type else "Obiect") + "_" +
+                      (obj.page or obj.site or "") + "_cu_" + pname)
+        name = input_dialog(self, "🧩 Obiect cu parametru", "Numele obiectului nou:", self.repo.make_unique_name(base),
+                            C=self.C)
+        if not name or not name.strip():
+            return
+        twin, n = libsearch.parametrize(obj, pname, label)
+        if not n:
+            messagebox.showinfo("🧩 Obiect cu parametru", tr_template(
+                "Niciun locator nu contine textul \"{0}\". Obiectul nou are parametrul {{{1}}}, dar scrie-l tu in "
+                "locatori (✎ Editeaza).").format(label, pname), parent=self)
+        twin.name = self.repo.make_unique_name(sanitize_name(name.strip()) or base)
+        self.repo.add(twin)
+        self.save_repository()
+        self.reveal_object(twin.name)
+        self.set_status(tr_template("🧩 [{0}]: {1} locatori cu {{{2}}}. In pas alegi obiectul si scrii valoarea "
+                                    "parametrului.").format(twin.name, n, pname))
+
+    def make_common_object(self, obj: Optional[UiObject] = None):
+        """📌 Obiectul e valabil pe toate ecranele aplicatiei (bara SAP, antetul site-ului, meniul)."""
+        obj = obj or self._sel_object()
+        if obj is None:
+            return
+        obj.page = ""
+        obj.url_patterns = []
+        self.save_repository()
+        self.reveal_object(obj.name)
+        self.set_status(tr_template("📌 [{0}] e comun pe toata aplicatia {1}.").format(obj.name, self._site_of(obj)))
+
     # ── v4.27: 🧹 Curata biblioteca: dubluri, nefolosite, stricate ──
     def _ensure_usage(self) -> Dict[str, List[libsearch.Usage]]:
         """Indexul "Folosit in" acum (citit pe loc daca nu e gata): unirea si stergerea au nevoie de el exact."""
@@ -3263,6 +3307,8 @@ class StudioPanel(tk.Frame):
         m.add_command(label="▣ Muta in container...", command=self.move_to_container)
         m.add_command(label="📁 Muta in folder...", command=self.move_to_folder)
         m.add_command(label="⧉ Copiaza pentru alt site / alta pagina...", command=self.copy_object)
+        m.add_command(label="🧩 Fa un obiect cu parametru din acesta...", command=self.make_param_object)
+        m.add_command(label="📌 Comun pe toata aplicatia (toate ecranele)", command=self.make_common_object)
         m.add_separator()
         m.add_command(label="🗑 Sterge", command=self.delete_object)
         m.tk_popup(e.x_root, e.y_root)
@@ -3270,7 +3316,7 @@ class StudioPanel(tk.Frame):
     # ── v4.11: foldere in biblioteca ──
     def _folder_objects(self, iid: str) -> List[UiObject]:
         site, page, path = iid[len("folder:"):].split("|", 2)
-        return [o for o in self.repo.objects if self._site_of(o) == site and (o.page or "(fara pagina)") == page
+        return [o for o in self.repo.objects if self._site_of(o) == site and (o.page or COMMON_PAGE) == page
                 and rpr_scan.in_folder(o, path)]
 
     def _folder_menu(self, e, iid: str):
@@ -3289,7 +3335,7 @@ class StudioPanel(tk.Frame):
             site = iid[len("site:"):]
             return [o for o in self.repo.objects if self._site_of(o) == site]
         site, page = iid[len("page:"):].split("|", 1)
-        return [o for o in self.repo.objects if self._site_of(o) == site and (o.page or "(fara pagina)") == page]
+        return [o for o in self.repo.objects if self._site_of(o) == site and (o.page or COMMON_PAGE) == page]
 
     def _group_menu(self, e, iid: str):
         self.objects.selection_set(iid)
@@ -3473,16 +3519,35 @@ class StudioPanel(tk.Frame):
         self.refresh_objects()
         self.set_status(f"Copie creata: [{twin.name}] pentru {twin.site}{twin.page}. Testeaz-o pe noul site (🧪).")
 
+    def _ask_param_values(self, obj: UiObject):
+        """v4.28: pentru 🧪 Test / 👁 Arata: obiectul cu parametru primeste valorile de la utilizator.
+        Intoarce copia completata, obiectul insusi (fara parametri) sau None (anulat)."""
+        names = list(obj.params) or param_names_in(obj)
+        if not names:
+            return obj
+        vals = {}
+        for n in names:
+            v = input_dialog(self, "🧩 " + obj.name, tr_template("Valoarea parametrului {0}:").format(n),
+                             self._last_param_values.get(n.lower(), ""), C=self.C)
+            if v is None:
+                return None
+            vals[n] = v
+            self._last_param_values[n.lower()] = v
+        return with_params(obj, vals, lambda t: t)
+
     def test_object(self, obj: Optional[UiObject] = None):
         obj = obj or self._sel_object()
         if obj is None:
+            return
+        real = self._ask_param_values(obj)
+        if real is None:
             return
         if obj.technology not in (UiTechnology.Web, UiTechnology.WebSelenium):
             driver = self.drivers.get(obj.technology)
 
             def work_win():
                 try:
-                    self.post("test_result", (obj, driver.test_object(obj), None))
+                    self.post("test_result", (obj, driver.test_object(real), None))
                 except Exception as ex:  # noqa: BLE001
                     self.post("test_result", (obj, None, str(ex)))
             self.set_status(f"🧪 Testez [{obj.name}] pe ecran...")
@@ -3497,14 +3562,14 @@ class StudioPanel(tk.Frame):
                 url = None
         except Exception:
             url = None
-        self.repo.link_parents(obj)
+        self.repo.link_parents(real)
         web = self.web()
 
         def work():
             try:
                 if url:
                     web.open(url)
-                self.post("test_result", (obj, web.test_object(obj), None))
+                self.post("test_result", (obj, web.test_object(real), None))
             except Exception as ex:  # noqa: BLE001
                 self.post("test_result", (obj, None, str(ex)))
         self.set_status(f"🧪 Testez [{obj.name}] pe pagina din browser...")
@@ -3737,6 +3802,9 @@ class StudioPanel(tk.Frame):
 
     def show_object(self, obj: Optional[UiObject] = None, ms: int = 8000):
         obj = obj or self._sel_object()
+        if obj is None:
+            return
+        obj = self._ask_param_values(obj)
         if obj is None:
             return
         self.repo.link_parents(obj)
@@ -4658,6 +4726,17 @@ class PropertyEditor:
             cb.bind("<FocusOut>", lambda e: self._later_rebuild())
         return cb
 
+    def param_fields(self, node, target: str, params: Dict[str, str], host=None):
+        """v4.28: obiect cu parametru: cate un camp pentru fiecare {Param} al obiectului ales."""
+        obj = self.p.repo.find(target) if target and target.strip() else None
+        if obj is None or not obj.params:
+            return
+        for pn in obj.params:
+            self.text(node, tr_template("Parametru: {0}").format(pn), lambda pn=pn: params.get(pn, ""),
+                      lambda v, pn=pn: params.__setitem__(pn, v), host=host)
+        self._hint(tr("Valoarea intra in locatorii obiectului in locul {Parametru}. Poti folosi variabile, ex: {Rand.Nume}."),
+                   host)
+
     def object_picker(self, node, label, get, set_, technologies=None, host=None):
         names = [o.name for o in sorted(self.p.repo.objects, key=lambda x: x.name.lower())
                  if not technologies or o.technology in technologies]
@@ -4869,6 +4948,7 @@ class PropertyEditor:
         if info.needs_target or info.target_optional:
             lbl = "Obiect (optional — gol = tasta se trimite ferestrei active)" if info.target_optional else "Pe ce obiect"
             self.object_picker(a, lbl, lambda: a.target, lambda v: setattr(a, "target", v), info.technologies)
+            self.param_fields(a, a.target, a.params)
 
         # 3. tehnologia (doar fara obiect)
         if not a.target.strip() and len(info.technologies) > 1 and not info.needs_target:
@@ -4987,6 +5067,7 @@ class PropertyEditor:
             self.check(node, "Ignora literele mari/mici", lambda: c.ignore_case, lambda v: setattr(c, "ignore_case", v), host=card)
         else:
             self.object_picker(node, "Obiectul", lambda: c.target, lambda v: setattr(c, "target", v), host=card)
+            self.param_fields(node, c.target, c.params, host=card)
             if c.kind == ConditionKind.ElementText:
                 self.combo(node, "", OPERATORS, lambda: c.operator, lambda v: setattr(c, "operator", v), host=card, structural=True)
                 if c.operator not in (CompareOperator.IsEmpty, CompareOperator.IsNotEmpty):
@@ -5253,6 +5334,9 @@ class ObjectDialog(DialogBase):
         self.context = tk.StringVar(value=obj.context)
         tk.Entry(self.body, textvariable=self.context, **es).pack(fill="x", padx=14, ipady=3)
         self.lib = LibraryFields(self.body, panel, obj)
+        cap("Parametri (v4.28; separati prin virgula, ex: Text). In locatori scrii {Text}; valoarea o da fiecare pas.")
+        self.params = tk.StringVar(value=", ".join(obj.params))
+        tk.Entry(self.body, textvariable=self.params, **es).pack(fill="x", padx=14, ipady=3)
         cap("Locatori (in ordinea de incercare; primul care gaseste exact UN element castiga)")
         self.loc_box = tk.Frame(self.body, bg=C["bg_main"])
         self.loc_box.pack(fill="x", padx=14)
@@ -5304,6 +5388,7 @@ class ObjectDialog(DialogBase):
         self.obj.context = self.context.get().strip()
         self.obj.locators = [Locator(LocatorKind.parse(k.get()), v.get().strip(), 50, e.get())
                              for k, v, e in self.rows if v.get().strip()]
+        self.obj.params = [x.strip().strip("{}") for x in self.params.get().split(",") if x.strip().strip("{}")]
         self.lib.apply()
         self.result = True
         self.destroy()
