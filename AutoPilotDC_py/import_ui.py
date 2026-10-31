@@ -131,6 +131,7 @@ class ImportDialog(tk.Toplevel):
         self.p = panel
         self.C = C = panel.C
         self.result: Optional[ImportResult] = None
+        self.repair = None   # v4.24: 🔧 Repara rutina (rpr.assistant.RepairJob): PASTREAZA #n + setarile originalului
         self._after = None
         self.title("📥 Import AI — pasi din text")
         self.configure(bg=C["bg_main"])
@@ -203,6 +204,15 @@ class ImportDialog(tk.Toplevel):
     def _b(self, parent, text, cmd, color=None):
         return self.p._btn(parent, text, cmd, color=color)
 
+    def destroy(self):
+        if self._after is not None:   # verificarea programata nu mai are fereastra
+            try:
+                self.after_cancel(self._after)
+            except tk.TclError:
+                pass
+            self._after = None
+        super().destroy()
+
     # ── prompt ──
     def _lang(self) -> str:
         return getattr(i18n, "LANG", "ro") if i18n is not None else "ro"
@@ -228,6 +238,7 @@ class ImportDialog(tk.Toplevel):
 
     def load_example(self):
         from rpr.importer import _EXAMPLE_EN, _EXAMPLE_RO
+        self.repair = None
         self.text.delete("1.0", "end")
         self.text.insert("1.0", _EXAMPLE_RO if self._lang() == "ro" else _EXAMPLE_EN)
         self.check()
@@ -244,10 +255,19 @@ class ImportDialog(tk.Toplevel):
         except (OSError, UnicodeDecodeError) as ex:
             messagebox.showerror("📥 Import AI", str(ex), parent=self)
             return
+        self.repair = None
         self.text.delete("1.0", "end")
         self.text.insert("1.0", data)
         self.check()
         self.p.set_status(f"Fisier citit: {os.path.basename(path)}")
+
+    def set_text(self, text: str, repair=None):
+        """Textul primit de la 🤖 Asistent AI: inlocuieste continutul si verifica.
+        `repair`: rutina reparata (pasii PASTREAZA #n si setarile vin din rutina originala)."""
+        self.repair = repair
+        self.text.delete("1.0", "end")
+        self.text.insert("1.0", text or "")
+        self.check()
 
     def _paste(self, _e=None):
         """Ctrl+V / Shift+Insert: textul din clipboard-ul sistemului (vezi win_clipboard_get)."""
@@ -276,7 +296,8 @@ class ImportDialog(tk.Toplevel):
 
     def check(self):
         self._after = None
-        res = StepImporter(self.p.repo).parse(self.text.get("1.0", "end"))
+        imp = self.repair.importer(self.p.repo) if self.repair is not None else StepImporter(self.p.repo)
+        res = imp.parse(self.text.get("1.0", "end"))
         self.result = res
         self.tree.delete(*self.tree.get_children())
         from studio_ui import icon_for
@@ -330,5 +351,7 @@ class ImportDialog(tk.Toplevel):
         res = self.result
         if res is None or not res.ok:
             return
+        if self.repair is not None:   # rutina reparata: setarile originalului, randurile neschimbate cum erau
+            self.repair.finish(res)
         if self.p.open_imported(res.routine, res.new_objects):
             self.destroy()
