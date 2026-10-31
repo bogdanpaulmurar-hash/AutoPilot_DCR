@@ -422,6 +422,7 @@ Când ai sute sau mii de obiecte, nu le mai cauți în arbore: scrii ce vezi pe 
 4. Sau scrie prescurtări direct în căutare: `tip:combo`, `app:SAP`, `ecran:VA03`, `stare:stricat`, `#eticheta`. Ecranele cu spații merg între ghilimele: `ecran:"Lista comenzi"`.
 5. Click pe obiect: sub listă vezi textul de pe ecran, aplicația / ecranul, primul locator, rezultatul ultimului test și în câte rutine e folosit. **👁** îl arată în aplicație (Web, SAP, Desktop), **⭐** îl pune la favorite, **📋** deschide „Folosit în”: rutinele și pașii care îl folosesc (dublu click = rutina se deschide la pas).
 
+- **🔎 Găsește din ecran** (lângă ☰): alegi Web / SAP GUI / Desktop și marchezi elementul ca la Spy (Web: click în browser; SAP / Desktop: mouse-ul pe element + F2). Nu se salvează nimic: biblioteca scoate filtrele și selectează obiectul salvat. Dacă găsește mai multe obiecte pentru același element, le arată în listă (sunt dubluri). Dacă nu găsește niciunul, te întreabă dacă îl salvezi acum. Sensul invers: din listă, **👁** arată obiectul în aplicație.
 - Favoritele și obiectele folosite recent stau sus, în grupul **⭐ Favorite și recente**.
 - Starea se notează singură la 🧪 Test, la 🩺 Verifică și când pui obiectul într-o rutină. Stă în `obiecte.stare.json`, lângă bibliotecă; `obiecte.json` nu se schimbă.
 - „Folosit în” citește rutinele din folderul rutinelor (📋 Rutine → 📁 Folder) și din folderul `rutine` de lângă bibliotecă.

@@ -2119,5 +2119,16 @@
  "Biblioteca de test a fost stearsa; ai revenit la biblioteca implicita.": "The test library was deleted; you are back on the default library.",
  "Folosit in: {0}": "Used in: {0}",
  "Folosit in {0} rutine, {1} pasi. Dublu click = deschide rutina la pas.": "Used in {0} routines, {1} steps. Double click = open the routine at the step.",
- "Nicio rutina din folderul rutinelor nu foloseste obiectul.": "No routine in the routines folder uses the object."
+ "Nicio rutina din folderul rutinelor nu foloseste obiectul.": "No routine in the routines folder uses the object.",
+ "Gaseste din ecran: dai click pe buton in aplicatie (Web, SAP, Desktop) si biblioteca il arata. Nu salveaza nimic.": "Find from screen: click the button in the application (Web, SAP, Desktop) and the library shows it. Nothing is saved.",
+ "🌐 Web: click pe element in browser": "🌐 Web: click the element in the browser",
+ "🟦 SAP GUI: mouse-ul pe element + F2": "🟦 SAP GUI: mouse over the element + F2",
+ "🪟 Desktop: mouse-ul pe element + F2": "🪟 Desktop: mouse over the element + F2",
+ "🔎 Gaseste din ecran": "🔎 Find from screen",
+ "Elementul nu e in biblioteca. Il salvez acum?": "The element is not in the library. Save it now?",
+ "🔎 Elementul nu e in biblioteca.": "🔎 The element is not in the library.",
+ "🔎 Gasit: [{0}] ({1}).": "🔎 Found: [{0}] ({1}).",
+ "acelasi locator": "same locator",
+ "acelasi text pe acelasi ecran": "same text on the same screen",
+ "🔎 {0} obiecte salvate pentru acelasi element: probabil dubluri.": "🔎 {0} saved objects for the same element: probably duplicates."
 }
