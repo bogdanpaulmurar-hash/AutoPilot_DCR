@@ -413,3 +413,20 @@ Das Format (Schlüsselwörter auf Englisch oder Rumänisch, Groß- oder Kleinsch
 - Eine vollständige `.rpr.json`-Routine wird ebenfalls angenommen. Was nicht automatisierbar ist, wird `MANUAL`: Die Routine hält an und wartet auf Weiter.
 
 > Beispiel: Im Importfenster **📝 Beispiel** drücken: eine Auftragserfassung aus einer Excel-Datei erscheint; rechts sehen Sie die Routine mit Schleife und Bedingung; ✅ Routine erstellen öffnet sie in Studio.
+
+## 34. 🔍 In der Bibliothek suchen: Filter, Zustand, Favoriten, „Verwendet in“
+
+Bei Hunderten oder Tausenden von Objekten blättern Sie nicht mehr im Baum: Sie tippen, was Sie auf dem Bildschirm sehen.
+
+1. Tippen Sie in **📚 Bibliothek** den Text der Schaltfläche in das Suchfeld, z. B. `salv`. Gefunden werden „Salvează“ und „Save“, ohne Akzente und ohne Groß-/Kleinschreibung, auch mit einem Tippfehler.
+2. Die Treffer erscheinen als **einfache Liste**, beste zuerst (☰). Die Schaltfläche ☰ / 🌳 wechselt zum Baum Anwendung → Bild.
+3. Eingrenzen mit den Listen unter der Suche: **Typ** (Schaltfläche, Textfeld, ComboBox, Tabelle, RefList…) und **Zustand**: ✅ beim letzten Test funktioniert, ❌ defekt, ⚪ in keiner Routine benutzt, 🕐 in den letzten 7 Tagen benutzt, ⭐ Favorit.
+4. Oder Kürzel direkt in die Suche schreiben: `typ:combo`, `app:SAP`, `seite:VA03`, `status:defekt`, `#schlagwort`. Bilder mit Leerzeichen in Anführungszeichen: `seite:"Auftragsliste"`.
+5. Klick auf ein Objekt: unter der Liste sehen Sie den Text auf dem Bildschirm, Anwendung / Bild, den ersten Locator, das letzte Testergebnis und in wie vielen Routinen es verwendet wird. **👁** zeigt es in der Anwendung (Web, SAP, Desktop), **⭐** macht es zum Favoriten, **📋** öffnet „Verwendet in“: die Routinen und Schritte, die es benutzen (Doppelklick = Routine öffnet beim Schritt).
+
+- Favoriten und zuletzt benutzte Objekte stehen oben in der Gruppe **⭐ Favoriten und zuletzt benutzt**.
+- Der Zustand wird automatisch bei 🧪 Test, bei 🩺 Prüfen und beim Einfügen in eine Routine notiert. Er liegt in `obiecte.stare.json` neben der Bibliothek; `obiecte.json` ändert sich nicht.
+- „Verwendet in“ liest die Routinen im Routinenordner (📋 Routinen → 📁 Ordner) und im Ordner `rutine` neben der Bibliothek.
+- **🧪 Testbibliothek** (neben 📁): erstellt einen Ordner `Biblioteca_test` mit 3000 erfundenen Objekten (Web, SAP, Desktop) und 25 Routinen, um die Suche auszuprobieren. Sie wählen, wo der Ordner entsteht. **🧪 → Löschen** löscht nur einen so erstellten Ordner und kehrt zur Standardbibliothek zurück. **🧪 → Andere Bibliothek öffnen** wechselt den Ordner.
+
+> Beispiel: Sie haben 3000 Objekte und suchen die Speichern-Schaltfläche in VA03. Sie tippen `salv app:sap seite:va03`, es erscheint eine Zeile; 👁 zeigt sie auf dem SAP-Bild und 📋 sagt, dass sie in 4 Routinen verwendet wird.

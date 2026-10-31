@@ -8,12 +8,10 @@ Reguli generale (v1.1; textul complet: repo `dev-framework`, GLOBAL_RULES.md):
 - Aplicații Windows: Python cu `pythonw`, tray, fără `.exe`; respectă DevPilot (`DEVPILOT_MANAGED`, `DEVPILOT_SUPPRESS`).
 - Git: GitHub e sursa de adevăr; un singur laptop o dată; commit și push înainte de schimbarea laptopului; lasă Drive să termine sincronizarea.
 
-Tool RPA + Data Cleansing: recorder/player de pași desktop și browser, plus **Studio RPR** (rutine pe obiecte Web / SAP GUI / Desktop + Excel, fără cod, în stilul SilkTest). Două variante în același repo.
+Tool RPA + Data Cleansing: recorder/player de pași desktop și browser, plus **Studio RPR** (rutine pe obiecte Web / SAP GUI / Desktop + Excel, fără cod, în stilul SilkTest). Doar varianta Python (`AutoPilotDC_py/`); varianta C# a fost scoasă în v4.25.0 (rămâne în istoricul git).
 
-## Care variantă
-- **Python (`AutoPilotDC_py/`) e varianta principală.** Are tot ce avea C#, inclusiv Studio RPR, drivere Web (Playwright), SAP GUI și Desktop, biblioteca de obiecte, programarea, limbile RO/EN/DE.
-- **C# (`AutoPilotDC_C#/`)** urmează să fie abandonat după testare. Nu adăuga funcții noi acolo fără cerere explicită.
-- Fișierele `.rpr.json` și `obiecte.json` sunt identice între variante. Nu le schimba formatul într-o singură parte. Setările noi doar în Python stau în câmpuri pe care C# le ignoră (ex. `settings.report`); `.pregatire.json` există doar în Python. Pașii `run_routine` (v4.12) și `on_error_rule` (v4.13) câmpul `optional` al pasului `if` și acțiunea `SapScrollTable` (v4.22) există doar în Python.
+## Formatul fișierelor
+- `.rpr.json`, `obiecte.json` și `.pregatire.json` sunt doar ale aplicației Python; formatul se poate extinde, dar rutinele și bibliotecile vechi trebuie să se deschidă în continuare (câmpuri noi opționale, cu valori implicite).
 
 ## Comenzi (Python)
 - Instalare pe un PC: `AutoPilotDC_py\INSTALEAZA.bat`; verificare: `python verifica_instalare.py`
@@ -38,4 +36,4 @@ Fișiere vechi păstrate doar ca referință: `AutoPilot_DCv3.9_RedCursor.py`, `
 Prezentarea proiectelor și lista de erori/modificări sunt în două Google Docs: **PROIECTE_CONTEXT (live)** și **MODIFICARI_PROIECTE (live)** — citește doar secțiunea AutoPilot DC. Ce s-a implementat și confirmat se șterge din MODIFICARI.
 
 ## Când se actualizează fișierul
-În același commit, când se schimbă comenzile de instalare/pornire/test, structura, formatul `.rpr.json`, decizia despre varianta C# sau când un defect scoate la iveală o regulă de ținut minte. Nu pentru funcții obișnuite. Sub ~60 de rânduri.
+În același commit, când se schimbă comenzile de instalare/pornire/test, structura, formatul `.rpr.json`, sau când un defect scoate la iveală o regulă de ținut minte. Nu pentru funcții obișnuite. Sub ~60 de rânduri.
