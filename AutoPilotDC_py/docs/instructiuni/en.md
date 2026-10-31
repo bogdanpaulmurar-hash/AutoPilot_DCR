@@ -431,3 +431,17 @@ When you have hundreds or thousands of objects, you no longer browse the tree: y
 - **🧪 Test library** (next to 📁): creates a `Biblioteca_test` folder with 3000 made-up objects (Web, SAP, Desktop) and 25 routines, to try the search. You choose where the folder is made. **🧪 → Delete** deletes only a folder created this way and takes you back to the default library. **🧪 → Open another library** changes the folder.
 
 > Example: you have 3000 objects and look for the save button in VA03. You type `salv app:sap screen:va03`, a single row appears; 👁 shows it on the SAP screen and 📋 tells you it is used in 4 routines.
+
+## 35. 🧹 Clean the library: duplicates, unused, broken
+
+Fewer objects make the library easier to use. **🧹** (in 📚 Library, next to 🧪) opens two lists.
+
+1. **🔁 Duplicates**: objects saved several times for the same element. *Sure* = same locator (id, css, xpath, SAP id…). *Probable* = same visible text and type on the same screen. ⭐ marks the object suggested to keep (the one used in more routines).
+2. Choose the object to keep and press **⭐ Keep this one and merge the group**. The others go away. The kept one receives their locators (as fallbacks) and tags. Steps and conditions in routines move to its name, as do the objects in their containers and the routines open in Studio.
+3. **🔁 Merge all sure groups** does the same in one go for all groups with the same locator. Check *probable* groups first with **👁**.
+4. **🗑 Unused / broken**: objects in no routine of the routines folder and those that failed the last test. Favorites and containers with objects inside are not listed. Select them and press **🗑 Delete selected**.
+
+- Before each merge or deletion, the library and the affected routines are copied to `_backup_biblioteca\<date>` next to the library. To undo, copy the files back (`de_unde.json` says where they came from).
+- "Unused" only sees routines in the routines folder and in `rutine` next to the library. A routine kept elsewhere is not seen.
+
+> Example: in the test library (🧪), 🧹 → 🔁 Duplicates shows pairs like `Buton_Anuleaza_Standard` and `Buton_Anuleaza_Standard_copie` (sure). 🔁 Merge all sure groups merges them; routines that used `_copie` now use the kept object.

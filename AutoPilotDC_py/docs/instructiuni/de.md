@@ -431,3 +431,17 @@ Bei Hunderten oder Tausenden von Objekten blättern Sie nicht mehr im Baum: Sie 
 - **🧪 Testbibliothek** (neben 📁): erstellt einen Ordner `Biblioteca_test` mit 3000 erfundenen Objekten (Web, SAP, Desktop) und 25 Routinen, um die Suche auszuprobieren. Sie wählen, wo der Ordner entsteht. **🧪 → Löschen** löscht nur einen so erstellten Ordner und kehrt zur Standardbibliothek zurück. **🧪 → Andere Bibliothek öffnen** wechselt den Ordner.
 
 > Beispiel: Sie haben 3000 Objekte und suchen die Speichern-Schaltfläche in VA03. Sie tippen `salv app:sap seite:va03`, es erscheint eine Zeile; 👁 zeigt sie auf dem SAP-Bild und 📋 sagt, dass sie in 4 Routinen verwendet wird.
+
+## 35. 🧹 Bibliothek aufräumen: Duplikate, unbenutzt, defekt
+
+Weniger Objekte machen die Bibliothek leichter zu benutzen. **🧹** (in 📚 Bibliothek, neben 🧪) öffnet zwei Listen.
+
+1. **🔁 Duplikate**: Objekte, die mehrmals für dasselbe Element gespeichert wurden. *Sicher* = gleicher Locator (id, css, xpath, SAP-ID…). *Wahrscheinlich* = gleicher sichtbarer Text und Typ auf demselben Bild. ⭐ zeigt das zum Behalten vorgeschlagene Objekt (das in mehr Routinen benutzte).
+2. Wählen Sie das zu behaltende Objekt und drücken Sie **⭐ Dieses behalten und Gruppe zusammenführen**. Die anderen verschwinden. Das behaltene erhält ihre Locatoren (als Reserve) und Schlagwörter. Schritte und Bedingungen in Routinen wechseln auf seinen Namen, ebenso die Objekte in ihren Containern und die in Studio geöffneten Routinen.
+3. **🔁 Alle sicheren Gruppen zusammenführen** macht dasselbe in einem Schritt für alle Gruppen mit gleichem Locator. *Wahrscheinliche* Gruppen zuerst mit **👁** prüfen.
+4. **🗑 Unbenutzt / defekt**: Objekte in keiner Routine des Routinenordners und solche, die beim letzten Test fehlschlugen. Favoriten und Container mit Objekten darin erscheinen nicht. Auswählen und **🗑 Ausgewählte löschen** drücken.
+
+- Vor jedem Zusammenführen oder Löschen werden Bibliothek und betroffene Routinen nach `_backup_biblioteca\<Datum>` neben der Bibliothek kopiert. Zum Rückgängigmachen die Dateien zurückkopieren (`de_unde.json` sagt, woher sie kamen).
+- „Unbenutzt“ sieht nur Routinen im Routinenordner und in `rutine` neben der Bibliothek. Eine anderswo abgelegte Routine wird nicht gesehen.
+
+> Beispiel: in der Testbibliothek (🧪) zeigt 🧹 → 🔁 Duplikate Paare wie `Buton_Anuleaza_Standard` und `Buton_Anuleaza_Standard_copie` (sicher). 🔁 Alle sicheren Gruppen zusammenführen vereint sie; Routinen, die `_copie` benutzten, verwenden jetzt das behaltene Objekt.
