@@ -413,3 +413,20 @@ The format (keywords in English or Romanian, upper or lower case):
 - A complete `.rpr.json` routine is accepted too. What cannot be automated becomes `MANUAL`: the routine stops and waits for Continue.
 
 > Example: in the import window press **📝 Example**: an order entry procedure from an Excel appears; on the right you see the routine with the loop and the condition; ✅ Create the routine opens it in Studio.
+
+## 34. 🔍 Search the library: filters, state, favorites, "Used in"
+
+When you have hundreds or thousands of objects, you no longer browse the tree: you type what you see on screen.
+
+1. In **📚 Library** type the text on the button in the search box, e.g. `salv`. It finds "Salvează" and "Save", ignoring accents and case, and tolerates a typo.
+2. Results appear as a **simple list**, best matches first (☰). The ☰ / 🌳 button switches to the Application → Screen tree.
+3. Narrow with the lists under the search: the **type** (Button, Text field, ComboBox, Table, RefList…) and the **state**: ✅ worked at the last test, ❌ broken, ⚪ not used in any routine, 🕐 used in the last 7 days, ⭐ favorite.
+4. Or type shortcuts directly in the search: `type:combo`, `app:SAP`, `screen:VA03`, `status:broken`, `#tag`. Screens with spaces go in quotes: `screen:"Order list"`.
+5. Click an object: under the list you see the text on screen, the application / screen, the first locator, the last test result and how many routines use it. **👁** shows it in the application (Web, SAP, Desktop), **⭐** makes it a favorite, **📋** opens "Used in": the routines and steps that use it (double click = the routine opens at the step).
+
+- Favorites and recently used objects stay at the top, in the **⭐ Favorites and recent** group.
+- The state is recorded automatically at 🧪 Test, at 🩺 Check and when you put the object in a routine. It is kept in `obiecte.stare.json`, next to the library; `obiecte.json` does not change.
+- "Used in" reads the routines in the routines folder (📋 Routines → 📁 Folder) and in the `rutine` folder next to the library.
+- **🧪 Test library** (next to 📁): creates a `Biblioteca_test` folder with 3000 made-up objects (Web, SAP, Desktop) and 25 routines, to try the search. You choose where the folder is made. **🧪 → Delete** deletes only a folder created this way and takes you back to the default library. **🧪 → Open another library** changes the folder.
+
+> Example: you have 3000 objects and look for the save button in VA03. You type `salv app:sap screen:va03`, a single row appears; 👁 shows it on the SAP screen and 📋 tells you it is used in 4 routines.

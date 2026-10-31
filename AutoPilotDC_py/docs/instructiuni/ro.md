@@ -411,3 +411,20 @@ Formatul (cuvinte cheie în română sau engleză, fără diferență mare / mic
 - Se acceptă și o rutină completă `.rpr.json`. Ce nu se poate automatiza devine `MANUAL`: rutina se oprește și așteaptă Continuă.
 
 > Exemplu: în fereastra de import apasă **📝 Exemplu**: apare o procedură de introducere a comenzilor dintr-un Excel; în dreapta vezi rutina cu bucla și condiția; ✅ Creează rutina o deschide în Studio.
+
+## 34. 🔍 Caută în bibliotecă: filtre, stare, favorite, „Folosit în”
+
+Când ai sute sau mii de obiecte, nu le mai cauți în arbore: scrii ce vezi pe ecran.
+
+1. În **📚 Bibliotecă** scrie în câmpul de căutare textul de pe buton, de ex. `salv`. Găsește „Salvează” și „Save”, fără diacritice și fără litere mari, și trece peste o greșeală de tastare.
+2. Rezultatele apar ca **listă simplă**, cele mai bune primele (☰). Butonul ☰ / 🌳 schimbă în arborele Aplicație → Ecran.
+3. Restrânge cu listele de sub căutare: **tipul** (Buton, Câmp text, ComboBox, Tabel, RefList…) și **starea**: ✅ a mers la ultimul test, ❌ stricat, ⚪ nefolosit în nicio rutină, 🕐 folosit în ultimele 7 zile, ⭐ favorit.
+4. Sau scrie prescurtări direct în căutare: `tip:combo`, `app:SAP`, `ecran:VA03`, `stare:stricat`, `#eticheta`. Ecranele cu spații merg între ghilimele: `ecran:"Lista comenzi"`.
+5. Click pe obiect: sub listă vezi textul de pe ecran, aplicația / ecranul, primul locator, rezultatul ultimului test și în câte rutine e folosit. **👁** îl arată în aplicație (Web, SAP, Desktop), **⭐** îl pune la favorite, **📋** deschide „Folosit în”: rutinele și pașii care îl folosesc (dublu click = rutina se deschide la pas).
+
+- Favoritele și obiectele folosite recent stau sus, în grupul **⭐ Favorite și recente**.
+- Starea se notează singură la 🧪 Test, la 🩺 Verifică și când pui obiectul într-o rutină. Stă în `obiecte.stare.json`, lângă bibliotecă; `obiecte.json` nu se schimbă.
+- „Folosit în” citește rutinele din folderul rutinelor (📋 Rutine → 📁 Folder) și din folderul `rutine` de lângă bibliotecă.
+- **🧪 Biblioteca de test** (lângă 📁): creează un folder `Biblioteca_test` cu 3000 de obiecte inventate (Web, SAP, Desktop) și 25 de rutine, ca să încerci căutarea. Alegi tu unde se face folderul. **🧪 → Șterge** șterge doar un folder creat așa și te întoarce la biblioteca implicită. **🧪 → Deschide altă bibliotecă** schimbă folderul.
+
+> Exemplu: ai 3000 de obiecte și cauți butonul de salvare din VA03. Scrii `salv app:sap ecran:va03`, apare un singur rând; 👁 îl arată pe ecranul SAP, iar 📋 îți spune că e folosit în 4 rutine.
