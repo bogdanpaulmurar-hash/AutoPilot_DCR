@@ -424,6 +424,7 @@ Bei Hunderten oder Tausenden von Objekten blättern Sie nicht mehr im Baum: Sie 
 4. Oder Kürzel direkt in die Suche schreiben: `typ:combo`, `app:SAP`, `seite:VA03`, `status:defekt`, `#schlagwort`. Bilder mit Leerzeichen in Anführungszeichen: `seite:"Auftragsliste"`.
 5. Klick auf ein Objekt: unter der Liste sehen Sie den Text auf dem Bildschirm, Anwendung / Bild, den ersten Locator, das letzte Testergebnis und in wie vielen Routinen es verwendet wird. **👁** zeigt es in der Anwendung (Web, SAP, Desktop), **⭐** macht es zum Favoriten, **📋** öffnet „Verwendet in“: die Routinen und Schritte, die es benutzen (Doppelklick = Routine öffnet beim Schritt).
 
+- **🔎 Vom Bildschirm finden** (neben ☰): Web / SAP GUI / Desktop wählen und das Element wie mit Spy markieren (Web: Klick im Browser; SAP / Desktop: Maus auf das Element + F2). Nichts wird gespeichert: die Bibliothek entfernt die Filter und wählt das gespeicherte Objekt aus. Findet sie mehrere Objekte für dasselbe Element, zeigt sie diese in der Liste (Duplikate). Findet sie keines, fragt sie, ob es jetzt gespeichert werden soll. Umgekehrt: aus der Liste zeigt **👁** das Objekt in der Anwendung.
 - Favoriten und zuletzt benutzte Objekte stehen oben in der Gruppe **⭐ Favoriten und zuletzt benutzt**.
 - Der Zustand wird automatisch bei 🧪 Test, bei 🩺 Prüfen und beim Einfügen in eine Routine notiert. Er liegt in `obiecte.stare.json` neben der Bibliothek; `obiecte.json` ändert sich nicht.
 - „Verwendet in“ liest die Routinen im Routinenordner (📋 Routinen → 📁 Ordner) und im Ordner `rutine` neben der Bibliothek.

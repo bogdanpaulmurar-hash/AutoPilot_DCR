@@ -424,6 +424,7 @@ When you have hundreds or thousands of objects, you no longer browse the tree: y
 4. Or type shortcuts directly in the search: `type:combo`, `app:SAP`, `screen:VA03`, `status:broken`, `#tag`. Screens with spaces go in quotes: `screen:"Order list"`.
 5. Click an object: under the list you see the text on screen, the application / screen, the first locator, the last test result and how many routines use it. **👁** shows it in the application (Web, SAP, Desktop), **⭐** makes it a favorite, **📋** opens "Used in": the routines and steps that use it (double click = the routine opens at the step).
 
+- **🔎 Find from screen** (next to ☰): choose Web / SAP GUI / Desktop and mark the element as with Spy (Web: click in the browser; SAP / Desktop: mouse over the element + F2). Nothing is saved: the library clears the filters and selects the saved object. If it finds several objects for the same element, it lists them (they are duplicates). If it finds none, it asks whether to save it now. The other way round: from the list, **👁** shows the object in the application.
 - Favorites and recently used objects stay at the top, in the **⭐ Favorites and recent** group.
 - The state is recorded automatically at 🧪 Test, at 🩺 Check and when you put the object in a routine. It is kept in `obiecte.stare.json`, next to the library; `obiecte.json` does not change.
 - "Used in" reads the routines in the routines folder (📋 Routines → 📁 Folder) and in the `rutine` folder next to the library.

@@ -1314,6 +1314,11 @@ class StudioPanel(tk.Frame):
                                            "sau arborele aplicatie → ecran (🌳)")
         self._obj_mode_btn.configure(padx=6, pady=1)
         self._obj_mode_btn.pack(side="left")
+        self._find_screen_btn = self._btn(frow, "🔎", None, tip="Gaseste din ecran: dai click pe buton in aplicatie "
+                                                               "(Web, SAP, Desktop) si biblioteca il arata. Nu salveaza nimic.")
+        self._find_screen_btn.configure(padx=6, pady=1, command=lambda: self._find_screen_menu(self._find_screen_btn))
+        self._find_screen_btn.pack(side="left", padx=(2, 0))
+        self._spy_purpose = ""
         self._obj_state = libsearch.LibraryState.for_library(getattr(self, "repo_path", ""))
         self._obj_usage: Optional[Dict[str, List[libsearch.Usage]]] = None
         self._obj_refresh_job = None
@@ -3053,7 +3058,74 @@ class StudioPanel(tk.Frame):
             return
         ObjectUsageDialog(self, o, self._obj_usage.get(o.name.lower(), []))
 
+    # ── v4.26: 🔎 Gaseste din ecran ──
+    def _find_screen_menu(self, widget):
+        C = self.C
+        m = tk.Menu(self, tearoff=0, bg=C["bg_card"], fg=C["text"], activebackground=C["primary"])
+        m.add_command(label="🌐 Web: click pe element in browser", command=lambda: self.find_from_screen(UiTechnology.Web))
+        m.add_command(label="🟦 SAP GUI: mouse-ul pe element + F2", command=lambda: self.find_from_screen(UiTechnology.Sap))
+        m.add_command(label="🪟 Desktop: mouse-ul pe element + F2",
+                      command=lambda: self.find_from_screen(UiTechnology.Desktop))
+        m.tk_popup(widget.winfo_rootx(), widget.winfo_rooty() + widget.winfo_height())
+
+    def find_from_screen(self, tech: UiTechnology):
+        """Marchezi elementul ca la Spy, dar nu se salveaza nimic: biblioteca arata obiectul salvat (sau spune ca lipseste)."""
+        if self.busy:
+            self.set_status("Asteapta sa se termine operatia curenta.")
+            return
+        self._spy_purpose = "find"
+        self.spy(tech)
+        if not self.busy:          # Spy nu a pornit (ex. adresa anulata)
+            self._spy_purpose = ""
+
+    def reveal_object(self, name: str) -> bool:
+        """Arata obiectul in arbore: scoate filtrele, deschide grupurile si il selecteaza."""
+        self._obj_filter.set("")
+        self._obj_type_cb.current(0)
+        self._obj_status_cb.current(0)
+        self._obj_only_page.set(False)
+        if self._obj_refresh_job is not None:
+            try:
+                self.after_cancel(self._obj_refresh_job)
+            except Exception:
+                pass
+        self.refresh_objects()
+        self.show_side("library")
+        iid = "obj:" + name
+        if not self.objects.exists(iid):
+            return False
+        self.objects.see(iid)
+        self.objects.selection_set(iid)
+        self.objects.focus(iid)
+        self._object_preview()
+        return True
+
+    def _found_on_screen(self, captured: UiObject):
+        matches = libsearch.find_matches(self.repo.objects, captured)
+        if not matches:
+            a = choice_dialog(self, "🔎 Gaseste din ecran", "Elementul nu e in biblioteca. Il salvez acum?",
+                              ["Salveaza ca obiect nou", "Anuleaza"], C=self.C)
+            if a == "Salveaza ca obiect nou":
+                self._save_spied(captured)
+            else:
+                self.set_status("🔎 Elementul nu e in biblioteca.")
+            return
+        sure = [o for o, how in matches if how == libsearch.MATCH_LOCATOR]
+        if len(matches) == 1 or len(sure) == 1:
+            o = (sure or [matches[0][0]])[0]
+            self.reveal_object(o.name)
+            how = "acelasi locator" if o in sure else "acelasi text pe acelasi ecran"
+            self.set_status(tr_template("🔎 Gasit: [{0}] ({1}).").format(o.name, tr(how)))
+            return
+        objs = [o for o, _how in matches]
+        self.show_side("library")
+        self._fill_object_list(objs, len(objs))
+        self.objects.selection_set("obj:" + objs[0].name)
+        self._object_preview()
+        self.set_status(tr_template("🔎 {0} obiecte salvate pentru acelasi element: probabil dubluri.").format(len(objs)))
+
     def _testlib_menu(self, widget):
+
         C = self.C
         m = tk.Menu(self, tearoff=0, bg=C["bg_card"], fg=C["text"], activebackground=C["primary"])
         m.add_command(label="🧪 Creeaza biblioteca de test (3000 de obiecte)...", command=self.create_test_library)
@@ -3500,12 +3572,17 @@ class StudioPanel(tk.Frame):
         top.deiconify()
         top.lift()
         if error:
+            self._spy_purpose = ""
             messagebox.showerror("Spy", f"Spy nu a putut porni:\n{error}", parent=self)
             self.set_status("Spy esuat.")
             return
         if obj is None:
+            self._spy_purpose = ""
             self.set_status("Spy anulat.")
             return
+        if self._spy_purpose == "find":
+            self._spy_purpose = ""
+            return self._found_on_screen(obj)
         same = self.find_same_object(obj)
         if same is not None:
             a = choice_dialog(self, "Obiect existent", f"Elementul e deja in repository ca [{same.name}]. Il folosesti pe acela?",
@@ -3515,6 +3592,9 @@ class StudioPanel(tk.Frame):
             if a == "Foloseste existentul":
                 self.insert_node(ActionNode(action=RprAction.Click, target=same.name, technology=same.technology))
                 return
+        self._save_spied(obj)
+
+    def _save_spied(self, obj: UiObject):
         result = ObjectReviewDialog(self, obj).result
         if not result:
             self.set_status("Obiect nesalvat.")

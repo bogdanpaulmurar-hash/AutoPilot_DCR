@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # ============================================================
-# AutoPilot DC — 🔍 Cautarea in biblioteca de obiecte (v4.25)
+# AutoPilot DC — 🔍 Cautarea in biblioteca de obiecte (v4.25) + 🔎 Gaseste din ecran (v4.26)
 #
 # Arborele (Aplicatie -> Ecran -> Container -> Obiect) pastreaza obiectele;
 # cautarea le gaseste:
@@ -422,3 +422,41 @@ def search(objects: Iterable[UiObject], text: str, state: Optional[LibraryState]
             hits.append((-s, o.name.lower(), o))
     hits.sort(key=lambda x: (x[0], x[1]))
     return [o for _s, _n, o in hits[:limit]], len(hits)
+
+
+# ─────────────────────────────────────────────────────────────
+# 5. 🔎 Gaseste din ecran (v4.26): elementul marcat pe ecran -> obiectele salvate
+# ─────────────────────────────────────────────────────────────
+MATCH_LOCATOR = "locator"   # acelasi locator: e sigur acelasi element
+MATCH_TEXT = "text"         # acelasi text vizibil pe acelasi ecran: probabil acelasi element
+
+
+def _same_place(a: UiObject, b: UiObject) -> bool:
+    if a.site and b.site and normalize(a.site) != normalize(b.site):
+        return False
+    if a.page and b.page and normalize(a.page) != normalize(b.page):
+        return False
+    return True
+
+
+def find_matches(objects: Iterable[UiObject], captured: UiObject) -> List[Tuple[UiObject, str]]:
+    """Obiectele salvate care sunt (probabil) elementul marcat pe ecran: intai cele cu acelasi locator,
+    apoi cele cu acelasi text vizibil si acelasi tip pe acelasi ecran. Nu schimba nimic."""
+    locs = {(str(l.kind), l.value.strip()) for l in captured.locators if l.value.strip()}
+    label = normalize(object_label(captured))
+    otype = normalize(captured.object_type)
+    strong, weak = [], []
+    for o in objects:
+        if o.technology != captured.technology:
+            continue
+        if list(o.frame_path) != list(captured.frame_path) and o.frame_path and captured.frame_path:
+            continue
+        if not _same_place(o, captured):
+            continue
+        if any((str(l.kind), l.value.strip()) in locs for l in o.locators if l.value.strip()):
+            strong.append((o, MATCH_LOCATOR))
+        elif label and normalize(object_label(o)) == label and (not otype or not o.object_type
+                                                                or normalize(o.object_type) == otype):
+            weak.append((o, MATCH_TEXT))
+    key = lambda x: x[0].name.lower()  # noqa: E731
+    return sorted(strong, key=key) + sorted(weak, key=key)

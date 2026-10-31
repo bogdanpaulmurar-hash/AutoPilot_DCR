@@ -2,6 +2,11 @@
 
 Pornirea aplicației: **`AutoPilot_DC.pyw`** (sau scurtătura „AutoPilot DC” de pe Desktop). Numele fișierelor nu se mai schimbă de la o versiune la alta, deci scurtăturile și pornirea cu Windows rămân valabile.
 
+## 4.26.0 — 2026-10-31
+- **🔎 Găsește din ecran** (📚 Bibliotecă, lângă ☰): alegi Web / SAP GUI / Desktop și marchezi elementul ca la Spy (Web: click în browser; SAP / Desktop: mouse-ul pe element + F2). Nu se salvează nimic: biblioteca scoate filtrele, deschide grupurile și selectează obiectul salvat, cu previzualizarea lui. Potrivirea: întâi același locator (sigur același element), apoi același text vizibil și tip pe același ecran. Mai multe obiecte pentru același element → apar în listă (dubluri, pentru unire în etapa 3). Niciunul → întreabă dacă îl salvezi acum (fereastra obișnuită a Spy-ului). Sensul invers există din 4.25: **👁** din listă arată obiectul în aplicație. Motor: `libsearch.find_matches`.
+- Instrucțiuni: capitolul 34, în RO / EN / DE; textele noi în EN / DE.
+- Teste (Linux, Python 3.12, Xvfb): `test_libsearch` +3 (locatorul înaintea textului, alt ecran / altă tehnologie ignorate, nimic găsit; în Studio real: un obiect sigur selectat cu filtrele scoase, dubluri în listă, nimic găsit → întrebare fără salvare la Anulează). Netestat pe Windows: marcarea reală în browser / SAP / Desktop (folosește Spy-ul existent).
+
 ## 4.25.0 — 2026-10-31
 - **🔍 Căutare în 📚 Bibliotecă** (pentru biblioteci cu mii de obiecte): scrii textul de pe buton (`salv` găsește „Salvează” și „Save”), fără diacritice, fără litere mari, cu o greșeală de tastare acceptată. Caută în nume, textul capturat, etichete, tip, aplicație, ecran, folder, descriere și locatori; cele mai bune potriviri primele. Rezultatele apar ca listă simplă (☰), sau în arbore (🌳).
 - **Filtre**: lista **tipului** (Buton, Câmp text, ComboBox, Tabel, RefList…) și a **stării** (✅ a mers la ultimul test, ❌ stricat, ⚪ nefolosit în rutine, 🕐 folosit în ultimele 7 zile, ⭐ favorit), plus prescurtări în căutare: `tip:combo`, `app:SAP`, `ecran:VA03`, `stare:stricat`, `#eticheta` (și în EN / DE: `type:`, `screen:`, `status:`…).

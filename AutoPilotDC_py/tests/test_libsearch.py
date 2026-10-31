@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ============================================================
 # AutoPilot DC — Teste: 🔍 cautarea in biblioteca, starea obiectelor,
-# "Folosit in" si biblioteca de test (v4.25)
+# "Folosit in", biblioteca de test (v4.25) si 🔎 Gaseste din ecran (v4.26)
 #   Rulare:  py -m unittest tests.test_libsearch
 # ============================================================
 
@@ -174,6 +174,27 @@ class TestLibraryTests(unittest.TestCase):
             testlib.create(self.d)
 
 
+class FindFromScreenTests(unittest.TestCase):
+    def test_same_locator_first_then_same_text(self):
+        saved = [
+            _obj("Buton_Salveaza", object_type="Buton", site="Portal", page="Comenzi", captured_text="Salvează",
+                 locators=[Locator(LocatorKind.Id, "btnSave")]),
+            _obj("Buton_Salveaza_2", object_type="Buton", site="Portal", page="Comenzi", captured_text="Salveaza"),
+            _obj("Buton_Salveaza_Adrese", object_type="Buton", site="Portal", page="Adrese", captured_text="Salveaza"),
+            _obj("Sap_Save", technology=UiTechnology.Sap, object_type="Buton", captured_text="Salveaza",
+                 locators=[Locator(LocatorKind.Id, "btnSave")]),
+        ]
+        captured = _obj("Nou", object_type="Buton", site="Portal", page="Comenzi", captured_text="Salvează",
+                        locators=[Locator(LocatorKind.Id, "btnSave"), Locator(LocatorKind.Css, "#x")])
+        m = libsearch.find_matches(saved, captured)
+        self.assertEqual([("Buton_Salveaza", libsearch.MATCH_LOCATOR), ("Buton_Salveaza_2", libsearch.MATCH_TEXT)],
+                         [(o.name, how) for o, how in m])
+
+    def test_nothing_found(self):
+        captured = _obj("Nou", object_type="Link", captured_text="Ajutor")
+        self.assertEqual([], libsearch.find_matches(OBJS, captured))
+
+
 class StudioLibraryTests(unittest.TestCase):
     """Panoul de obiecte din Studio: cautarea ca lista, favoritele sus, biblioteca de test."""
 
@@ -241,6 +262,41 @@ class StudioLibraryTests(unittest.TestCase):
             p.delete_test_library()
         self.assertFalse(os.path.exists(os.path.dirname(lib)))
         self.assertTrue(p._is_default_library())
+
+    def test_find_from_screen_reveals_duplicates_and_offers_save(self):
+        from unittest import mock
+        import studio_ui
+        p = self.p
+        p.load_repository(os.path.join(self.d, "find", "obiecte.json"))
+        a = p.repo.add(_obj("Buton_OK", object_type="Buton", site="Portal", page="P", captured_text="OK",
+                            locators=[Locator(LocatorKind.Id, "ok")]))
+        p.repo.add(_obj("Buton_OK_copie", object_type="Buton", site="Portal", page="P", captured_text="OK"))
+        p.repo.add(_obj("Camp_Nume", object_type="Camp text", site="Portal", page="P", captured_text="Nume"))
+        p.save_repository()
+        p._obj_filter.set("nume")
+        p.refresh_objects()
+        # acelasi locator: un singur obiect sigur -> selectat in arbore, filtrele scoase
+        captured = _obj("Nou", object_type="Buton", site="Portal", page="P", captured_text="OK",
+                        locators=[Locator(LocatorKind.Id, "ok")])
+        p._spy_purpose = "find"
+        p._spy_finished(captured, None)
+        self.assertEqual("", p._obj_filter.get())
+        self.assertEqual(("obj:" + a.name,), p.objects.selection())
+        self.assertEqual("", p._spy_purpose)
+        # doar text la fel: doua obiecte -> lista cu amandoua (dubluri)
+        captured2 = _obj("Nou2", object_type="Buton", site="Portal", page="P", captured_text="OK",
+                         locators=[Locator(LocatorKind.Css, ".altul")])
+        p._spy_purpose = "find"
+        p._spy_finished(captured2, None)
+        self.assertEqual(["obj:Buton_OK", "obj:Buton_OK_copie"], sorted(p.objects.get_children()))
+        # nimic gasit -> intreaba; Anuleaza nu salveaza
+        n = len(p.repo.objects)
+        captured3 = _obj("Nou3", object_type="Link", site="Portal", page="P", captured_text="Ajutor")
+        with mock.patch.object(studio_ui, "choice_dialog", return_value="Anuleaza") as ask:
+            p._spy_purpose = "find"
+            p._spy_finished(captured3, None)
+        ask.assert_called_once()
+        self.assertEqual(n, len(p.repo.objects))
 
 
 if __name__ == "__main__":
