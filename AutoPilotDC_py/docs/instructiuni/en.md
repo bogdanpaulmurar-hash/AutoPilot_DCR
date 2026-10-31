@@ -461,3 +461,25 @@ Many buttons differ only by their text (Save, Cancel, Send…). Instead of one o
 - Old routines and libraries open as before; parameters are new, optional fields.
 
 > Example: from `Button_Save` you make `Button_with_Text` (the locator `text=Save` becomes `text={Text}`). The steps "Click Button_with_Text (Text=Save)" and "Click Button_with_Text (Text=Cancel)" use the same object.
+
+## 37. 📱 Tests on an Android phone
+
+AutoPilot can run routines on an Android phone or tablet through **Appium** (a separate program that controls the phone). Appium starts only when the routine has phone steps, so the rest of the app runs just as fast. iOS comes later: it needs a Mac or a cloud device farm.
+
+**Once, on the laptop:**
+1. Android platform-tools (`adb`) in PATH or in `ANDROID_HOME`.
+2. Node.js, then `npm install -g appium` and `appium driver install uiautomator2`.
+3. `py -m pip install --user Appium-Python-Client`.
+4. On the phone: Developer options → **USB debugging** on; on the first connection accept "Allow USB debugging".
+
+**The routine:**
+1. First step: **📱 Mobile: connect the phone**. Value: `phone | package/activity`, e.g. `R58M12 | com.company.app/.MainActivity`. Empty phone = the first connected one.
+2. Press **📱 Check the phone** in the step properties: you see whether adb, the phone (connected, unlocked), the app, the battery and Appium are fine, without running anything.
+3. Phone objects have the technology **Mobile (Android)** and **AccessibilityId**, **ResourceId** (e.g. `com.company.app:id/login`), **UiAutomator**, **XPath** or **Text** locators. You see them on the phone with Appium Inspector.
+4. The usual steps work on the phone: Click (tap), Double click, Right click (long press), Type text, Read, Check, Select from list, Press key (Enter, Back, Home...). Also: **Mobile: swipe** (up / down / left / right), **Mobile: back**, **Mobile: screenshot**, **Mobile: close the app**.
+
+**The results** of each run are in the results folder (or the shared folder): `mobil\<date_time>_<routine>\<phone>\`, with the screenshots, the phone screen video (`ecran_telefon.mp4`), `logcat.txt`, `telefon.txt` and the run's Excel report.
+
+- On connect, the phone is checked first. If something is wrong (locked, app missing...), the routine stops with the list of problems and touches nothing.
+- Without the interface: `py -m rpr device "R58M12 | com.company.app"` only runs the check.
+- The app data is not cleared on connect (you stay logged in).

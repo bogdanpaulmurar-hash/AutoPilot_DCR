@@ -461,3 +461,25 @@ Viele Schaltflächen unterscheiden sich nur durch ihren Text (Speichern, Abbrech
 - Alte Routinen und Bibliotheken öffnen sich wie bisher; Parameter sind neue, optionale Felder.
 
 > Beispiel: aus `Schaltflaeche_Speichern` machst du `Schaltflaeche_mit_Text` (der Locator `text=Speichern` wird `text={Text}`). Die Schritte „Click Schaltflaeche_mit_Text (Text=Speichern)“ und „Click Schaltflaeche_mit_Text (Text=Abbrechen)“ nutzen dasselbe Objekt.
+
+## 37. 📱 Tests auf einem Android-Telefon
+
+AutoPilot kann Routinen auf einem Android-Telefon oder -Tablet über **Appium** ausführen (ein eigenes Programm, das das Telefon steuert). Appium startet nur, wenn die Routine Telefonschritte hat, der Rest der App bleibt also genauso schnell. iOS folgt später: dafür braucht es einen Mac oder eine Gerätefarm in der Cloud.
+
+**Einmalig, auf dem Laptop:**
+1. Android platform-tools (`adb`) im PATH oder in `ANDROID_HOME`.
+2. Node.js, dann `npm install -g appium` und `appium driver install uiautomator2`.
+3. `py -m pip install --user Appium-Python-Client`.
+4. Auf dem Telefon: Entwickleroptionen → **USB-Debugging** an; bei der ersten Verbindung „USB-Debugging zulassen“ bestätigen.
+
+**Die Routine:**
+1. Erster Schritt: **📱 Mobil: Telefon verbinden**. Wert: `Telefon | Paket/Aktivität`, z. B. `R58M12 | com.firma.app/.MainActivity`. Leeres Telefon = das erste verbundene.
+2. In den Schritteigenschaften **📱 Telefon prüfen** drücken: Sie sehen, ob adb, das Telefon (verbunden, entsperrt), die App, der Akku und Appium in Ordnung sind, ohne etwas auszuführen.
+3. Telefonobjekte haben die Technologie **Mobil (Android)** und Locatoren **AccessibilityId**, **ResourceId** (z. B. `com.firma.app:id/login`), **UiAutomator**, **XPath** oder **Text**. Sie sehen sie auf dem Telefon mit Appium Inspector.
+4. Die üblichen Schritte funktionieren auf dem Telefon: Klick (Tippen), Doppelklick, Rechtsklick (langes Drücken), Text schreiben, Lesen, Ankreuzen, Aus Liste wählen, Taste drücken (Enter, Back, Home...). Zusätzlich: **Mobil: Wischen** (hoch / runter / links / rechts), **Mobil: Zurück**, **Mobil: Bildschirmfoto**, **Mobil: App schließen**.
+
+**Die Ergebnisse** jedes Laufs liegen im Ergebnisordner (oder im gemeinsamen Ordner): `mobil\<Datum_Uhrzeit>_<Routine>\<Telefon>\`, mit den Bildschirmfotos, dem Video des Telefonbildschirms (`ecran_telefon.mp4`), `logcat.txt`, `telefon.txt` und dem Excel-Bericht des Laufs.
+
+- Beim Verbinden wird das Telefon zuerst geprüft. Stimmt etwas nicht (gesperrt, App fehlt...), stoppt die Routine mit der Liste der Probleme und berührt nichts.
+- Ohne Oberfläche: `py -m rpr device "R58M12 | com.firma.app"` führt nur die Prüfung aus.
+- Die App-Daten werden beim Verbinden nicht gelöscht (Sie bleiben angemeldet).

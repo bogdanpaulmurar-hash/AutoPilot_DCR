@@ -6,6 +6,8 @@
 #   python -m rpr run "C:\...\rutina.rpr.json" [--var Nume=Valoare ...] [--fara-chenar]
 #   python -m rpr run "C:\...\Sandbox.pregatire.json"   (o pregatire: mai multe rutine una dupa alta)
 #
+#   python -m rpr device ["R58M12 | com.firma.app"]   (📱 v4.29: verifica telefonul Android, fara rulare)
+#
 #   --anunta: la final apare un mesaj scurt cu rezultatul (programari) + istoric
 # Cod de iesire: 0 = succes, 1 = rutina a esuat, 2 = fisier invalid, 3 = alta rutina programata ruleaza deja.
 # Logul se salveaza in %APPDATA%\AutoPilotDC\Studio\rezultate (txt + xlsx).
@@ -260,7 +262,14 @@ def main(argv=None) -> int:
     r.add_argument("--var", action="append", default=[], metavar="NUME=VALOARE", help="suprascrie o variabila")
     r.add_argument("--fara-chenar", action="store_true", help="fara chenarul RUN pe ecran")
     r.add_argument("--anunta", action="store_true", help="mesaj cu rezultatul la final + istoric (programari)")
+    d = sub.add_parser("device", help="verifica telefonul Android (adb, aplicatia, Appium), fara rulare")
+    d.add_argument("target", nargs="?", default="", help='"telefon | pachet/activitate" (gol = primul telefon)')
     a = p.parse_args(argv)
+    if a.cmd == "device":
+        from . import mobile
+        res = mobile.check_device(mobile.parse_target(a.target))
+        print(res.text())
+        return 0 if res.ok else 1
     if a.cmd == "run":
         variables = dict(v.split("=", 1) for v in a.var if "=" in v)
         return run_file(a.file, variables, show_frame=not a.fara_chenar, announce=a.anunta)

@@ -459,3 +459,25 @@ Multe butoane diferă doar prin text (Salvează, Anulează, Trimite…). În loc
 - Rutinele și bibliotecile vechi se deschid ca înainte; parametrii sunt câmpuri noi, opționale.
 
 > Exemplu: din `Buton_Salveaza` faci `Buton_cu_Text` (locatorul `text=Salvează` devine `text={Text}`). Pașii „Click Buton_cu_Text (Text=Salvează)” și „Click Buton_cu_Text (Text=Anulează)” folosesc același obiect.
+
+## 37. 📱 Teste pe telefon Android
+
+AutoPilot poate rula rutine pe un telefon sau o tabletă Android, prin **Appium** (un program separat care controlează telefonul). Appium pornește doar când rutina are pași pe telefon, deci restul aplicației merge la fel de repede. iOS urmează: are nevoie de un Mac sau de o fermă de telefoane în cloud.
+
+**O singură dată, pe laptop:**
+1. Android platform-tools (`adb`) în PATH sau în `ANDROID_HOME`.
+2. Node.js, apoi `npm install -g appium` și `appium driver install uiautomator2`.
+3. `py -m pip install --user Appium-Python-Client`.
+4. Pe telefon: Opțiuni dezvoltator → **Depanare USB** pornită; la prima conectare accepți „Permite depanarea USB”.
+
+**Rutina:**
+1. Primul pas: **📱 Mobil: conectează telefonul**. Valoarea: `telefon | pachet/activitate`, de ex. `R58M12 | com.firma.app/.MainActivity`. Telefonul gol = primul conectat.
+2. Apasă **📱 Verifică telefonul** în proprietățile pasului: vezi dacă adb, telefonul (conectat, deblocat), aplicația, bateria și Appium sunt în regulă, fără să rulezi nimic.
+3. Obiectele de pe telefon au tehnologia **Mobil (Android)** și locatori **AccessibilityId**, **ResourceId** (ex. `com.firma.app:id/login`), **UiAutomator**, **XPath** sau **Text**. Le vezi pe telefon cu Appium Inspector.
+4. Pașii obișnuiți merg pe telefon: Click (atingere), Dublu click, Click dreapta (apăsare lungă), Scrie text, Citește, Bifează, Alege din listă, Apasă tasta (Enter, Back, Home...). În plus: **Mobil: glisează** (sus / jos / stânga / dreapta), **Mobil: înapoi**, **Mobil: captură ecran**, **Mobil: închide aplicația**.
+
+**Rezultatele** fiecărei rulări stau în folderul de rezultate (sau în folderul comun): `mobil\<data_ora>_<rutina>\<telefon>\`, cu capturile, filmul ecranului telefonului (`ecran_telefon.mp4`), `logcat.txt`, `telefon.txt` și raportul Excel al rulării.
+
+- La conectare, telefonul se verifică întâi. Dacă ceva nu e în regulă (blocat, aplicația lipsă...), rutina se oprește cu lista problemelor, nu atinge nimic.
+- Fără interfață: `py -m rpr device "R58M12 | com.firma.app"` face doar verificarea.
+- Datele aplicației nu se șterg la conectare (rămâi logat).
