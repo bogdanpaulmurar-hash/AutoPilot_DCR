@@ -50,6 +50,7 @@ from rpr import report as rpr_report
 from rpr import resume as rpr_resume
 from rpr import scan as rpr_scan
 from rpr import libsearch
+from rpr import libclean
 from rpr import testlib
 from rpr import subroutine as rpr_sub
 from rpr.storage import Examples, ExcelInfo, RepositoryStore, RoutineStore, RprPaths, RunLogExporter
@@ -1269,6 +1270,10 @@ class StudioPanel(tk.Frame):
         self._testlib_btn.configure(command=lambda: self._testlib_menu(self._testlib_btn))
         self._testlib_btn.configure(padx=6)
         self._testlib_btn.pack(side="left", padx=1)
+        clean = self._btn(lrow, "🧹", lambda: self.open_cleanup(), tip="Curata biblioteca: uneste dublurile, sterge "
+                                                                      "obiectele nefolosite sau stricate (cu copie de rezerva)")
+        clean.configure(padx=6)
+        clean.pack(side="left", padx=1)
         srow = tk.Frame(host, bg=C["bg_main"])
         srow.pack(fill="x", padx=4, pady=(0, 2))
         self._btn(srow, "🔍 Scaneaza site", self.scan_site,
@@ -3057,6 +3062,59 @@ class StudioPanel(tk.Frame):
             self.refresh_object_usage()
             return
         ObjectUsageDialog(self, o, self._obj_usage.get(o.name.lower(), []))
+
+    # ── v4.27: 🧹 Curata biblioteca: dubluri, nefolosite, stricate ──
+    def _ensure_usage(self) -> Dict[str, List[libsearch.Usage]]:
+        """Indexul "Folosit in" acum (citit pe loc daca nu e gata): unirea si stergerea au nevoie de el exact."""
+        idx = libsearch.build_usage_index(libsearch.routine_files(self._usage_folders()))
+        self._obj_usage = idx
+        return idx
+
+    def open_cleanup(self):
+        if self.busy:
+            self.set_status("Asteapta sa se termine operatia curenta.")
+            return
+        self.save_repository()
+        LibraryCleanupDialog(self)
+
+    def _open_routines(self):
+        """Rutinele deschise in tab-uri (cu cea curenta)."""
+        self._store_doc()
+        return self._docs
+
+    def merge_objects(self, keep: UiObject, drops: List[UiObject]) -> libclean.MergeResult:
+        """Uneste dublurile in `keep`: copie de rezerva, apoi biblioteca, rutinele de pe disc si cele deschise."""
+        usage = self._ensure_usage()
+        files = libclean.files_using(usage, [d.name for d in drops])
+        folder = libclean.backup(self.repo_path, files)
+        names = {d.name.lower(): keep.name for d in drops if d is not keep}
+        res = libclean.merge(self.repo, keep, drops, files, self._obj_state)
+        res.backup_folder = folder
+        changed = {os.path.normcase(os.path.abspath(p)) for p in res.routines_changed}
+        for i, d in enumerate(self._open_routines()):
+            if libclean.rename_in_steps(d["routine"].steps, names):
+                on_disk = d["path"] and os.path.normcase(os.path.abspath(d["path"])) in changed
+                if not on_disk:
+                    d["dirty"] = True
+                    if i == self._doc_i:
+                        self.mark_dirty()
+        self.save_repository()
+        self._obj_state.save()
+        self._ensure_usage()
+        try:
+            self.rebuild_tree()
+        except Exception:  # noqa: BLE001
+            pass
+        self.refresh_objects()
+        return res
+
+    def delete_unused_objects(self, objs: List[UiObject]) -> Tuple[int, str]:
+        folder = libclean.backup(self.repo_path, [])
+        n = libclean.delete_objects(self.repo, objs, self._obj_state)
+        self.save_repository()
+        self._obj_state.save()
+        self.refresh_objects()
+        return n, folder
 
     # ── v4.26: 🔎 Gaseste din ecran ──
     def _find_screen_menu(self, widget):
@@ -5861,6 +5919,213 @@ class ObjectUsageDialog(DialogBase):
                 self.p.select_node(u.step_id)
             except Exception:  # noqa: BLE001
                 pass
+
+
+class LibraryCleanupDialog(DialogBase):
+    """🧹 Curata biblioteca (v4.27): 🔁 Dubluri (unire) si 🗑 Nefolosite / stricate (stergere)."""
+
+    def __init__(self, panel: StudioPanel):
+        super().__init__(panel)
+        self.p = panel
+        C = self.C = panel.C
+        self.title("Curata biblioteca")
+        tk.Label(self.body, text="🧹  Curata biblioteca", bg=C["bg_main"], fg=C["primary"],
+                 font=("Segoe UI", 13, "bold")).pack(anchor="w", padx=14, pady=(12, 2))
+        tk.Label(self.body, text="Inainte de fiecare schimbare se face o copie a bibliotecii si a rutinelor atinse "
+                                 "in folderul _backup_biblioteca de langa biblioteca.",
+                 bg=C["bg_main"], fg=C["text_dim"], font=("Segoe UI", 10), wraplength=700, justify="left").pack(
+            anchor="w", padx=14)
+        self.nb = ttk.Notebook(self.body, style="Studio.TNotebook")
+        self.nb.pack(fill="both", expand=True, padx=14, pady=8)
+        self._build_dups(self._page("🔁 Dubluri"))
+        self._build_unused(self._page("🗑 Nefolosite / stricate"))
+        row = tk.Frame(self.bottom, bg=C["bg_main"])
+        row.pack(anchor="e")
+        panel._btn(row, "Inchide", self.destroy).pack(side="left", padx=2)
+        self.refresh()
+        self.fit(760)
+
+    def _page(self, title):
+        f = tk.Frame(self.nb, bg=self.C["bg_main"])
+        self.nb.add(f, text=title)
+        return f
+
+    def _tree(self, host, cols, heads, widths, height=14, mode="browse"):
+        box = tk.Frame(host, bg=self.C["bg_main"])
+        box.pack(fill="both", expand=True, pady=(6, 4))
+        tv = ttk.Treeview(box, columns=cols, show="tree headings", style="Studio.Treeview", height=height,
+                          selectmode=mode)
+        tv.heading("#0", text=heads[0], anchor="w")
+        tv.column("#0", width=widths[0])
+        for c, h, w in zip(cols, heads[1:], widths[1:]):
+            tv.heading(c, text=h, anchor="w")
+            tv.column(c, width=w, stretch=False)
+        vsb = ttk.Scrollbar(box, orient="vertical", command=tv.yview)
+        tv.configure(yscrollcommand=vsb.set)
+        vsb.pack(side="right", fill="y")
+        tv.pack(fill="both", expand=True)
+        return tv
+
+    # ── 🔁 Dubluri ──
+    def _build_dups(self, host):
+        C, p = self.C, self.p
+        self.dup_info = tk.Label(host, text="", bg=C["bg_main"], fg=C["text"], font=("Segoe UI", 10),
+                                 wraplength=700, justify="left", anchor="w")
+        self.dup_info.pack(fill="x", pady=(6, 0))
+        self.dups = self._tree(host, ("tip", "ecran", "rutine"), ["Obiect", "Tip", "Ecran", "Rutine"],
+                               [300, 110, 170, 60])
+        self.dups.tag_configure("group", font=("Segoe UI", 10, "bold"))
+        self.dups.tag_configure("keep", foreground=ui_theme.readable("#3CCF6E", C["bg_input"], widget=self))
+        self.dups.bind("<<TreeviewSelect>>", lambda e: self._dup_selected())
+        row = tk.Frame(host, bg=C["bg_main"])
+        row.pack(fill="x")
+        p._btn(row, "⭐ Pastreaza acesta si uneste grupul", self.merge_selected, color=C["success"],
+               tip="Obiectul ales ramane; celelalte din grup dispar, iar pasii lor trec pe el").pack(side="left", padx=2)
+        p._btn(row, "🔁 Uneste toate grupurile sigure", self.merge_all_sure,
+               tip="Doar grupurile cu acelasi locator; ramane primul din fiecare grup (cel mai folosit)").pack(
+            side="left", padx=2)
+        p._btn(row, "👁", lambda: p.show_object(self._dup_obj()), tip="Arata obiectul in aplicatie").pack(
+            side="left", padx=2)
+        self._groups: Dict[str, libclean.DuplicateGroup] = {}
+        self._dup_objs: Dict[str, UiObject] = {}
+
+    def _dup_obj(self) -> Optional[UiObject]:
+        sel = self.dups.selection()
+        return self._dup_objs.get(sel[0]) if sel else None
+
+    def _dup_selected(self):
+        o = self._dup_obj()
+        if o is not None:
+            self.dup_info.configure(text=f"{o.name}: " + " · ".join(f"{l.kind}={l.value}"[:60] for l in o.active_locators[:3]))
+
+    def _fill_dups(self):
+        tv = self.dups
+        tv.delete(*tv.get_children())
+        self._groups, self._dup_objs = {}, {}
+        usage = self.p._obj_usage or {}
+        groups = libclean.find_duplicates(self.p.repo.objects, usage)
+        for gi, g in enumerate(groups):
+            gid = f"g{gi}"
+            self._groups[gid] = g
+            label = tr("sigur: acelasi locator") if g.sure else tr("probabil: acelasi text pe acelasi ecran")
+            tv.insert("", "end", iid=gid, text=f"{g.objects[0].name}  ({len(g.objects)} · {label})",
+                      open=gi < 30, tags=("group",))
+            for oi, o in enumerate(g.objects):
+                iid = f"{gid}:{oi}"
+                self._dup_objs[iid] = o
+                n = len(libsearch.routines_of(usage, o.name))
+                tv.insert(gid, "end", iid=iid, text=("⭐ " if oi == 0 else "    ") + o.name,
+                          values=(o.object_type, " / ".join(x for x in (o.site, o.page) if x), n or "–"),
+                          tags=("keep",) if oi == 0 else ())
+        sure = sum(1 for g in groups if g.sure)
+        self.dup_info.configure(text=tr_template("{0} grupuri de dubluri ({1} sigure, {2} probabile). ⭐ = propus de "
+                                                 "pastrat (cel mai folosit). Alege obiectul de pastrat si apasa ⭐ Pastreaza.")
+                                .format(len(groups), sure, len(groups) - sure) if groups else tr("Nicio dublura gasita."))
+
+    def merge_selected(self):
+        sel = self.dups.selection()
+        if not sel:
+            return
+        iid = sel[0]
+        gid = iid.split(":")[0]
+        g = self._groups.get(gid)
+        if g is None:
+            return
+        keep = self._dup_objs.get(iid, g.objects[0])
+        drops = [o for o in g.objects if o is not keep]
+        usage = self.p._obj_usage or {}
+        files = libclean.files_using(usage, [d.name for d in drops])
+        msg = tr_template("Pastrez [{0}] si sterg {1} obiecte: {2}.\n\n{3} rutine trec pe [{0}].").format(
+            keep.name, len(drops), ", ".join(d.name for d in drops), len(files))
+        if not g.sure:
+            msg += "\n\n" + tr("Atentie: grupul e doar probabil (acelasi text). Verifica cu 👁 ca e acelasi element.")
+        if not messagebox.askyesno("Uneste dublurile", msg, parent=self):
+            return
+        res = self.p.merge_objects(keep, drops)
+        self._report([res])
+        self.refresh()
+
+    def merge_all_sure(self):
+        groups = [g for g in self._groups.values() if g.sure]
+        if not groups:
+            messagebox.showinfo("Uneste dublurile", "Nu sunt grupuri sigure.", parent=self)
+            return
+        n = sum(len(g.objects) - 1 for g in groups)
+        if not messagebox.askyesno("Uneste dublurile", tr_template(
+                "Unesc {0} grupuri sigure (acelasi locator): raman {0} obiecte, se sterg {1}. Pasii din rutine trec pe "
+                "obiectul pastrat. Continui?").format(len(groups), n), parent=self):
+            return
+        results = [self.p.merge_objects(g.objects[0], g.objects[1:]) for g in groups]
+        self._report(results)
+        self.refresh()
+
+    def _report(self, results):
+        removed = sum(len(r.removed) for r in results)
+        steps = sum(r.steps_changed for r in results)
+        routines = len({p for r in results for p in r.routines_changed})
+        errors = [e for r in results for e in r.errors]
+        text = tr_template("Unite: {0} obiecte sterse, {1} pasi mutati in {2} rutine.").format(removed, steps, routines)
+        if results and results[-1].backup_folder:
+            text += "\n" + tr_template("Copie de rezerva: {0}").format(os.path.dirname(results[-1].backup_folder))
+        if errors:
+            text += "\n\n" + tr("Rutine care nu s-au putut schimba:") + "\n" + "\n".join(errors[:10])
+        self.p.set_status(text.split("\n")[0])
+        messagebox.showinfo("Uneste dublurile", text, parent=self)
+
+    # ── 🗑 Nefolosite / stricate ──
+    def _build_unused(self, host):
+        C, p = self.C, self.p
+        top = tk.Frame(host, bg=C["bg_main"])
+        top.pack(fill="x", pady=(6, 0))
+        self.v_unused = tk.BooleanVar(value=True)
+        self.v_broken = tk.BooleanVar(value=True)
+        for text, var in (("⚪ Nefolosite in rutine", self.v_unused), ("❌ Stricate la ultimul test", self.v_broken)):
+            tk.Checkbutton(top, text=text, variable=var, command=self._fill_unused, bg=C["bg_main"], fg=C["text"],
+                           selectcolor=C["bg_input"], activebackground=C["bg_main"], font=("Segoe UI", 10)).pack(
+                side="left", padx=(0, 12))
+        self.unused_info = tk.Label(host, text="", bg=C["bg_main"], fg=C["text_dim"], font=("Segoe UI", 9),
+                                    wraplength=700, justify="left", anchor="w")
+        self.unused_info.pack(fill="x")
+        self.unused = self._tree(host, ("tip", "ecran", "motiv"), ["Obiect", "Tip", "Ecran", "Motiv"],
+                                 [280, 110, 190, 110], mode="extended")
+        row = tk.Frame(host, bg=C["bg_main"])
+        row.pack(fill="x")
+        p._btn(row, "Selecteaza tot", lambda: self.unused.selection_set(self.unused.get_children())).pack(
+            side="left", padx=2)
+        p._btn(row, "🗑 Sterge selectate", self.delete_selected, color=C["danger"]).pack(side="left", padx=2)
+        self._unused_objs: Dict[str, UiObject] = {}
+
+    def _fill_unused(self):
+        tv = self.unused
+        tv.delete(*tv.get_children())
+        self._unused_objs = {}
+        rows = libclean.cleanup_candidates(self.p.repo, self.p._obj_usage or {}, self.p._obj_state,
+                                           self.v_unused.get(), self.v_broken.get())
+        for i, (o, why) in enumerate(rows):
+            iid = f"u{i}"
+            self._unused_objs[iid] = o
+            tv.insert("", "end", iid=iid, text=o.name, values=(o.object_type, " / ".join(x for x in (o.site, o.page) if x),
+                                                               tr(why) if " + " not in why else
+                                                               " + ".join(tr(w) for w in why.split(" + "))))
+        self.unused_info.configure(text=tr_template("{0} obiecte. Favoritele si containerele cu obiecte inauntru nu "
+                                                    "apar. „Nefolosit” = in nicio rutina din folderul rutinelor.")
+                                   .format(len(rows)))
+
+    def delete_selected(self):
+        objs = [self._unused_objs[i] for i in self.unused.selection() if i in self._unused_objs]
+        if not objs:
+            return
+        if not messagebox.askyesno("Sterge obiectele", tr_template("Sterg {0} obiecte din biblioteca? (se face intai "
+                                                                   "o copie de rezerva)").format(len(objs)), parent=self):
+            return
+        n, folder = self.p.delete_unused_objects(objs)
+        self.p.set_status(tr_template("🗑 {0} obiecte sterse. Copie de rezerva: {1}").format(n, folder))
+        self.refresh()
+
+    def refresh(self):
+        self.p._ensure_usage()
+        self._fill_dups()
+        self._fill_unused()
 
 
 class SitesDialog(DialogBase):

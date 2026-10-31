@@ -2,6 +2,16 @@
 
 Pornirea aplicației: **`AutoPilot_DC.pyw`** (sau scurtătura „AutoPilot DC” de pe Desktop). Numele fișierelor nu se mai schimbă de la o versiune la alta, deci scurtăturile și pornirea cu Windows rămân valabile.
 
+## 4.27.0 — 2026-10-31
+- **🧹 Curăță biblioteca** (📚 Bibliotecă, lângă 🧪), etapa 3a „mai puține obiecte”:
+  - **🔁 Dubluri**: grupuri *sigure* (același locator id / css / xpath / SAP id, același tip, pe același ecran) și *probabile* (același text vizibil și tip pe același ecran; locatorii după text, ca Text / UiaName, intră aici). Propus de păstrat: cel folosit în mai multe rutine, apoi cel cu mai mulți locatori.
+  - **⭐ Păstrează acesta și unește grupul** / **🔁 Unește toate grupurile sigure**: celelalte obiecte dispar; cel păstrat primește locatorii lor la final (rezervă), etichetele, textul și imaginea lipsă, favoritul; pașii și condițiile din rutinele de pe disc, copiii din containere și rutinele deschise în tab-uri trec pe numele lui (o rutină deschisă care nu e cea rescrisă pe disc devine nesalvată).
+  - **🗑 Nefolosite / stricate**: obiectele din nicio rutină și cele ❌ la ultimul test, fără favorite și containere cu obiecte înăuntru; ștergere în grup după confirmare.
+  - Înainte de fiecare unire / ștergere: copie a bibliotecii, a stării și a rutinelor atinse în `_backup_biblioteca\<data>` lângă bibliotecă, cu `de_unde.json` (folderul cu „_” nu e citit ca rutine). Motor: `rpr/libclean.py`.
+- Biblioteca de test (🧪) are acum ~2% dubluri (`_copie`), ca să încerci unirea.
+- Instrucțiuni: capitolul 35, în RO / EN / DE; textele noi în EN / DE.
+- Teste (Linux, Python 3.12, Xvfb): `test_libclean` nou (6: grupuri sigure / probabile, alt ecran / tip / tehnologie separate, ordinea de păstrare; unirea mută pașii și condițiile (și în AllOf), copiii, locatorii, etichetele, favoritul; rutina neatinsă nu se rescrie; copia de rezervă și folderul ignorat; redenumirea în rutina deschisă; candidații la ștergere fără favorite / containere; dialogul real: unește toate grupurile sigure, rutina deschisă se actualizează, ștergerea a 3 nefolosite). Netestat pe Windows.
+
 ## 4.26.0 — 2026-10-31
 - **🔎 Găsește din ecran** (📚 Bibliotecă, lângă ☰): alegi Web / SAP GUI / Desktop și marchezi elementul ca la Spy (Web: click în browser; SAP / Desktop: mouse-ul pe element + F2). Nu se salvează nimic: biblioteca scoate filtrele, deschide grupurile și selectează obiectul salvat, cu previzualizarea lui. Potrivirea: întâi același locator (sigur același element), apoi același text vizibil și tip pe același ecran. Mai multe obiecte pentru același element → apar în listă (dubluri, pentru unire în etapa 3). Niciunul → întreabă dacă îl salvezi acum (fereastra obișnuită a Spy-ului). Sensul invers există din 4.25: **👁** din listă arată obiectul în aplicație. Motor: `libsearch.find_matches`.
 - Instrucțiuni: capitolul 34, în RO / EN / DE; textele noi în EN / DE.

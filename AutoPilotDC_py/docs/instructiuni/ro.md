@@ -429,3 +429,17 @@ Când ai sute sau mii de obiecte, nu le mai cauți în arbore: scrii ce vezi pe 
 - **🧪 Biblioteca de test** (lângă 📁): creează un folder `Biblioteca_test` cu 3000 de obiecte inventate (Web, SAP, Desktop) și 25 de rutine, ca să încerci căutarea. Alegi tu unde se face folderul. **🧪 → Șterge** șterge doar un folder creat așa și te întoarce la biblioteca implicită. **🧪 → Deschide altă bibliotecă** schimbă folderul.
 
 > Exemplu: ai 3000 de obiecte și cauți butonul de salvare din VA03. Scrii `salv app:sap ecran:va03`, apare un singur rând; 👁 îl arată pe ecranul SAP, iar 📋 îți spune că e folosit în 4 rutine.
+
+## 35. 🧹 Curăță biblioteca: dubluri, nefolosite, stricate
+
+Mai puține obiecte înseamnă o bibliotecă mai ușor de folosit. **🧹** (în 📚 Bibliotecă, lângă 🧪) deschide două liste.
+
+1. **🔁 Dubluri**: obiecte salvate de mai multe ori pentru același element. *Sigur* = același locator (id, css, xpath, SAP id…). *Probabil* = același text vizibil și același tip pe același ecran. ⭐ arată obiectul propus de păstrat (cel folosit în mai multe rutine).
+2. Alege obiectul pe care îl păstrezi și apasă **⭐ Păstrează acesta și unește grupul**. Celelalte dispar. Cel păstrat primește locatorii lor (de rezervă) și etichetele. Pașii și condițiile din rutine trec pe numele lui, la fel obiectele din containerele lor și rutinele deschise în Studio.
+3. **🔁 Unește toate grupurile sigure** face același lucru, într-un singur pas, pentru toate grupurile cu același locator. Grupurile *probabile* le verifici întâi cu **👁**.
+4. **🗑 Nefolosite / stricate**: obiectele din nicio rutină din folderul rutinelor și cele care n-au mers la ultimul test. Favoritele și containerele cu obiecte înăuntru nu apar. Selectezi și apeși **🗑 Șterge selectate**.
+
+- Înainte de fiecare unire sau ștergere, biblioteca și rutinele atinse se copiază în `_backup_biblioteca\<data>` lângă bibliotecă. Pentru revenire, copiezi fișierele înapoi (`de_unde.json` spune de unde au venit).
+- „Nefolosit” vede doar rutinele din folderul rutinelor și din `rutine` de lângă bibliotecă. O rutină ținută în altă parte nu e văzută.
+
+> Exemplu: în biblioteca de test (🧪), 🧹 → 🔁 Dubluri arată perechi ca `Buton_Anuleaza_Standard` și `Buton_Anuleaza_Standard_copie` (sigur). 🔁 Unește toate grupurile sigure le unește; rutinele care foloseau `_copie` folosesc acum obiectul păstrat.

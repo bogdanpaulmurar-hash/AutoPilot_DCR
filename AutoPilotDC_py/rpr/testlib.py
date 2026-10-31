@@ -2,7 +2,7 @@
 # ============================================================
 # AutoPilot DC — 🧪 Biblioteca de test (v4.25)
 #
-# O biblioteca generata (implicit 3000 de obiecte: Web, SAP GUI, Desktop) si
+# O biblioteca generata (implicit 3000 de obiecte: Web, SAP GUI, Desktop, ~2% dubluri) si
 # cateva rutine care le folosesc, ca sa incerci cautarea si "Folosit in" pe o
 # biblioteca mare. Totul sta intr-un singur folder ales de tine, marcat cu
 # fisierul MARKER; stergerea merge doar pe un folder marcat (nu poate sterge
@@ -101,6 +101,16 @@ def generate_repository(count: int = 3000, seed: int = 7) -> ObjectRepository:
             obj.folder = rnd.choice(["Actiuni", "Filtre", "Antet", "Subsol/Linkuri"])
         repo.objects.append(obj)
         i += 1
+    # ~2% dubluri: acelasi element salvat de doua ori (pentru 🧹 Curata biblioteca)
+    plain = [o for o in repo.objects if not o.is_container]
+    for o in rnd.sample(plain, max(1, len(plain) // 50)):
+        twin = UiObject.from_dict(o.to_dict())
+        twin.name = repo.make_unique_name(o.name + "_copie")
+        twin.tags = ["test", "dublura"]
+        if len(repo.objects) >= count:
+            repo.objects.remove(next(x for x in reversed(repo.objects) if x is not o and not x.is_container
+                                     and "dublura" not in x.tags and not repo.children_of(x.name)))
+        repo.objects.append(twin)
     return repo
 
 
