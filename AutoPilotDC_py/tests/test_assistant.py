@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # ============================================================
-# AutoPilot DC — Teste: 🤖 Asistent AI (v4.24)
+# AutoPilot DC — Teste: 🤖 Asistent AI (v4.30)
 #   Rulare:  py -m unittest tests.test_assistant
 # Fara AI real: un server HTTP local imita API-ul Anthropic si pe cel compatibil OpenAI.
 # ============================================================

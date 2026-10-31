@@ -414,7 +414,77 @@ The format (keywords in English or Romanian, upper or lower case):
 
 > Example: in the import window press **📝 Example**: an order entry procedure from an Excel appears; on the right you see the routine with the loop and the condition; ✅ Create the routine opens it in Studio.
 
-## 34. 🤖 AI assistant: questions, routines from procedures, repair
+## 34. 🔍 Search the library: filters, state, favorites, "Used in"
+
+When you have hundreds or thousands of objects, you no longer browse the tree: you type what you see on screen.
+
+1. In **📚 Library** type the text on the button in the search box, e.g. `salv`. It finds "Salvează" and "Save", ignoring accents and case, and tolerates a typo.
+2. Results appear as a **simple list**, best matches first (☰). The ☰ / 🌳 button switches to the Application → Screen tree.
+3. Narrow with the lists under the search: the **type** (Button, Text field, ComboBox, Table, RefList…) and the **state**: ✅ worked at the last test, ❌ broken, ⚪ not used in any routine, 🕐 used in the last 7 days, ⭐ favorite.
+4. Or type shortcuts directly in the search: `type:combo`, `app:SAP`, `screen:VA03`, `status:broken`, `#tag`. Screens with spaces go in quotes: `screen:"Order list"`.
+5. Click an object: under the list you see the text on screen, the application / screen, the first locator, the last test result and how many routines use it. **👁** shows it in the application (Web, SAP, Desktop), **⭐** makes it a favorite, **📋** opens "Used in": the routines and steps that use it (double click = the routine opens at the step).
+
+- **🔎 Find from screen** (next to ☰): choose Web / SAP GUI / Desktop and mark the element as with Spy (Web: click in the browser; SAP / Desktop: mouse over the element + F2). Nothing is saved: the library clears the filters and selects the saved object. If it finds several objects for the same element, it lists them (they are duplicates). If it finds none, it asks whether to save it now. The other way round: from the list, **👁** shows the object in the application.
+- Favorites and recently used objects stay at the top, in the **⭐ Favorites and recent** group.
+- The state is recorded automatically at 🧪 Test, at 🩺 Check and when you put the object in a routine. It is kept in `obiecte.stare.json`, next to the library; `obiecte.json` does not change.
+- "Used in" reads the routines in the routines folder (📋 Routines → 📁 Folder) and in the `rutine` folder next to the library.
+- **🧪 Test library** (next to 📁): creates a `Biblioteca_test` folder with 3000 made-up objects (Web, SAP, Desktop) and 25 routines, to try the search. You choose where the folder is made. **🧪 → Delete** deletes only a folder created this way and takes you back to the default library. **🧪 → Open another library** changes the folder.
+
+> Example: you have 3000 objects and look for the save button in VA03. You type `salv app:sap screen:va03`, a single row appears; 👁 shows it on the SAP screen and 📋 tells you it is used in 4 routines.
+
+## 35. 🧹 Clean the library: duplicates, unused, broken
+
+Fewer objects make the library easier to use. **🧹** (in 📚 Library, next to 🧪) opens two lists.
+
+1. **🔁 Duplicates**: objects saved several times for the same element. *Sure* = same locator (id, css, xpath, SAP id…). *Probable* = same visible text and type on the same screen. ⭐ marks the object suggested to keep (the one used in more routines).
+2. Choose the object to keep and press **⭐ Keep this one and merge the group**. The others go away. The kept one receives their locators (as fallbacks) and tags. Steps and conditions in routines move to its name, as do the objects in their containers and the routines open in Studio.
+3. **🔁 Merge all sure groups** does the same in one go for all groups with the same locator. Check *probable* groups first with **👁**.
+4. **🗑 Unused / broken**: objects in no routine of the routines folder and those that failed the last test. Favorites and containers with objects inside are not listed. Select them and press **🗑 Delete selected**.
+
+- Before each merge or deletion, the library and the affected routines are copied to `_backup_biblioteca\<date>` next to the library. To undo, copy the files back (`de_unde.json` says where they came from).
+- "Unused" only sees routines in the routines folder and in `rutine` next to the library. A routine kept elsewhere is not seen.
+
+> Example: in the test library (🧪), 🧹 → 🔁 Duplicates shows pairs like `Buton_Anuleaza_Standard` and `Buton_Anuleaza_Standard_copie` (sure). 🔁 Merge all sure groups merges them; routines that used `_copie` now use the kept object.
+
+## 36. 🧩 Objects with a parameter and 📌 shared parts
+
+Many buttons differ only by their text (Save, Cancel, Send…). Instead of one object for each, keep **one object with a parameter**: in the locators the text becomes `{Text}`, and each step says which value it has.
+
+1. In 📚 Library, right-click a saved button → **🧩 Make an object with a parameter from this...**. Give the parameter name (default `Text`) and the name of the new object.
+2. In the new object the button text is replaced by `{Text}` in the locators. Locators without text (id, css, xpath…) are disabled, because they would always find the same button.
+3. In the step choose the object. Below it the field **Parameter: Text** appears: write `Save`. A variable works too, e.g. `{Rand.Nume}`. The same in conditions (If it appears…).
+4. **🧪 Test** and **👁 Show** first ask for the parameter value.
+5. For elements that appear on every screen of the application (SAP toolbar, site header, menu): right-click → **📌 Shared across the whole application**. The object moves to the group **📌 Shared (all screens)** and is found on any screen of the application.
+
+- You can also write parameters by hand: in ✎ Edit, the field **Parameters** (e.g. `Text`), and `{Text}` in the locators.
+- In 📥 AI import: `CLICK [Button_with_Text](Text=Save)`.
+- Old routines and libraries open as before; parameters are new, optional fields.
+
+> Example: from `Button_Save` you make `Button_with_Text` (the locator `text=Save` becomes `text={Text}`). The steps "Click Button_with_Text (Text=Save)" and "Click Button_with_Text (Text=Cancel)" use the same object.
+
+## 37. 📱 Tests on an Android phone
+
+AutoPilot can run routines on an Android phone or tablet through **Appium** (a separate program that controls the phone). Appium starts only when the routine has phone steps, so the rest of the app runs just as fast. iOS comes later: it needs a Mac or a cloud device farm.
+
+**Once, on the laptop:**
+1. Android platform-tools (`adb`) in PATH or in `ANDROID_HOME`.
+2. Node.js, then `npm install -g appium` and `appium driver install uiautomator2`.
+3. `py -m pip install --user Appium-Python-Client`.
+4. On the phone: Developer options → **USB debugging** on; on the first connection accept "Allow USB debugging".
+
+**The routine:**
+1. First step: **📱 Mobile: connect the phone**. Value: `phone | package/activity`, e.g. `R58M12 | com.company.app/.MainActivity`. Empty phone = the first connected one.
+2. Press **📱 Check the phone** in the step properties: you see whether adb, the phone (connected, unlocked), the app, the battery and Appium are fine, without running anything.
+3. Phone objects have the technology **Mobile (Android)** and **AccessibilityId**, **ResourceId** (e.g. `com.company.app:id/login`), **UiAutomator**, **XPath** or **Text** locators. You see them on the phone with Appium Inspector.
+4. The usual steps work on the phone: Click (tap), Double click, Right click (long press), Type text, Read, Check, Select from list, Press key (Enter, Back, Home...). Also: **Mobile: swipe** (up / down / left / right), **Mobile: back**, **Mobile: screenshot**, **Mobile: close the app**.
+
+**The results** of each run are in the results folder (or the shared folder): `mobil\<date_time>_<routine>\<phone>\`, with the screenshots, the phone screen video (`ecran_telefon.mp4`), `logcat.txt`, `telefon.txt` and the run's Excel report.
+
+- On connect, the phone is checked first. If something is wrong (locked, app missing...), the routine stops with the list of problems and touches nothing.
+- Without the interface: `py -m rpr device "R58M12 | com.company.app"` only runs the check.
+- The app data is not cleared on connect (you stay logged in).
+
+## 38. 🤖 AI assistant: questions, routines from procedures, repair
 
 An AI that knows AutoPilot: it answers questions about the application and the open routine, builds a routine from a procedure and repairs a routine that no longer works. **The AI runs nothing**: everything it proposes goes through 📥 Import, where you check it, then through 🎯 Complete objects and the prevention system, like any routine. Open the window from the left bar, **🤖 AI assistant**.
 

@@ -414,7 +414,77 @@ Das Format (Schlüsselwörter auf Englisch oder Rumänisch, Groß- oder Kleinsch
 
 > Beispiel: Im Importfenster **📝 Beispiel** drücken: eine Auftragserfassung aus einer Excel-Datei erscheint; rechts sehen Sie die Routine mit Schleife und Bedingung; ✅ Routine erstellen öffnet sie in Studio.
 
-## 34. 🤖 KI-Assistent: Fragen, Routinen aus Verfahren, Reparatur
+## 34. 🔍 In der Bibliothek suchen: Filter, Zustand, Favoriten, „Verwendet in“
+
+Bei Hunderten oder Tausenden von Objekten blättern Sie nicht mehr im Baum: Sie tippen, was Sie auf dem Bildschirm sehen.
+
+1. Tippen Sie in **📚 Bibliothek** den Text der Schaltfläche in das Suchfeld, z. B. `salv`. Gefunden werden „Salvează“ und „Save“, ohne Akzente und ohne Groß-/Kleinschreibung, auch mit einem Tippfehler.
+2. Die Treffer erscheinen als **einfache Liste**, beste zuerst (☰). Die Schaltfläche ☰ / 🌳 wechselt zum Baum Anwendung → Bild.
+3. Eingrenzen mit den Listen unter der Suche: **Typ** (Schaltfläche, Textfeld, ComboBox, Tabelle, RefList…) und **Zustand**: ✅ beim letzten Test funktioniert, ❌ defekt, ⚪ in keiner Routine benutzt, 🕐 in den letzten 7 Tagen benutzt, ⭐ Favorit.
+4. Oder Kürzel direkt in die Suche schreiben: `typ:combo`, `app:SAP`, `seite:VA03`, `status:defekt`, `#schlagwort`. Bilder mit Leerzeichen in Anführungszeichen: `seite:"Auftragsliste"`.
+5. Klick auf ein Objekt: unter der Liste sehen Sie den Text auf dem Bildschirm, Anwendung / Bild, den ersten Locator, das letzte Testergebnis und in wie vielen Routinen es verwendet wird. **👁** zeigt es in der Anwendung (Web, SAP, Desktop), **⭐** macht es zum Favoriten, **📋** öffnet „Verwendet in“: die Routinen und Schritte, die es benutzen (Doppelklick = Routine öffnet beim Schritt).
+
+- **🔎 Vom Bildschirm finden** (neben ☰): Web / SAP GUI / Desktop wählen und das Element wie mit Spy markieren (Web: Klick im Browser; SAP / Desktop: Maus auf das Element + F2). Nichts wird gespeichert: die Bibliothek entfernt die Filter und wählt das gespeicherte Objekt aus. Findet sie mehrere Objekte für dasselbe Element, zeigt sie diese in der Liste (Duplikate). Findet sie keines, fragt sie, ob es jetzt gespeichert werden soll. Umgekehrt: aus der Liste zeigt **👁** das Objekt in der Anwendung.
+- Favoriten und zuletzt benutzte Objekte stehen oben in der Gruppe **⭐ Favoriten und zuletzt benutzt**.
+- Der Zustand wird automatisch bei 🧪 Test, bei 🩺 Prüfen und beim Einfügen in eine Routine notiert. Er liegt in `obiecte.stare.json` neben der Bibliothek; `obiecte.json` ändert sich nicht.
+- „Verwendet in“ liest die Routinen im Routinenordner (📋 Routinen → 📁 Ordner) und im Ordner `rutine` neben der Bibliothek.
+- **🧪 Testbibliothek** (neben 📁): erstellt einen Ordner `Biblioteca_test` mit 3000 erfundenen Objekten (Web, SAP, Desktop) und 25 Routinen, um die Suche auszuprobieren. Sie wählen, wo der Ordner entsteht. **🧪 → Löschen** löscht nur einen so erstellten Ordner und kehrt zur Standardbibliothek zurück. **🧪 → Andere Bibliothek öffnen** wechselt den Ordner.
+
+> Beispiel: Sie haben 3000 Objekte und suchen die Speichern-Schaltfläche in VA03. Sie tippen `salv app:sap seite:va03`, es erscheint eine Zeile; 👁 zeigt sie auf dem SAP-Bild und 📋 sagt, dass sie in 4 Routinen verwendet wird.
+
+## 35. 🧹 Bibliothek aufräumen: Duplikate, unbenutzt, defekt
+
+Weniger Objekte machen die Bibliothek leichter zu benutzen. **🧹** (in 📚 Bibliothek, neben 🧪) öffnet zwei Listen.
+
+1. **🔁 Duplikate**: Objekte, die mehrmals für dasselbe Element gespeichert wurden. *Sicher* = gleicher Locator (id, css, xpath, SAP-ID…). *Wahrscheinlich* = gleicher sichtbarer Text und Typ auf demselben Bild. ⭐ zeigt das zum Behalten vorgeschlagene Objekt (das in mehr Routinen benutzte).
+2. Wählen Sie das zu behaltende Objekt und drücken Sie **⭐ Dieses behalten und Gruppe zusammenführen**. Die anderen verschwinden. Das behaltene erhält ihre Locatoren (als Reserve) und Schlagwörter. Schritte und Bedingungen in Routinen wechseln auf seinen Namen, ebenso die Objekte in ihren Containern und die in Studio geöffneten Routinen.
+3. **🔁 Alle sicheren Gruppen zusammenführen** macht dasselbe in einem Schritt für alle Gruppen mit gleichem Locator. *Wahrscheinliche* Gruppen zuerst mit **👁** prüfen.
+4. **🗑 Unbenutzt / defekt**: Objekte in keiner Routine des Routinenordners und solche, die beim letzten Test fehlschlugen. Favoriten und Container mit Objekten darin erscheinen nicht. Auswählen und **🗑 Ausgewählte löschen** drücken.
+
+- Vor jedem Zusammenführen oder Löschen werden Bibliothek und betroffene Routinen nach `_backup_biblioteca\<Datum>` neben der Bibliothek kopiert. Zum Rückgängigmachen die Dateien zurückkopieren (`de_unde.json` sagt, woher sie kamen).
+- „Unbenutzt“ sieht nur Routinen im Routinenordner und in `rutine` neben der Bibliothek. Eine anderswo abgelegte Routine wird nicht gesehen.
+
+> Beispiel: in der Testbibliothek (🧪) zeigt 🧹 → 🔁 Duplikate Paare wie `Buton_Anuleaza_Standard` und `Buton_Anuleaza_Standard_copie` (sicher). 🔁 Alle sicheren Gruppen zusammenführen vereint sie; Routinen, die `_copie` benutzten, verwenden jetzt das behaltene Objekt.
+
+## 36. 🧩 Objekte mit Parameter und 📌 gemeinsame Teile
+
+Viele Schaltflächen unterscheiden sich nur durch ihren Text (Speichern, Abbrechen, Senden…). Statt je eines Objekts behältst du **ein einziges Objekt mit Parameter**: in den Locatoren wird der Text zu `{Text}`, und jeder Schritt sagt, welchen Wert er hat.
+
+1. In 📚 Bibliothek Rechtsklick auf eine gespeicherte Schaltfläche → **🧩 Daraus ein Objekt mit Parameter machen...**. Gib den Namen des Parameters (Standard `Text`) und den Namen des neuen Objekts an.
+2. Im neuen Objekt ist der Text der Schaltfläche in den Locatoren durch `{Text}` ersetzt. Locatoren ohne Text (id, css, xpath…) werden deaktiviert, weil sie immer dieselbe Schaltfläche finden würden.
+3. Im Schritt das Objekt wählen. Darunter erscheint das Feld **Parameter: Text**: `Speichern` eintragen. Eine Variable geht auch, z. B. `{Rand.Nume}`. Ebenso in Bedingungen (Wenn erscheint…).
+4. **🧪 Testen** und **👁 Zeigen** fragen zuerst nach dem Parameterwert.
+5. Für Elemente, die auf allen Bildschirmen der Anwendung erscheinen (SAP-Leiste, Kopfzeile der Website, Menü): Rechtsklick → **📌 Gemeinsam in der ganzen Anwendung**. Das Objekt kommt in die Gruppe **📌 Gemeinsam (alle Bildschirme)** und wird auf jedem Bildschirm der Anwendung gefunden.
+
+- Parameter kannst du auch von Hand schreiben: in ✎ Bearbeiten das Feld **Parameter** (z. B. `Text`) und `{Text}` in den Locatoren.
+- Im 📥 KI-Import: `CLICK [Schaltflaeche_mit_Text](Text=Speichern)`.
+- Alte Routinen und Bibliotheken öffnen sich wie bisher; Parameter sind neue, optionale Felder.
+
+> Beispiel: aus `Schaltflaeche_Speichern` machst du `Schaltflaeche_mit_Text` (der Locator `text=Speichern` wird `text={Text}`). Die Schritte „Click Schaltflaeche_mit_Text (Text=Speichern)“ und „Click Schaltflaeche_mit_Text (Text=Abbrechen)“ nutzen dasselbe Objekt.
+
+## 37. 📱 Tests auf einem Android-Telefon
+
+AutoPilot kann Routinen auf einem Android-Telefon oder -Tablet über **Appium** ausführen (ein eigenes Programm, das das Telefon steuert). Appium startet nur, wenn die Routine Telefonschritte hat, der Rest der App bleibt also genauso schnell. iOS folgt später: dafür braucht es einen Mac oder eine Gerätefarm in der Cloud.
+
+**Einmalig, auf dem Laptop:**
+1. Android platform-tools (`adb`) im PATH oder in `ANDROID_HOME`.
+2. Node.js, dann `npm install -g appium` und `appium driver install uiautomator2`.
+3. `py -m pip install --user Appium-Python-Client`.
+4. Auf dem Telefon: Entwickleroptionen → **USB-Debugging** an; bei der ersten Verbindung „USB-Debugging zulassen“ bestätigen.
+
+**Die Routine:**
+1. Erster Schritt: **📱 Mobil: Telefon verbinden**. Wert: `Telefon | Paket/Aktivität`, z. B. `R58M12 | com.firma.app/.MainActivity`. Leeres Telefon = das erste verbundene.
+2. In den Schritteigenschaften **📱 Telefon prüfen** drücken: Sie sehen, ob adb, das Telefon (verbunden, entsperrt), die App, der Akku und Appium in Ordnung sind, ohne etwas auszuführen.
+3. Telefonobjekte haben die Technologie **Mobil (Android)** und Locatoren **AccessibilityId**, **ResourceId** (z. B. `com.firma.app:id/login`), **UiAutomator**, **XPath** oder **Text**. Sie sehen sie auf dem Telefon mit Appium Inspector.
+4. Die üblichen Schritte funktionieren auf dem Telefon: Klick (Tippen), Doppelklick, Rechtsklick (langes Drücken), Text schreiben, Lesen, Ankreuzen, Aus Liste wählen, Taste drücken (Enter, Back, Home...). Zusätzlich: **Mobil: Wischen** (hoch / runter / links / rechts), **Mobil: Zurück**, **Mobil: Bildschirmfoto**, **Mobil: App schließen**.
+
+**Die Ergebnisse** jedes Laufs liegen im Ergebnisordner (oder im gemeinsamen Ordner): `mobil\<Datum_Uhrzeit>_<Routine>\<Telefon>\`, mit den Bildschirmfotos, dem Video des Telefonbildschirms (`ecran_telefon.mp4`), `logcat.txt`, `telefon.txt` und dem Excel-Bericht des Laufs.
+
+- Beim Verbinden wird das Telefon zuerst geprüft. Stimmt etwas nicht (gesperrt, App fehlt...), stoppt die Routine mit der Liste der Probleme und berührt nichts.
+- Ohne Oberfläche: `py -m rpr device "R58M12 | com.firma.app"` führt nur die Prüfung aus.
+- Die App-Daten werden beim Verbinden nicht gelöscht (Sie bleiben angemeldet).
+
+## 38. 🤖 KI-Assistent: Fragen, Routinen aus Verfahren, Reparatur
 
 Eine KI, die AutoPilot kennt: Sie beantwortet Fragen zur Anwendung und zur geöffneten Routine, erstellt eine Routine aus einer Verfahrensbeschreibung und repariert eine Routine, die nicht mehr funktioniert. **Die KI führt nichts aus**: Alles, was sie vorschlägt, geht durch 📥 Import, wo Sie es prüfen, dann durch 🎯 Objekte vervollständigen und das Präventionssystem, wie jede Routine. Das Fenster öffnen Sie in der linken Leiste, **🤖 KI-Assistent**.
 

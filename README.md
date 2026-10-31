@@ -1,14 +1,11 @@
 # AutoPilot DC (AutoPilot_DCR)
 
 Tool de automatizare RPA & Data Cleansing (recorder/player de pași desktop +
-browser), dezvoltat în două variante:
+browser) + **Studio RPR** (rutine pe obiecte: Web/SAP/Desktop + Excel), în Python:
+[`AutoPilotDC_py/`](AutoPilotDC_py). Varianta C# a fost scoasă din repository în v4.25.0
+(rămâne în istoricul git).
 
-| Variantă | Folder | Stare |
-|---|---|---|
-| **Python** (CustomTkinter + pynput + pyautogui) | [`AutoPilotDC_py/`](AutoPilotDC_py) | Recorder/player pe coordonate + siguranța la rulare v4.1 |
-| **C# WPF (.NET 8)** | [`AutoPilotDC_C#/`](AutoPilotDC_C%23) | Recorder/player + **Studio RPR** (rutine pe obiecte: Web/SAP/Desktop + Excel) + siguranța la rulare v4.1 |
-
-## Ce e nou în v4.1 — siguranța la rulare (ambele variante)
+## Siguranța la rulare (v4.1)
 
 | Funcție | Ce face |
 |---|---|
@@ -27,7 +24,7 @@ Ce detectează sistemul de prevenție:
 7. un pas **eșuează** — înainte rutina mergea mai departe fără să spună nimic, acum te întreabă (cu „Reîncearcă pasul”);
 8. *(doar Studio RPR)* SAP afișează o eroare în bara de stare (`E:` / `A:`) și **valoarea citită diferă de „Valoarea așteptată”** a pasului.
 
-Pentru 4–6 rutina trebuie **înregistrată cu v4.1** (la înregistrare se salvează fereastra și amprenta zonei fiecărui click). Rutinele vechi primesc doar verificările 1–3 și 7. Amprenta e identică în Python și C#, deci o rutină înregistrată într-o variantă e verificată corect și în cealaltă.
+Pentru 4–6 rutina trebuie **înregistrată cu v4.1** (la înregistrare se salvează fereastra și amprenta zonei fiecărui click). Rutinele vechi primesc doar verificările 1–3 și 7.
 
 Toate se pot opri din **Setări → 🛡 Siguranța la rulare** (în Studio RPR: **⚙ Rutina → Siguranța la rulare**).
 
@@ -44,9 +41,7 @@ Toate se pot opri din **Setări → 🛡 Siguranța la rulare** (în Studio RPR:
   exact Python-ul care deschide aplicația); erorile se scriu în `loguri/autopilot_console.log`.
 - `studio_ui.py` — **Studio RPR** (editorul vizual), deschis din comutatorul din bara de sus.
 - `rpr/` — motorul Studio RPR: rutine pe obiecte (pași ca arbore,
-  condiții, bucle, variabile, Excel, Încearcă/La eroare, sistemul de prevenție). Fișierele
-  `.rpr.json` și `obiecte.json` sunt **identice cu cele din C#** (verificat pe cele 5 exemple).
-  Rulare fără interfață: `py -m rpr run "rutina.rpr.json"`.
+  condiții, bucle, variabile, Excel, Încearcă/La eroare, sistemul de prevenție). Rulare fără interfață: `py -m rpr run "rutina.rpr.json"`.
 - `tests/` — testele motorului: `py -m unittest discover -s tests`.
 - `app_shell.py` + `assets/` — **iconița aplicației**, **pornire cu Windows** și **pictograma din tray** (lângă ceas).
   Din **Setări → 🪟 Pornire și tray**: pornește cu Windows (opțional direct ascuns în tray), butonul ✕ ascunde
@@ -80,38 +75,14 @@ Starea migrării Studio RPR în Python:
 | 3b | Programare automată (Windows Task Scheduler) din Studio, cu istoric (v4.6) | ✅ gata |
 | 6 | **Limbi: română / engleză / germană** pentru toată interfața; limba se alege din Setări (v4.7) | ✅ gata |
 | 7 | **Tab nou „Instrucțiuni”** în toate cele 3 limbi: fiecare procedură explicată pe scurt, pas cu pas, cu exemple (v4.7) | ✅ gata |
-| 5 | Renunțarea la versiunea C# | după testare |
+| 5 | Renunțarea la versiunea C# | ✅ scoasă din repository (v4.25.0) |
 
 Interfața Python v4.1: bara de sus are două rânduri — **comutatorul Recorder / Studio RPR** + STOP URGENȚĂ, apoi
 butoane mici, grupate, specifice zonei deschise, care trec pe rândul următor când fereastra e îngustă.
 
-## AutoPilotDC_C# (C# WPF .NET 8)
-
-Pornire (nu e nevoie de Visual Studio, doar de [.NET SDK 8 sau mai nou](https://dotnet.microsoft.com/download)):
-
-```powershell
-cd AutoPilotDC_C#
-.\Start_AutoPilotDC.bat
-```
-
-Scriptul compilează în `%LOCALAPPDATA%\AutoPilotDC_build` (în afara Google Drive,
-care blochează fișierele `.exe`) și pornește aplicația. Studio RPR se deschide din
-butonul **🧩 Studio RPR** din bara de sus.
-
-Alternativ: `AutoPilotDC_C#/AutoPilotDC.sln` în Visual Studio 2022+ → proiectul de
-start `AutoPilotDC.UI` → F5.
-
-Detalii: [`AutoPilotDC_C#/README.md`](AutoPilotDC_C%23/README.md),
-ghidul Studio [`AutoPilotDC_C#/docs/GHID_STUDIO_RPR.md`](AutoPilotDC_C%23/docs/GHID_STUDIO_RPR.md),
-fazele migrării [`AutoPilotDC_C#/PHASE_LOG.md`](AutoPilotDC_C%23/PHASE_LOG.md).
-
-Teste: `dotnet test AutoPilotDC_C#/AutoPilotDC.Tests` (testele de integrare Playwright
-cer browserele instalate cu `playwright install`).
-
 ## Note
 
-- Fișierele de build (`bin/`, `obj/`, `.vs/`), publish-urile self-contained,
-  arhivele cu versiuni vechi și export-urile de cod generate pentru AI nu sunt
+- Arhivele cu versiuni vechi și export-urile de cod generate pentru AI nu sunt
   incluse în acest repository (erau de ordinul GB și nu fac parte din codul
   sursă funcțional).
 - „Nu deranja” nu are un API oficial în Windows: aplicația scrie profilul

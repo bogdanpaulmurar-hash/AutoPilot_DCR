@@ -131,7 +131,7 @@ class ImportDialog(tk.Toplevel):
         self.p = panel
         self.C = C = panel.C
         self.result: Optional[ImportResult] = None
-        self.repair = None   # v4.24: 🔧 Repara rutina (rpr.assistant.RepairJob): PASTREAZA #n + setarile originalului
+        self.repair = None   # v4.30: 🔧 Repara rutina (rpr.assistant.RepairJob): PASTREAZA #n + setarile originalului
         self._after = None
         self.title("📥 Import AI — pasi din text")
         self.configure(bg=C["bg_main"])

@@ -8,12 +8,10 @@ Reguli generale (v1.1; textul complet: repo `dev-framework`, GLOBAL_RULES.md):
 - Aplicații Windows: Python cu `pythonw`, tray, fără `.exe`; respectă DevPilot (`DEVPILOT_MANAGED`, `DEVPILOT_SUPPRESS`).
 - Git: GitHub e sursa de adevăr; un singur laptop o dată; commit și push înainte de schimbarea laptopului; lasă Drive să termine sincronizarea.
 
-Tool RPA + Data Cleansing: recorder/player de pași desktop și browser, plus **Studio RPR** (rutine pe obiecte Web / SAP GUI / Desktop + Excel, fără cod, în stilul SilkTest). Două variante în același repo.
+Tool RPA + Data Cleansing: recorder/player de pași desktop și browser, telefon Android (Appium), plus **Studio RPR** (rutine pe obiecte Web / SAP GUI / Desktop + Excel, fără cod, în stilul SilkTest). Doar varianta Python (`AutoPilotDC_py/`); varianta C# a fost scoasă în v4.25.0 (rămâne în istoricul git).
 
-## Care variantă
-- **Python (`AutoPilotDC_py/`) e varianta principală.** Are tot ce avea C#, inclusiv Studio RPR, drivere Web (Playwright), SAP GUI și Desktop, biblioteca de obiecte, programarea, limbile RO/EN/DE.
-- **C# (`AutoPilotDC_C#/`)** urmează să fie abandonat după testare. Nu adăuga funcții noi acolo fără cerere explicită.
-- Fișierele `.rpr.json` și `obiecte.json` sunt identice între variante. Nu le schimba formatul într-o singură parte. Setările noi doar în Python stau în câmpuri pe care C# le ignoră (ex. `settings.report`); `.pregatire.json` există doar în Python. Pașii `run_routine` (v4.12) și `on_error_rule` (v4.13) câmpul `optional` al pasului `if` și acțiunea `SapScrollTable` (v4.22) există doar în Python. Comanda de import `PASTREAZA #n` (v4.24) e doar în textul de import, nu în `.rpr.json`.
+## Formatul fișierelor
+- `.rpr.json`, `obiecte.json` și `.pregatire.json` sunt doar ale aplicației Python; formatul se poate extinde, dar rutinele și bibliotecile vechi trebuie să se deschidă în continuare (câmpuri noi opționale, cu valori implicite). Ex. v4.28: `params` în obiecte, pași și condiții (obiecte cu parametru `{Text}`). Comanda de import `PASTREAZA #n` (v4.30, 🔧 Repară rutina) există doar în textul de import, nu în `.rpr.json`.
 
 ## Comenzi (Python)
 - Instalare pe un PC: `AutoPilotDC_py\INSTALEAZA.bat`; verificare: `python verifica_instalare.py`
@@ -23,7 +21,7 @@ Tool RPA + Data Cleansing: recorder/player de pași desktop și browser, plus **
 - Versiune: `AutoPilotDC_py/version.py` (sursă unică) + intrare în `AutoPilotDC_py/CHANGELOG.md`
 
 ## Hartă (Python)
-`AutoPilot_DC_app.py` (fereastra principală = Studio; ⏺ Ecran înregistrează mouse/tastatură în pași pe ecran; ⚙ Setări aplicație; tray) · `studio_ui.py` (Studio RPR) · `import_ui.py` + `rpr/importer.py` (📥 Import AI: pași în text/JSON → rutină) + `complete_ui.py` (🎯 Completează obiectele pe pagina reală) · `assistant_ui.py` + `rpr/assistant.py` + `rpr/steps_text.py` (🤖 Asistent AI: întrebări, rutină din procedură, reparare; Claude API / gateway compatibil OpenAI; predare: `docs/ai/PREDARE_AI_FIRMA.md`) · `studio_views.py` (bara de activități, tab-uri, cronologia, ecranul Excel, fluxul) · `rpr/` (motorul: pași, condiții, bucle, variabile, Excel, drivere; `report.py` raportul Excel al rulării, `template.py` 📤 șablonul Excel al buclei (Id ca text + coloanele scrise), `batch.py` managerul de rutine și pregătirile, `resume.py` reluarea după o închidere neașteptată, `scan.py` scanarea site-ului și biblioteca pe aplicație, `locations.py` folderul comun / unde se salvează) · `routine_manager_ui.py` (📂 Manager rutine) · `autopilot_safety.py` (Nu deranja, chenar RUN/REC, prevenție) · `ui_theme.py` (mărimea textului, contrast, ferestre care încap pe ecran) · `app_shell.py` (icon, tray, pornire cu Windows) · `i18n/` + `i18n.py` · `instructions_ui.py` (📖 Instrucțiuni, F1) · `docs/`
+`AutoPilot_DC_app.py` (fereastra principală = Studio; ⏺ Ecran înregistrează mouse/tastatură în pași pe ecran; ⚙ Setări aplicație; tray) · `studio_ui.py` (Studio RPR) · `import_ui.py` + `rpr/importer.py` (📥 Import AI: pași în text/JSON → rutină) + `complete_ui.py` (🎯 Completează obiectele pe pagina reală) · `assistant_ui.py` + `rpr/assistant.py` + `rpr/steps_text.py` (🤖 Asistent AI: întrebări, rutină din procedură, reparare; Claude API / gateway compatibil OpenAI; predare: `docs/ai/PREDARE_AI_FIRMA.md`) · `studio_views.py` (bara de activități, tab-uri, cronologia, ecranul Excel, fluxul) · `rpr/` (motorul: pași, condiții, bucle, variabile, Excel, drivere; `report.py` raportul Excel al rulării, `template.py` 📤 șablonul Excel al buclei (Id ca text + coloanele scrise), `batch.py` managerul de rutine și pregătirile, `resume.py` reluarea după o închidere neașteptată, `scan.py` scanarea site-ului și biblioteca pe aplicație, `locations.py` folderul comun / unde se salvează, `mobile.py` + `drivers/mobile.py` 📱 Android prin Appium: verificarea telefonului, folderul `mobil\<data_ora>_<rutina>\<telefon>`) · `routine_manager_ui.py` (📂 Manager rutine) · `autopilot_safety.py` (Nu deranja, chenar RUN/REC, prevenție) · `ui_theme.py` (mărimea textului, contrast, ferestre care încap pe ecran) · `app_shell.py` (icon, tray, pornire cu Windows) · `i18n/` + `i18n.py` · `instructions_ui.py` (📖 Instrucțiuni, F1) · `docs/`
 Fișiere vechi păstrate doar ca referință: `AutoPilot_DCv3.9_RedCursor.py`, `apply_patches_v4.py`, `autopilot_dc_setup_refactoration.py`, `0. Prompt_*`.
 
 ## Reguli
@@ -38,4 +36,4 @@ Fișiere vechi păstrate doar ca referință: `AutoPilot_DCv3.9_RedCursor.py`, `
 Prezentarea proiectelor și lista de erori/modificări sunt în două Google Docs: **PROIECTE_CONTEXT (live)** și **MODIFICARI_PROIECTE (live)** — citește doar secțiunea AutoPilot DC. Ce s-a implementat și confirmat se șterge din MODIFICARI.
 
 ## Când se actualizează fișierul
-În același commit, când se schimbă comenzile de instalare/pornire/test, structura, formatul `.rpr.json`, decizia despre varianta C# sau când un defect scoate la iveală o regulă de ținut minte. Nu pentru funcții obișnuite. Sub ~60 de rânduri.
+În același commit, când se schimbă comenzile de instalare/pornire/test, structura, formatul `.rpr.json`, sau când un defect scoate la iveală o regulă de ținut minte. Nu pentru funcții obișnuite. Sub ~60 de rânduri.

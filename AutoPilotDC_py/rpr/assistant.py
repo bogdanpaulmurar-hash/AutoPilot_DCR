@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # ============================================================
-# AutoPilot DC v4.24 — 🤖 Asistent AI (motorul, fara interfata)
+# AutoPilot DC v4.30 — 🤖 Asistent AI (motorul, fara interfata)
 #
 # Doua lucruri:
 #   1. Intrebari despre aplicatie ("cum fac...", "de ce nu merge pasul X") — raspunsul vine din Instructiuni,

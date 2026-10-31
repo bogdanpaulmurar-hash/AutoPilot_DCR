@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # ============================================================
-# AutoPilot DC v4.24 — 🤖 Asistent AI (fereastra din Studio)
+# AutoPilot DC v4.30 — 🤖 Asistent AI (fereastra din Studio)
 #
 # 💬 Intreaba: o intrebare despre aplicatie sau despre rutina deschisa; AutoPilot adauga capitolele potrivite
 #    din Instructiuni, schita rutinei, obiectele ei si ultimele erori.

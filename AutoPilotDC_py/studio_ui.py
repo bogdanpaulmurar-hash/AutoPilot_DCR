@@ -45,12 +45,16 @@ from rpr.model import (ACTIONS, ActionNode, BreakNode, CellColor, CompareOperato
                        LogNode, LoopMode, LoopNode, ObjectRepository, QuestionNode, Routine, RprAction, RprLogLevel, RunRoutineNode,
                        RprNode, RuleAfter, RuleNode, SetVariableNode, StopNode, TryNode, UiObject, UiTechnology, VariableOperation,
                        WaitMode, WaitNode, WriteExcelNode, action_info, flatten, sanitize_name,
-                       OBJECT_TYPES, CONTAINER_TYPES, SiteGroup)
+                       OBJECT_TYPES, CONTAINER_TYPES, SiteGroup, param_names_in, with_params)
 from rpr import report as rpr_report
 from rpr import resume as rpr_resume
 from rpr import scan as rpr_scan
+from rpr import libsearch
+from rpr import libclean
+from rpr import testlib
 from rpr import subroutine as rpr_sub
 from rpr.storage import Examples, ExcelInfo, RepositoryStore, RoutineStore, RprPaths, RunLogExporter
+COMMON_PAGE = "📌 Comun (toate ecranele)"   # v4.28: grupul obiectelor fara pagina (valabile pe toate ecranele)
 import ui_theme   # v4.14: contrast automat, texte care se rup dupa latime
 import studio_views   # v4.15: bara de activitati, tab-uri, cronologie, ecranul Excel, fluxul
 
@@ -114,6 +118,7 @@ TECHNOLOGIES = [
     (UiTechnology.WebSelenium, "Web (Selenium)"),
     (UiTechnology.Sap, "SAP GUI"),
     (UiTechnology.Desktop, "Aplicatie desktop"),
+    (UiTechnology.Mobile, "Mobil (Android)"),
 ]
 WAIT_MODES = [(WaitMode.Seconds, "Un numar de secunde"), (WaitMode.UntilTrue, "Pana cand o conditie e adevarata")]
 LOOP_MODES = [
@@ -142,6 +147,8 @@ _WEB_ACTIONS = {RprAction.OpenBrowser, RprAction.Navigate, RprAction.Back, RprAc
 _SAP_ACTIONS = {RprAction.SapConnect, RprAction.SapTransaction, RprAction.SapSendKey, RprAction.SapReadStatusBar,
                 RprAction.SapGridReadCell, RprAction.SapGridRowCount, RprAction.SapScrollTable}
 _DESK_ACTIONS = {RprAction.LaunchApp, RprAction.AttachWindow, RprAction.CloseWindow}
+_MOB_ACTIONS = {RprAction.MobileConnect, RprAction.MobileBack, RprAction.MobileSwipe, RprAction.MobileScreenshot,
+                RprAction.MobileCloseApp}
 
 
 def icon_for(node: RprNode) -> str:
@@ -153,6 +160,8 @@ def icon_for(node: RprNode) -> str:
             return "🟦"
         if a in _DESK_ACTIONS:
             return "🖥"
+        if a in _MOB_ACTIONS:
+            return "📱"
         if a in (RprAction.TypeText, RprAction.AppendText, RprAction.Clear):
             return "⌨"
         if a in (RprAction.ReadText, RprAction.ReadValue, RprAction.ReadAttribute):
@@ -193,6 +202,14 @@ TOOLBOX: List[Tuple[str, List[Tuple[str, str, Callable[[], RprNode]]]]] = [
          lambda: ActionNode(action=RprAction.LaunchApp, technology=UiTechnology.Desktop)),
         ("🖥  Ataseaza fereastra", "Lucreaza intr-o fereastra deja deschisa",
          lambda: ActionNode(action=RprAction.AttachWindow, technology=UiTechnology.Desktop, value="proces:")),
+        ("📱  Mobil: conecteaza telefonul", "Verifica telefonul Android si porneste aplicatia (prin Appium)",
+         lambda: ActionNode(action=RprAction.MobileConnect, technology=UiTechnology.Mobile, value=" | ")),
+        ("📱  Mobil: gliseaza", "Gliseaza pe ecranul telefonului (sus / jos / stanga / dreapta)",
+         lambda: ActionNode(action=RprAction.MobileSwipe, technology=UiTechnology.Mobile, value="sus")),
+        ("📱  Mobil: inapoi", "Butonul Inapoi al telefonului",
+         lambda: ActionNode(action=RprAction.MobileBack, technology=UiTechnology.Mobile)),
+        ("📱  Mobil: captura ecran", "Salveaza ecranul telefonului in folderul rularii",
+         lambda: ActionNode(action=RprAction.MobileScreenshot, technology=UiTechnology.Mobile)),
     ]),
     ("Flux (conditii si repetari)", [
         ("⏱  Asteapta", "Secunde sau pana apare / dispare ceva", WaitNode),
@@ -571,6 +588,7 @@ class StudioPanel(tk.Frame):
         super().__init__(master, bg=colors["bg_main"])
         self.C = colors
         self._on_help = on_help     # v4.16: ❓ deschide 📖 Instructiuni (RO / EN / DE)
+        self._last_param_values: Dict[str, str] = {}   # v4.28: ultimele valori date la 🧪 / 👁
         self.video = video          # VideoController (🎥 film la rulare) sau None
         self._dnd_allowed = dnd_allowed or (lambda: True)
         self._run_frame = run_frame
@@ -1102,6 +1120,8 @@ class StudioPanel(tk.Frame):
             self.insert_node(obj)
         elif kind == "object":
             self._drop_object_menu(obj, owner, index, e.x_root, e.y_root)
+            if obj is not None:
+                self._note_object_used(obj.name)
         elif kind == "routine":
             self.add_routine_step(entry=obj, at=(owner, index))
         return "break"
@@ -1260,6 +1280,15 @@ class StudioPanel(tk.Frame):
                                                                       "(propune un folder in OneDrive)"),
                                ("📁", self.open_library_folder, "Deschide folderul bibliotecii")]:
             self._btn(lrow, text, cmd, tip=tip).pack(side="left", padx=1)
+        self._testlib_btn = self._btn(lrow, "🧪", None, tip="Biblioteca de test: creeaza una mare (3000 de obiecte) "
+                                                           "ca sa incerci cautarea, sau sterge-o")
+        self._testlib_btn.configure(command=lambda: self._testlib_menu(self._testlib_btn))
+        self._testlib_btn.configure(padx=6)
+        self._testlib_btn.pack(side="left", padx=1)
+        clean = self._btn(lrow, "🧹", lambda: self.open_cleanup(), tip="Curata biblioteca: uneste dublurile, sterge "
+                                                                      "obiectele nefolosite sau stricate (cu copie de rezerva)")
+        clean.configure(padx=6)
+        clean.pack(side="left", padx=1)
         srow = tk.Frame(host, bg=C["bg_main"])
         srow.pack(fill="x", padx=4, pady=(0, 2))
         self._btn(srow, "🔍 Scaneaza site", self.scan_site,
@@ -1280,8 +1309,39 @@ class StudioPanel(tk.Frame):
         e = tk.Entry(top, textvariable=self._obj_filter, bg=C["bg_input"], fg=C["text"], relief="flat",
                      insertbackground=C["text"], font=("Segoe UI", 10))
         e.pack(fill="x", ipady=2)
-        ToolTip(e, "Cauta dupa nume, tip, site, pagina sau eticheta")
-        self._obj_filter.trace_add("write", lambda *a: self.refresh_objects())
+        ToolTip(e, "Cauta dupa textul de pe buton, nume, tip, aplicatie, ecran sau eticheta (fara diacritice). "
+                   "Prescurtari: tip:combo  app:SAP  ecran:VA03  stare:stricat  #eticheta")
+        self._obj_filter.trace_add("write", lambda *a: self._refresh_objects_soon())
+        frow = tk.Frame(top, bg=C["bg_main"])
+        frow.pack(fill="x", pady=(2, 0))
+        self._obj_type_values = ["Toate tipurile"] + list(OBJECT_TYPES)
+        self._obj_type_cb = ttk.Combobox(frow, values=[tr(v) for v in self._obj_type_values], state="readonly",
+                                         width=14, style="Studio.TCombobox", font=("Segoe UI", 9))
+        self._obj_type_cb.current(0)
+        self._obj_type_cb.pack(side="left", padx=(0, 2))
+        self._obj_type_cb.bind("<<ComboboxSelected>>", lambda e: self.refresh_objects())
+        ToolTip(self._obj_type_cb, "Doar obiectele de acest tip")
+        self._obj_status_cb = ttk.Combobox(frow, values=[tr(l) for _k, l in libsearch.STATUS_CHOICES], state="readonly",
+                                           width=11, style="Studio.TCombobox", font=("Segoe UI", 9))
+        self._obj_status_cb.current(0)
+        self._obj_status_cb.pack(side="left", padx=(0, 2))
+        self._obj_status_cb.bind("<<ComboboxSelected>>", lambda e: self.refresh_objects())
+        ToolTip(self._obj_status_cb, "✅ a mers la ultimul test · ❌ stricat · ⚪ nefolosit in rutine · "
+                                     "🕐 folosit in ultimele 7 zile · ⭐ favorit")
+        self._obj_list_mode = tk.BooleanVar(value=True)
+        self._obj_mode_btn = self._btn(frow, "☰", self._toggle_object_mode,
+                                       tip="La cautare: lista simpla, cele mai bune potriviri primele (☰) "
+                                           "sau arborele aplicatie → ecran (🌳)")
+        self._obj_mode_btn.configure(padx=6, pady=1)
+        self._obj_mode_btn.pack(side="left")
+        self._find_screen_btn = self._btn(frow, "🔎", None, tip="Gaseste din ecran: dai click pe buton in aplicatie "
+                                                               "(Web, SAP, Desktop) si biblioteca il arata. Nu salveaza nimic.")
+        self._find_screen_btn.configure(padx=6, pady=1, command=lambda: self._find_screen_menu(self._find_screen_btn))
+        self._find_screen_btn.pack(side="left", padx=(2, 0))
+        self._spy_purpose = ""
+        self._obj_state = libsearch.LibraryState.for_library(getattr(self, "repo_path", ""))
+        self._obj_usage: Optional[Dict[str, List[libsearch.Usage]]] = None
+        self._obj_refresh_job = None
         self._obj_only_page = tk.BooleanVar(value=False)
         tk.Checkbutton(top, text="Doar ce merge pe pagina din browser", variable=self._obj_only_page,
                        command=self.refresh_objects, bg=C["bg_main"], fg=C["text_dim"], selectcolor=C["bg_input"],
@@ -1306,6 +1366,25 @@ class StudioPanel(tk.Frame):
         self.objects.bind("<Double-1>", lambda e: self.edit_object())
         self._drag_source(self.objects, lambda: ("object", self._sel_object()), "➕ Obiect in rutina")
         self.objects.bind("<Button-3>", self._object_menu)
+        self.objects.bind("<<TreeviewSelect>>", lambda e: self._object_preview())
+        self.objects.tag_configure("group", foreground=ui_theme.readable(C["accent"], C["bg_input"], widget=self),
+                                   font=("Segoe UI", 10, "bold"))
+        self.objects.tag_configure("more", foreground=C["text_dim"], font=("Segoe UI", 9, "italic"))
+        # previzualizarea obiectului ales: textul de pe ecran, ecranul, locatorul, starea, "Folosit in"
+        pv = tk.Frame(host, bg=C["bg_card"])
+        pv.pack(fill="x", padx=4, pady=(2, 0))
+        self._obj_preview = tk.Label(pv, text="", bg=C["bg_card"], fg=C["text"], font=("Segoe UI", 9), anchor="w",
+                                     justify="left", wraplength=230)
+        self._obj_preview.pack(fill="x", padx=6, pady=(3, 0))
+        ui_theme.autowrap(self._obj_preview, margin=12)
+        pvb = tk.Frame(pv, bg=C["bg_card"])
+        pvb.pack(anchor="e", padx=2, pady=(0, 2))
+        self._btn(pvb, "👁", lambda: self.show_object(), tip="Arata obiectul in aplicatie (Web, SAP, Desktop): "
+                                                           "il marcheaza pe ecran 8 secunde").pack(side="left", padx=1)
+        self._btn(pvb, "⭐", self.toggle_favorite_object, tip="Favorit: apare sus, in grupul ⭐ Favorite si recente").pack(
+            side="left", padx=1)
+        self._btn(pvb, "📋", self.show_object_usage, tip="Folosit in: rutinele si pasii care folosesc obiectul").pack(
+            side="left", padx=1)
         row = tk.Frame(host, bg=C["bg_main"])
         row.pack(fill="x", padx=4, pady=4)
         for text, cmd, tip in [("Test", self.test_object, "Testeaza obiectul pe pagina din browser: cate elemente gaseste "
@@ -1440,7 +1519,7 @@ class StudioPanel(tk.Frame):
         from import_ui import ImportDialog
         self._import_win = ImportDialog(self)
 
-    # v4.24: 🤖 Asistent AI — intrebari despre aplicatie si rutine din proceduri (modulul se incarca doar aici)
+    # v4.30: 🤖 Asistent AI — intrebari despre aplicatie si rutine din proceduri (modulul se incarca doar aici)
     def show_assistant(self):
         w = getattr(self, "_assistant_win", None)
         if w is not None and w.winfo_exists():
@@ -2053,6 +2132,9 @@ class StudioPanel(tk.Frame):
             self.repo_path = real
         except Exception as ex:  # noqa: BLE001
             messagebox.showerror("Studio RPR", f"Object Repository nu poate fi citit:\n{ex}", parent=self)
+        self._load_object_state()
+        if hasattr(self, "objects"):
+            self.refresh_object_usage()
         self.refresh_objects()
         self._update_library_label()
 
@@ -2357,6 +2439,7 @@ class StudioPanel(tk.Frame):
             messagebox.showerror("🩺 Verifica", f"Verificarea nu a reusit:\n{error}", parent=self)
             return
         rows = [(o, res) + rpr_scan.diagnose(o, res, url) for o, res in results]
+        self._note_objects_checked([(r[0], r[2] != rpr_scan.REMAP) for r in rows])
         n = {k: sum(1 for r in rows if r[2] == k) for k in (rpr_scan.OK, rpr_scan.WARN, rpr_scan.REMAP)}
         self.set_status(f"🩺 Verificare: {n['ok']} merg, {n['warn']} cu impedimente, {n['remap']} de recaptat.")
         dlg = getattr(self, "_check_dlg", None)
@@ -2747,7 +2830,13 @@ class StudioPanel(tk.Frame):
         if changed:
             self.save_repository()
 
+        self._obj_refresh_job = None
         flt = self._obj_filter.get().strip().lower()
+        ti = self._obj_type_cb.current() if hasattr(self, "_obj_type_cb") else 0
+        type_filter = self._obj_type_values[ti] if ti > 0 else ""
+        si = self._obj_status_cb.current() if hasattr(self, "_obj_status_cb") else 0
+        status_filter = libsearch.STATUS_CHOICES[si][0] if si > 0 else ""
+        searching = bool(flt or type_filter or status_filter)
         url = ""
         if self._obj_only_page.get():
             try:
@@ -2755,13 +2844,18 @@ class StudioPanel(tk.Frame):
             except Exception:
                 url = ""
 
+        state, usage = self._obj_state, self._obj_usage
+        pool = [o for o in repo.objects if not url or repo.valid_on(o, url)]
+        if searching:   # v4.25: cautarea cu filtre (rpr/libsearch.py)
+            hits, total = libsearch.search(pool, flt, state, usage, type_filter, status_filter)
+        else:
+            hits, total = pool, len(pool)
+        if searching and self._obj_list_mode.get():
+            return self._fill_object_list(hits, total)
+        hit_names = {o.name.lower() for o in hits}
+
         def matches(o: UiObject) -> bool:
-            if url and not repo.valid_on(o, url):
-                return False
-            if not flt:
-                return True
-            hay = " ".join([o.name, o.object_type, o.site, o.page, o.folder, o.description, " ".join(o.tags)]).lower()
-            return flt in hay
+            return o.name.lower() in hit_names
 
         # vizibile = potrivirile + containerele lor (ca arborele sa ramana intreg)
         visible = set()
@@ -2784,12 +2878,11 @@ class StudioPanel(tk.Frame):
                 continue
             if o.parent and o.parent.lower() in names:
                 continue   # apare sub containerul lui
-            tree.setdefault(site_of(o), {}).setdefault(o.page or "(fara pagina)", []).append(o)
+            tree.setdefault(site_of(o), {}).setdefault(o.page or COMMON_PAGE, []).append(o)
 
         def add_obj(parent_iid, o):
             iid = "obj:" + o.name
-            n = sum(1 for l in o.active_locators)
-            self.objects.insert(parent_iid, "end", iid=iid, text=("▣ " if o.is_container else "") + o.name,
+            self.objects.insert(parent_iid, "end", iid=iid, text=self._object_text(o),
                                 values=(o.object_type or "",), open=open_state.get(iid, True),
                                 tags=("container",) if o.is_container else ())
             for ch in sorted(repo.children_of(o.name), key=lambda x: x.name.lower()):
@@ -2816,6 +2909,15 @@ class StudioPanel(tk.Frame):
             for o in direct:
                 add_obj(parent_iid, o)
 
+        if not searching:   # v4.25: favoritele si cele folosite recent, sus
+            top = self._favorite_and_recent()
+            if top:
+                gid = "group:fav"
+                self.objects.insert("", "end", iid=gid, text="⭐ Favorite si recente", values=(f"{len(top)} ob.",),
+                                    open=open_state.get(gid, True), tags=("group",))
+                for o in top:
+                    self.objects.insert(gid, "end", iid="fav:" + o.name, text=self._object_text(o),
+                                        values=(o.object_type or "",))
         for site in sorted(tree, key=str.lower):
             sid = "site:" + site
             n = sum(len(v) for v in tree[site].values())
@@ -2846,9 +2948,378 @@ class StudioPanel(tk.Frame):
 
     def _sel_object(self) -> Optional[UiObject]:
         sel = self.objects.selection()
-        if not sel or not sel[0].startswith("obj:"):
+        if not sel or not sel[0].startswith(("obj:", "fav:")):
             return None
         return self.repo.find(sel[0][4:])
+
+    # ── v4.25: cautarea cu filtre, starea obiectelor, "Folosit in", biblioteca de test ──
+    def _refresh_objects_soon(self):
+        """La tastare: asteptam o clipa (cautarea in mii de obiecte nu ruleaza la fiecare litera)."""
+        if self._obj_refresh_job is not None:
+            try:
+                self.after_cancel(self._obj_refresh_job)
+            except Exception:
+                pass
+        self._obj_refresh_job = self.after(180, self.refresh_objects)
+
+    def _toggle_object_mode(self):
+        self._obj_list_mode.set(not self._obj_list_mode.get())
+        self._obj_mode_btn.configure(text="☰" if self._obj_list_mode.get() else "🌳")
+        self.refresh_objects()
+
+    def _object_text(self, o: UiObject) -> str:
+        icon = libsearch.status_icon(o, self._obj_state, self._obj_usage)
+        return (f"{icon} " if icon else "") + ("▣ " if o.is_container else "") + o.name
+
+    def _favorite_and_recent(self) -> List[UiObject]:
+        st = self._obj_state
+        names = [n for n, e in st.objects.items() if e.get("favorite")] + st.recent_names(10)
+        out, seen = [], set()
+        for n in names:
+            o = self.repo.find(n)
+            if o is not None and n not in seen:
+                seen.add(n)
+                out.append(o)
+        return out
+
+    def _fill_object_list(self, hits: List[UiObject], total: int):
+        """Rezultatele cautarii ca lista simpla: obiect · aplicatie / ecran, cele mai bune primele."""
+        sel = self.objects.selection()
+        self.objects.delete(*self.objects.get_children())
+        for o in hits:
+            self.objects.insert("", "end", iid="obj:" + o.name, text=self._object_text(o),
+                                values=(o.object_type or "",),
+                                tags=("container",) if o.is_container else ())
+        if total > len(hits):
+            self.objects.insert("", "end", iid="more", text=tr_template("… inca {0} rezultate: scrie mai mult sau "
+                                                                        "alege un filtru").format(total - len(hits)),
+                                tags=("more",))
+        if not hits:
+            self.objects.insert("", "end", iid="none", text="(nimic gasit)", tags=("more",))
+        for iid in sel:
+            if self.objects.exists(iid):
+                self.objects.selection_set(iid)
+                self.objects.see(iid)
+        self.set_status(tr_template("🔍 {0} obiecte gasite").format(total))
+
+    def _object_preview(self):
+        lbl = getattr(self, "_obj_preview", None)
+        if lbl is None:
+            return
+        o = self._sel_object()
+        if o is None:
+            lbl.configure(text="")
+            return
+        parts = []
+        label = libsearch.object_label(o)
+        if label:
+            parts.append(f"„{label}”")
+        parts.append(" / ".join(x for x in (self._site_of(o), o.page, o.parent and f"▣ {o.parent}") if x))
+        loc = next(iter(o.active_locators), None)
+        if loc is not None:
+            parts.append(f"{loc.kind}: {loc.value}"[:90])
+        st = self._obj_state.get(o.name)
+        if st.get("status"):
+            parts.append((tr("✅ a mers la ultimul test") if st["status"] == libsearch.STATUS_OK
+                          else tr("❌ nu a mers la ultimul test")) + f" ({str(st.get('checked_at', ''))[:10]})")
+        if self._obj_usage is not None:
+            n = len(libsearch.routines_of(self._obj_usage, o.name))
+            parts.append(tr_template("Folosit in {0} rutine").format(n) if n else tr("Nefolosit in rutine"))
+        lbl.configure(text="\n".join(p for p in parts if p))
+
+    def _load_object_state(self):
+        self._obj_state = libsearch.LibraryState.for_library(self.repo_path)
+
+    def _usage_folders(self) -> List[str]:
+        """Unde cautam rutinele pentru "Folosit in": folderul rutinelor + folderul "rutine" de langa biblioteca."""
+        out = [self.studio_settings.effective_routines_folder()]
+        if self.repo_path:
+            out.append(os.path.join(os.path.dirname(os.path.abspath(self.repo_path)), testlib.ROUTINES_DIR))
+        return out
+
+    def refresh_object_usage(self):
+        """Indexul "Folosit in", pe un fir separat; lista se reface cand e gata."""
+        folders = self._usage_folders()
+
+        def work():
+            try:
+                idx = libsearch.build_usage_index(libsearch.routine_files(folders))
+            except Exception:  # noqa: BLE001
+                idx = None
+            self.post("usage_ready", idx)
+        threading.Thread(target=work, daemon=True, name="UsageIndex").start()
+
+    def _usage_ready(self, idx):
+        self._obj_usage = idx
+        self.refresh_objects()
+        self._object_preview()
+
+    def _note_object_used(self, name: str):
+        st = getattr(self, "_obj_state", None)
+        if st is not None and name:
+            st.mark_used(name)
+            st.save()
+
+    def _note_objects_checked(self, pairs):
+        st = getattr(self, "_obj_state", None)
+        if st is None:
+            return
+        for obj, ok in pairs:
+            st.mark_checked(obj.name, ok)
+        st.save()
+        self.refresh_objects()
+
+    def toggle_favorite_object(self):
+        o = self._sel_object()
+        if o is None:
+            self.set_status("Alege un obiect din lista.")
+            return
+        on = self._obj_state.toggle_favorite(o.name)
+        self._obj_state.save()
+        self.refresh_objects()
+        self.set_status((tr_template("⭐ Favorit: [{0}]") if on else tr_template("Scos de la favorite: [{0}]")).format(o.name))
+
+    def show_object_usage(self, obj: Optional[UiObject] = None):
+        o = obj or self._sel_object()
+        if o is None:
+            self.set_status("Alege un obiect din lista.")
+            return
+        if self._obj_usage is None:
+            self.set_status("Caut rutinele... incearca din nou intr-o clipa.")
+            self.refresh_object_usage()
+            return
+        ObjectUsageDialog(self, o, self._obj_usage.get(o.name.lower(), []))
+
+    # ── v4.28: 🧩 obiect cu parametru, 📌 parti comune pe aplicatie ──
+    def make_param_object(self, obj: Optional[UiObject] = None):
+        """Un obiect pentru toate butoanele de acelasi fel: textul vizibil devine {Parametru}."""
+        obj = obj or self._sel_object()
+        if obj is None:
+            return
+        label = libsearch.object_label(obj)
+        pname = input_dialog(self, "🧩 Obiect cu parametru",
+                             tr_template("Numele parametrului (in locatori devine {{Nume}}). Textul \"{0}\" se inlocuieste "
+                                         "cu el; fiecare pas da alta valoare.").format(label or "?"), "Text", C=self.C)
+        if not pname or not pname.strip().strip("{}"):
+            return
+        pname = sanitize_name(pname.strip().strip("{}")) or "Text"
+        base = re.sub(r"_+", "_", (obj.object_type.split()[0] if obj.object_type else "Obiect") + "_" +
+                      (obj.page or obj.site or "") + "_cu_" + pname)
+        name = input_dialog(self, "🧩 Obiect cu parametru", "Numele obiectului nou:", self.repo.make_unique_name(base),
+                            C=self.C)
+        if not name or not name.strip():
+            return
+        twin, n = libsearch.parametrize(obj, pname, label)
+        if not n:
+            messagebox.showinfo("🧩 Obiect cu parametru", tr_template(
+                "Niciun locator nu contine textul \"{0}\". Obiectul nou are parametrul {{{1}}}, dar scrie-l tu in "
+                "locatori (✎ Editeaza).").format(label, pname), parent=self)
+        twin.name = self.repo.make_unique_name(sanitize_name(name.strip()) or base)
+        self.repo.add(twin)
+        self.save_repository()
+        self.reveal_object(twin.name)
+        self.set_status(tr_template("🧩 [{0}]: {1} locatori cu {{{2}}}. In pas alegi obiectul si scrii valoarea "
+                                    "parametrului.").format(twin.name, n, pname))
+
+    def make_common_object(self, obj: Optional[UiObject] = None):
+        """📌 Obiectul e valabil pe toate ecranele aplicatiei (bara SAP, antetul site-ului, meniul)."""
+        obj = obj or self._sel_object()
+        if obj is None:
+            return
+        obj.page = ""
+        obj.url_patterns = []
+        self.save_repository()
+        self.reveal_object(obj.name)
+        self.set_status(tr_template("📌 [{0}] e comun pe toata aplicatia {1}.").format(obj.name, self._site_of(obj)))
+
+    # ── v4.27: 🧹 Curata biblioteca: dubluri, nefolosite, stricate ──
+    def _ensure_usage(self) -> Dict[str, List[libsearch.Usage]]:
+        """Indexul "Folosit in" acum (citit pe loc daca nu e gata): unirea si stergerea au nevoie de el exact."""
+        idx = libsearch.build_usage_index(libsearch.routine_files(self._usage_folders()))
+        self._obj_usage = idx
+        return idx
+
+    def open_cleanup(self):
+        if self.busy:
+            self.set_status("Asteapta sa se termine operatia curenta.")
+            return
+        self.save_repository()
+        LibraryCleanupDialog(self)
+
+    def _open_routines(self):
+        """Rutinele deschise in tab-uri (cu cea curenta)."""
+        self._store_doc()
+        return self._docs
+
+    def merge_objects(self, keep: UiObject, drops: List[UiObject]) -> libclean.MergeResult:
+        """Uneste dublurile in `keep`: copie de rezerva, apoi biblioteca, rutinele de pe disc si cele deschise."""
+        usage = self._ensure_usage()
+        files = libclean.files_using(usage, [d.name for d in drops])
+        folder = libclean.backup(self.repo_path, files)
+        names = {d.name.lower(): keep.name for d in drops if d is not keep}
+        res = libclean.merge(self.repo, keep, drops, files, self._obj_state)
+        res.backup_folder = folder
+        changed = {os.path.normcase(os.path.abspath(p)) for p in res.routines_changed}
+        for i, d in enumerate(self._open_routines()):
+            if libclean.rename_in_steps(d["routine"].steps, names):
+                on_disk = d["path"] and os.path.normcase(os.path.abspath(d["path"])) in changed
+                if not on_disk:
+                    d["dirty"] = True
+                    if i == self._doc_i:
+                        self.mark_dirty()
+        self.save_repository()
+        self._obj_state.save()
+        self._ensure_usage()
+        try:
+            self.rebuild_tree()
+        except Exception:  # noqa: BLE001
+            pass
+        self.refresh_objects()
+        return res
+
+    def delete_unused_objects(self, objs: List[UiObject]) -> Tuple[int, str]:
+        folder = libclean.backup(self.repo_path, [])
+        n = libclean.delete_objects(self.repo, objs, self._obj_state)
+        self.save_repository()
+        self._obj_state.save()
+        self.refresh_objects()
+        return n, folder
+
+    # ── v4.26: 🔎 Gaseste din ecran ──
+    def _find_screen_menu(self, widget):
+        C = self.C
+        m = tk.Menu(self, tearoff=0, bg=C["bg_card"], fg=C["text"], activebackground=C["primary"])
+        m.add_command(label="🌐 Web: click pe element in browser", command=lambda: self.find_from_screen(UiTechnology.Web))
+        m.add_command(label="🟦 SAP GUI: mouse-ul pe element + F2", command=lambda: self.find_from_screen(UiTechnology.Sap))
+        m.add_command(label="🪟 Desktop: mouse-ul pe element + F2",
+                      command=lambda: self.find_from_screen(UiTechnology.Desktop))
+        m.tk_popup(widget.winfo_rootx(), widget.winfo_rooty() + widget.winfo_height())
+
+    def find_from_screen(self, tech: UiTechnology):
+        """Marchezi elementul ca la Spy, dar nu se salveaza nimic: biblioteca arata obiectul salvat (sau spune ca lipseste)."""
+        if self.busy:
+            self.set_status("Asteapta sa se termine operatia curenta.")
+            return
+        self._spy_purpose = "find"
+        self.spy(tech)
+        if not self.busy:          # Spy nu a pornit (ex. adresa anulata)
+            self._spy_purpose = ""
+
+    def reveal_object(self, name: str) -> bool:
+        """Arata obiectul in arbore: scoate filtrele, deschide grupurile si il selecteaza."""
+        self._obj_filter.set("")
+        self._obj_type_cb.current(0)
+        self._obj_status_cb.current(0)
+        self._obj_only_page.set(False)
+        if self._obj_refresh_job is not None:
+            try:
+                self.after_cancel(self._obj_refresh_job)
+            except Exception:
+                pass
+        self.refresh_objects()
+        self.show_side("library")
+        iid = "obj:" + name
+        if not self.objects.exists(iid):
+            return False
+        self.objects.see(iid)
+        self.objects.selection_set(iid)
+        self.objects.focus(iid)
+        self._object_preview()
+        return True
+
+    def _found_on_screen(self, captured: UiObject):
+        matches = libsearch.find_matches(self.repo.objects, captured)
+        if not matches:
+            a = choice_dialog(self, "🔎 Gaseste din ecran", "Elementul nu e in biblioteca. Il salvez acum?",
+                              ["Salveaza ca obiect nou", "Anuleaza"], C=self.C)
+            if a == "Salveaza ca obiect nou":
+                self._save_spied(captured)
+            else:
+                self.set_status("🔎 Elementul nu e in biblioteca.")
+            return
+        sure = [o for o, how in matches if how == libsearch.MATCH_LOCATOR]
+        if len(matches) == 1 or len(sure) == 1:
+            o = (sure or [matches[0][0]])[0]
+            self.reveal_object(o.name)
+            how = "acelasi locator" if o in sure else "acelasi text pe acelasi ecran"
+            self.set_status(tr_template("🔎 Gasit: [{0}] ({1}).").format(o.name, tr(how)))
+            return
+        objs = [o for o, _how in matches]
+        self.show_side("library")
+        self._fill_object_list(objs, len(objs))
+        self.objects.selection_set("obj:" + objs[0].name)
+        self._object_preview()
+        self.set_status(tr_template("🔎 {0} obiecte salvate pentru acelasi element: probabil dubluri.").format(len(objs)))
+
+    # ── 📱 v4.29: verificarea telefonului (fara rulare) ──
+    def check_phone(self, value: str = ""):
+        from rpr import mobile as rpr_mobile
+        self.set_status(tr("📱 Verific telefonul..."))
+
+        def work():
+            try:
+                res = rpr_mobile.check_device(rpr_mobile.parse_target(value))
+                text, ok = res.text(), res.ok
+            except Exception as ex:  # noqa: BLE001
+                text, ok = str(ex), False
+
+            def show():
+                title = tr("📱 Telefonul e pregatit") if ok else tr("📱 Telefonul nu e pregatit")
+                (messagebox.showinfo if ok else messagebox.showwarning)(title, text, parent=self)
+                self.set_status(title)
+            self.after(0, show)
+        threading.Thread(target=work, daemon=True).start()
+
+    def _testlib_menu(self, widget):
+
+        C = self.C
+        m = tk.Menu(self, tearoff=0, bg=C["bg_card"], fg=C["text"], activebackground=C["primary"])
+        m.add_command(label="🧪 Creeaza biblioteca de test (3000 de obiecte)...", command=self.create_test_library)
+        folder = testlib.test_folder_of(self.repo_path)
+        m.add_command(label="🗑 Sterge biblioteca de test deschisa", command=self.delete_test_library,
+                      state="normal" if folder else "disabled")
+        m.add_command(label="📂 Deschide alta biblioteca (schimba folderul)...", command=self.open_library)
+        m.tk_popup(widget.winfo_rootx(), widget.winfo_rooty() + widget.winfo_height())
+
+    def create_test_library(self):
+        start = rpr_scan.libraries_root()
+        parent = filedialog.askdirectory(parent=self, title="Unde creez biblioteca de test? (se face un folder "
+                                                             "Biblioteca_test)",
+                                         initialdir=start if os.path.isdir(start) else RprPaths.root)
+        if not parent:
+            return
+        try:
+            self.save_repository()
+        except Exception:
+            pass
+        try:
+            lib = testlib.create(parent)
+        except Exception as ex:  # noqa: BLE001
+            messagebox.showerror("Biblioteca de test", f"Nu am putut crea biblioteca de test:\n{ex}", parent=self)
+            return
+        self.load_repository(lib)
+        self._remember_library()
+        self.set_status(tr_template("🧪 Biblioteca de test: {0} obiecte in {1}. Rutinele de test sunt in "
+                                    "subfolderul \"rutine\". O stergi din 🧪 → Sterge.").format(
+            len(self.repo.objects), os.path.dirname(lib)))
+
+    def delete_test_library(self):
+        folder = testlib.test_folder_of(self.repo_path)
+        if not folder:
+            messagebox.showinfo("Biblioteca de test", "Biblioteca deschisa nu e o biblioteca de test.", parent=self)
+            return
+        if not messagebox.askyesno("Biblioteca de test", tr_template("Sterg folderul bibliotecii de test, cu "
+                                                                     "obiectele si rutinele de test?\n\n{0}").format(folder),
+                                   parent=self):
+            return
+        try:
+            testlib.delete(folder)
+        except Exception as ex:  # noqa: BLE001
+            messagebox.showerror("Biblioteca de test", f"Nu am putut sterge:\n{ex}", parent=self)
+            return
+        self.load_repository(RprPaths.default_repository())
+        self._remember_library()
+        self.set_status("Biblioteca de test a fost stearsa; ai revenit la biblioteca implicita.")
 
     def _object_menu(self, e):
         iid = self.objects.identify_row(e.y)
@@ -2856,14 +3327,17 @@ class StudioPanel(tk.Frame):
             return self._folder_menu(e, iid)
         if iid and iid.startswith(("page:", "site:")):
             return self._group_menu(e, iid)
-        if not iid or not iid.startswith("obj:"):
+        if not iid or not iid.startswith(("obj:", "fav:")):
             return
         self.objects.selection_set(iid)
         obj = self._sel_object()
         C = self.C
         m = tk.Menu(self, tearoff=0, bg=C["bg_card"], fg=C["text"], activebackground=C["primary"])
         m.add_command(label="🧪 Testeaza pe pagina din browser", command=self.test_object)
-        m.add_command(label="👁 Marcheaza in browser (8 s)", command=self.show_object)
+        m.add_command(label="👁 Arata in aplicatie (8 s)", command=self.show_object)
+        m.add_command(label="📋 Folosit in...", command=self.show_object_usage)
+        m.add_command(label="⭐ Scoate de la favorite" if self._obj_state.is_favorite(obj.name) else "⭐ Favorit",
+                      command=self.toggle_favorite_object)
         if rpr_scan.is_web(obj):
             m.add_command(label="🩺 Verifica fara click (merge? impedimente?)", command=lambda: self.check_saved([obj]))
         m.add_separator()
@@ -2877,6 +3351,8 @@ class StudioPanel(tk.Frame):
         m.add_command(label="▣ Muta in container...", command=self.move_to_container)
         m.add_command(label="📁 Muta in folder...", command=self.move_to_folder)
         m.add_command(label="⧉ Copiaza pentru alt site / alta pagina...", command=self.copy_object)
+        m.add_command(label="🧩 Fa un obiect cu parametru din acesta...", command=self.make_param_object)
+        m.add_command(label="📌 Comun pe toata aplicatia (toate ecranele)", command=self.make_common_object)
         m.add_separator()
         m.add_command(label="🗑 Sterge", command=self.delete_object)
         m.tk_popup(e.x_root, e.y_root)
@@ -2884,7 +3360,7 @@ class StudioPanel(tk.Frame):
     # ── v4.11: foldere in biblioteca ──
     def _folder_objects(self, iid: str) -> List[UiObject]:
         site, page, path = iid[len("folder:"):].split("|", 2)
-        return [o for o in self.repo.objects if self._site_of(o) == site and (o.page or "(fara pagina)") == page
+        return [o for o in self.repo.objects if self._site_of(o) == site and (o.page or COMMON_PAGE) == page
                 and rpr_scan.in_folder(o, path)]
 
     def _folder_menu(self, e, iid: str):
@@ -2903,7 +3379,7 @@ class StudioPanel(tk.Frame):
             site = iid[len("site:"):]
             return [o for o in self.repo.objects if self._site_of(o) == site]
         site, page = iid[len("page:"):].split("|", 1)
-        return [o for o in self.repo.objects if self._site_of(o) == site and (o.page or "(fara pagina)") == page]
+        return [o for o in self.repo.objects if self._site_of(o) == site and (o.page or COMMON_PAGE) == page]
 
     def _group_menu(self, e, iid: str):
         self.objects.selection_set(iid)
@@ -2971,6 +3447,7 @@ class StudioPanel(tk.Frame):
         if action == RprAction.ReadText:
             node.output_variable = obj.name.split("_")[-1]
         self.insert_node(node)
+        self._note_object_used(obj.name)
 
     def _obj_if_exists(self):
         obj = self._sel_object()
@@ -3086,16 +3563,35 @@ class StudioPanel(tk.Frame):
         self.refresh_objects()
         self.set_status(f"Copie creata: [{twin.name}] pentru {twin.site}{twin.page}. Testeaz-o pe noul site (🧪).")
 
+    def _ask_param_values(self, obj: UiObject):
+        """v4.28: pentru 🧪 Test / 👁 Arata: obiectul cu parametru primeste valorile de la utilizator.
+        Intoarce copia completata, obiectul insusi (fara parametri) sau None (anulat)."""
+        names = list(obj.params) or param_names_in(obj)
+        if not names:
+            return obj
+        vals = {}
+        for n in names:
+            v = input_dialog(self, "🧩 " + obj.name, tr_template("Valoarea parametrului {0}:").format(n),
+                             self._last_param_values.get(n.lower(), ""), C=self.C)
+            if v is None:
+                return None
+            vals[n] = v
+            self._last_param_values[n.lower()] = v
+        return with_params(obj, vals, lambda t: t)
+
     def test_object(self, obj: Optional[UiObject] = None):
         obj = obj or self._sel_object()
         if obj is None:
+            return
+        real = self._ask_param_values(obj)
+        if real is None:
             return
         if obj.technology not in (UiTechnology.Web, UiTechnology.WebSelenium):
             driver = self.drivers.get(obj.technology)
 
             def work_win():
                 try:
-                    self.post("test_result", (obj, driver.test_object(obj), None))
+                    self.post("test_result", (obj, driver.test_object(real), None))
                 except Exception as ex:  # noqa: BLE001
                     self.post("test_result", (obj, None, str(ex)))
             self.set_status(f"🧪 Testez [{obj.name}] pe ecran...")
@@ -3110,14 +3606,14 @@ class StudioPanel(tk.Frame):
                 url = None
         except Exception:
             url = None
-        self.repo.link_parents(obj)
+        self.repo.link_parents(real)
         web = self.web()
 
         def work():
             try:
                 if url:
                     web.open(url)
-                self.post("test_result", (obj, web.test_object(obj), None))
+                self.post("test_result", (obj, web.test_object(real), None))
             except Exception as ex:  # noqa: BLE001
                 self.post("test_result", (obj, None, str(ex)))
         self.set_status(f"🧪 Testez [{obj.name}] pe pagina din browser...")
@@ -3127,6 +3623,8 @@ class StudioPanel(tk.Frame):
         if error:
             messagebox.showerror("Test", error, parent=self)
             return
+        if isinstance(res, dict):
+            self._note_objects_checked([(obj, bool(res.get("found")))])
         TestResultDialog(self, obj, res)
 
     def edit_sites(self):
@@ -3241,12 +3739,17 @@ class StudioPanel(tk.Frame):
         top.deiconify()
         top.lift()
         if error:
+            self._spy_purpose = ""
             messagebox.showerror("Spy", f"Spy nu a putut porni:\n{error}", parent=self)
             self.set_status("Spy esuat.")
             return
         if obj is None:
+            self._spy_purpose = ""
             self.set_status("Spy anulat.")
             return
+        if self._spy_purpose == "find":
+            self._spy_purpose = ""
+            return self._found_on_screen(obj)
         same = self.find_same_object(obj)
         if same is not None:
             a = choice_dialog(self, "Obiect existent", f"Elementul e deja in repository ca [{same.name}]. Il folosesti pe acela?",
@@ -3256,6 +3759,9 @@ class StudioPanel(tk.Frame):
             if a == "Foloseste existentul":
                 self.insert_node(ActionNode(action=RprAction.Click, target=same.name, technology=same.technology))
                 return
+        self._save_spied(obj)
+
+    def _save_spied(self, obj: UiObject):
         result = ObjectReviewDialog(self, obj).result
         if not result:
             self.set_status("Obiect nesalvat.")
@@ -3340,6 +3846,9 @@ class StudioPanel(tk.Frame):
 
     def show_object(self, obj: Optional[UiObject] = None, ms: int = 8000):
         obj = obj or self._sel_object()
+        if obj is None:
+            return
+        obj = self._ask_param_values(obj)
         if obj is None:
             return
         self.repo.link_parents(obj)
@@ -3637,6 +4146,9 @@ class StudioPanel(tk.Frame):
                 self._test_finished(*p)
             elif kind == "routines_ready":
                 self.refresh_routines_view()
+                self.refresh_object_usage()
+            elif kind == "usage_ready":
+                self._usage_ready(p)
             elif kind == "check_progress":
                 self.set_status(p)
             elif kind == "check_done":
@@ -4258,6 +4770,17 @@ class PropertyEditor:
             cb.bind("<FocusOut>", lambda e: self._later_rebuild())
         return cb
 
+    def param_fields(self, node, target: str, params: Dict[str, str], host=None):
+        """v4.28: obiect cu parametru: cate un camp pentru fiecare {Param} al obiectului ales."""
+        obj = self.p.repo.find(target) if target and target.strip() else None
+        if obj is None or not obj.params:
+            return
+        for pn in obj.params:
+            self.text(node, tr_template("Parametru: {0}").format(pn), lambda pn=pn: params.get(pn, ""),
+                      lambda v, pn=pn: params.__setitem__(pn, v), host=host)
+        self._hint(tr("Valoarea intra in locatorii obiectului in locul {Parametru}. Poti folosi variabile, ex: {Rand.Nume}."),
+                   host)
+
     def object_picker(self, node, label, get, set_, technologies=None, host=None):
         names = [o.name for o in sorted(self.p.repo.objects, key=lambda x: x.name.lower())
                  if not technologies or o.technology in technologies]
@@ -4452,8 +4975,9 @@ class PropertyEditor:
         # 1. actiunea (grupata pe tehnologii)
         options = []
         for ai in ACTIONS:
-            grp = "Pe obiect" if len(ai.technologies) == 4 else "SAP" if UiTechnology.Sap in ai.technologies else \
-                "Desktop" if UiTechnology.Desktop in ai.technologies else "Browser"
+            grp = "Pe obiect" if len(ai.technologies) > 2 else "SAP" if UiTechnology.Sap in ai.technologies else \
+                "Desktop" if UiTechnology.Desktop in ai.technologies else \
+                "Mobil" if UiTechnology.Mobile in ai.technologies else "Browser"
             options.append((ai.action, f"{tr(grp)}  ·  {tr(ai.label)}"))
 
         def set_action(v):
@@ -4469,6 +4993,7 @@ class PropertyEditor:
         if info.needs_target or info.target_optional:
             lbl = "Obiect (optional — gol = tasta se trimite ferestrei active)" if info.target_optional else "Pe ce obiect"
             self.object_picker(a, lbl, lambda: a.target, lambda v: setattr(a, "target", v), info.technologies)
+            self.param_fields(a, a.target, a.params)
 
         # 3. tehnologia (doar fara obiect)
         if not a.target.strip() and len(info.technologies) > 1 and not info.needs_target:
@@ -4492,6 +5017,9 @@ class PropertyEditor:
                 RprAction.AttachWindow: "Ex: proces:notepad.exe  sau  ^Calculator$ (titlu, expresie regulata).",
                 RprAction.LaunchApp: "Ex: notepad.exe  sau  \"C:\\Program Files\\App\\app.exe\" /param",
                 RprAction.SapConnect: "Gol = prima sesiune. \"1\" = a doua sesiune. \"1/0\" = conexiunea 2, sesiunea 1.",
+                RprAction.MobileConnect: "Telefonul (numarul din adb devices; gol = primul conectat) | pachetul "
+                                         "aplicatiei/activitatea. Ex: R58M12 | com.firma.app/.MainActivity",
+                RprAction.MobileSwipe: "sus = degetul urca (lista coboara), jos, stanga, dreapta.",
             }.get(a.action)
             if hint:
                 self._hint(hint)
@@ -4517,6 +5045,10 @@ class PropertyEditor:
             buttons.append(("🎯 Remarcheaza", lambda: self.p.remark_step(a), None,
                             "Pasul a gasit alt element? Da click pe elementul corect: obiectul primeste "
                             "locatoarele noi (sau faci un obiect nou doar pentru acest pas)"))
+        if a.action == RprAction.MobileConnect:
+            buttons.append(("📱 Verifica telefonul", lambda: self.p.check_phone(a.value), None,
+                            "Verifica fara sa ruleze nimic: adb, telefonul conectat si deblocat, aplicatia "
+                            "instalata, bateria, Appium"))
         self.button_row(buttons)
 
     def _build_for_each(self, f: ForEachRowNode):
@@ -4587,6 +5119,7 @@ class PropertyEditor:
             self.check(node, "Ignora literele mari/mici", lambda: c.ignore_case, lambda v: setattr(c, "ignore_case", v), host=card)
         else:
             self.object_picker(node, "Obiectul", lambda: c.target, lambda v: setattr(c, "target", v), host=card)
+            self.param_fields(node, c.target, c.params, host=card)
             if c.kind == ConditionKind.ElementText:
                 self.combo(node, "", OPERATORS, lambda: c.operator, lambda v: setattr(c, "operator", v), host=card, structural=True)
                 if c.operator not in (CompareOperator.IsEmpty, CompareOperator.IsNotEmpty):
@@ -4853,6 +5386,9 @@ class ObjectDialog(DialogBase):
         self.context = tk.StringVar(value=obj.context)
         tk.Entry(self.body, textvariable=self.context, **es).pack(fill="x", padx=14, ipady=3)
         self.lib = LibraryFields(self.body, panel, obj)
+        cap("Parametri (v4.28; separati prin virgula, ex: Text). In locatori scrii {Text}; valoarea o da fiecare pas.")
+        self.params = tk.StringVar(value=", ".join(obj.params))
+        tk.Entry(self.body, textvariable=self.params, **es).pack(fill="x", padx=14, ipady=3)
         cap("Locatori (in ordinea de incercare; primul care gaseste exact UN element castiga)")
         self.loc_box = tk.Frame(self.body, bg=C["bg_main"])
         self.loc_box.pack(fill="x", padx=14)
@@ -4904,6 +5440,7 @@ class ObjectDialog(DialogBase):
         self.obj.context = self.context.get().strip()
         self.obj.locators = [Locator(LocatorKind.parse(k.get()), v.get().strip(), 50, e.get())
                              for k, v, e in self.rows if v.get().strip()]
+        self.obj.params = [x.strip().strip("{}") for x in self.params.get().split(",") if x.strip().strip("{}")]
         self.lib.apply()
         self.result = True
         self.destroy()
@@ -5464,6 +6001,268 @@ class TestResultDialog(DialogBase):
         panel._btn(row, "✎ Editeaza locatorii", lambda: (self.destroy(), panel.edit_object())).pack(side="left", padx=2)
         panel._btn(row, "Inchide", self.destroy).pack(side="left", padx=2)
         self.fit(700)
+
+
+class ObjectUsageDialog(DialogBase):
+    """📋 Folosit in (v4.25): rutinele si pasii care folosesc obiectul; dublu click deschide rutina la pas."""
+
+    def __init__(self, panel: StudioPanel, obj: UiObject, usages: List[libsearch.Usage]):
+        super().__init__(panel)
+        self.p = panel
+        C = panel.C
+        self.title(f"Folosit in: {obj.name}")
+        n = len({u.path for u in usages})
+        tk.Label(self.body, text=f"📋  {obj.name}", bg=C["bg_main"], fg=C["primary"],
+                 font=("Segoe UI", 13, "bold")).pack(anchor="w", padx=14, pady=(12, 2))
+        tk.Label(self.body, text=(tr_template("Folosit in {0} rutine, {1} pasi. Dublu click = deschide rutina la pas.")
+                                  .format(n, len(usages)) if usages else
+                                  tr("Nicio rutina din folderul rutinelor nu foloseste obiectul.")),
+                 bg=C["bg_main"], fg=C["text_dim"], font=("Segoe UI", 10), wraplength=640, justify="left").pack(
+            anchor="w", padx=14)
+        box = tk.Frame(self.body, bg=C["bg_main"])
+        box.pack(fill="both", expand=True, padx=14, pady=8)
+        self.tv = ttk.Treeview(box, show="tree", style="Studio.Treeview", height=min(16, max(4, len(usages) + n)))
+        vsb = ttk.Scrollbar(box, orient="vertical", command=self.tv.yview)
+        self.tv.configure(yscrollcommand=vsb.set)
+        vsb.pack(side="right", fill="y")
+        self.tv.pack(fill="both", expand=True)
+        self._items: Dict[str, libsearch.Usage] = {}
+        groups: Dict[str, str] = {}
+        for i, u in enumerate(sorted(usages, key=lambda x: (x.routine.lower(), x.path))):
+            gid = groups.get(u.path)
+            if gid is None:
+                gid = self.tv.insert("", "end", text=f"📋 {u.routine}", open=True)
+                groups[u.path] = gid
+                self._items[gid] = u
+            iid = self.tv.insert(gid, "end", text=f"   {u.step}")
+            self._items[iid] = u
+        self.tv.bind("<Double-1>", lambda e: self.open_selected())
+        row = tk.Frame(self.bottom, bg=C["bg_main"])
+        row.pack(anchor="e")
+        panel._btn(row, "📂 Deschide rutina", self.open_selected, color=C["success"]).pack(side="left", padx=2)
+        panel._btn(row, "Inchide", self.destroy).pack(side="left", padx=2)
+        self.fit(640)
+
+    def open_selected(self):
+        sel = self.tv.selection()
+        u = self._items.get(sel[0]) if sel else None
+        if u is None:
+            return
+        is_group = not self.tv.parent(sel[0])
+        self.destroy()
+        self.p.open_routine(u.path)
+        if u.step_id and not is_group:
+            try:
+                self.p.select_node(u.step_id)
+            except Exception:  # noqa: BLE001
+                pass
+
+
+class LibraryCleanupDialog(DialogBase):
+    """🧹 Curata biblioteca (v4.27): 🔁 Dubluri (unire) si 🗑 Nefolosite / stricate (stergere)."""
+
+    def __init__(self, panel: StudioPanel):
+        super().__init__(panel)
+        self.p = panel
+        C = self.C = panel.C
+        self.title("Curata biblioteca")
+        tk.Label(self.body, text="🧹  Curata biblioteca", bg=C["bg_main"], fg=C["primary"],
+                 font=("Segoe UI", 13, "bold")).pack(anchor="w", padx=14, pady=(12, 2))
+        tk.Label(self.body, text="Inainte de fiecare schimbare se face o copie a bibliotecii si a rutinelor atinse "
+                                 "in folderul _backup_biblioteca de langa biblioteca.",
+                 bg=C["bg_main"], fg=C["text_dim"], font=("Segoe UI", 10), wraplength=700, justify="left").pack(
+            anchor="w", padx=14)
+        self.nb = ttk.Notebook(self.body, style="Studio.TNotebook")
+        self.nb.pack(fill="both", expand=True, padx=14, pady=8)
+        self._build_dups(self._page("🔁 Dubluri"))
+        self._build_unused(self._page("🗑 Nefolosite / stricate"))
+        row = tk.Frame(self.bottom, bg=C["bg_main"])
+        row.pack(anchor="e")
+        panel._btn(row, "Inchide", self.destroy).pack(side="left", padx=2)
+        self.refresh()
+        self.fit(760)
+
+    def _page(self, title):
+        f = tk.Frame(self.nb, bg=self.C["bg_main"])
+        self.nb.add(f, text=title)
+        return f
+
+    def _tree(self, host, cols, heads, widths, height=14, mode="browse"):
+        box = tk.Frame(host, bg=self.C["bg_main"])
+        box.pack(fill="both", expand=True, pady=(6, 4))
+        tv = ttk.Treeview(box, columns=cols, show="tree headings", style="Studio.Treeview", height=height,
+                          selectmode=mode)
+        tv.heading("#0", text=heads[0], anchor="w")
+        tv.column("#0", width=widths[0])
+        for c, h, w in zip(cols, heads[1:], widths[1:]):
+            tv.heading(c, text=h, anchor="w")
+            tv.column(c, width=w, stretch=False)
+        vsb = ttk.Scrollbar(box, orient="vertical", command=tv.yview)
+        tv.configure(yscrollcommand=vsb.set)
+        vsb.pack(side="right", fill="y")
+        tv.pack(fill="both", expand=True)
+        return tv
+
+    # ── 🔁 Dubluri ──
+    def _build_dups(self, host):
+        C, p = self.C, self.p
+        self.dup_info = tk.Label(host, text="", bg=C["bg_main"], fg=C["text"], font=("Segoe UI", 10),
+                                 wraplength=700, justify="left", anchor="w")
+        self.dup_info.pack(fill="x", pady=(6, 0))
+        self.dups = self._tree(host, ("tip", "ecran", "rutine"), ["Obiect", "Tip", "Ecran", "Rutine"],
+                               [300, 110, 170, 60])
+        self.dups.tag_configure("group", font=("Segoe UI", 10, "bold"))
+        self.dups.tag_configure("keep", foreground=ui_theme.readable("#3CCF6E", C["bg_input"], widget=self))
+        self.dups.bind("<<TreeviewSelect>>", lambda e: self._dup_selected())
+        row = tk.Frame(host, bg=C["bg_main"])
+        row.pack(fill="x")
+        p._btn(row, "⭐ Pastreaza acesta si uneste grupul", self.merge_selected, color=C["success"],
+               tip="Obiectul ales ramane; celelalte din grup dispar, iar pasii lor trec pe el").pack(side="left", padx=2)
+        p._btn(row, "🔁 Uneste toate grupurile sigure", self.merge_all_sure,
+               tip="Doar grupurile cu acelasi locator; ramane primul din fiecare grup (cel mai folosit)").pack(
+            side="left", padx=2)
+        p._btn(row, "👁", lambda: p.show_object(self._dup_obj()), tip="Arata obiectul in aplicatie").pack(
+            side="left", padx=2)
+        self._groups: Dict[str, libclean.DuplicateGroup] = {}
+        self._dup_objs: Dict[str, UiObject] = {}
+
+    def _dup_obj(self) -> Optional[UiObject]:
+        sel = self.dups.selection()
+        return self._dup_objs.get(sel[0]) if sel else None
+
+    def _dup_selected(self):
+        o = self._dup_obj()
+        if o is not None:
+            self.dup_info.configure(text=f"{o.name}: " + " · ".join(f"{l.kind}={l.value}"[:60] for l in o.active_locators[:3]))
+
+    def _fill_dups(self):
+        tv = self.dups
+        tv.delete(*tv.get_children())
+        self._groups, self._dup_objs = {}, {}
+        usage = self.p._obj_usage or {}
+        groups = libclean.find_duplicates(self.p.repo.objects, usage)
+        for gi, g in enumerate(groups):
+            gid = f"g{gi}"
+            self._groups[gid] = g
+            label = tr("sigur: acelasi locator") if g.sure else tr("probabil: acelasi text pe acelasi ecran")
+            tv.insert("", "end", iid=gid, text=f"{g.objects[0].name}  ({len(g.objects)} · {label})",
+                      open=gi < 30, tags=("group",))
+            for oi, o in enumerate(g.objects):
+                iid = f"{gid}:{oi}"
+                self._dup_objs[iid] = o
+                n = len(libsearch.routines_of(usage, o.name))
+                tv.insert(gid, "end", iid=iid, text=("⭐ " if oi == 0 else "    ") + o.name,
+                          values=(o.object_type, " / ".join(x for x in (o.site, o.page) if x), n or "–"),
+                          tags=("keep",) if oi == 0 else ())
+        sure = sum(1 for g in groups if g.sure)
+        self.dup_info.configure(text=tr_template("{0} grupuri de dubluri ({1} sigure, {2} probabile). ⭐ = propus de "
+                                                 "pastrat (cel mai folosit). Alege obiectul de pastrat si apasa ⭐ Pastreaza.")
+                                .format(len(groups), sure, len(groups) - sure) if groups else tr("Nicio dublura gasita."))
+
+    def merge_selected(self):
+        sel = self.dups.selection()
+        if not sel:
+            return
+        iid = sel[0]
+        gid = iid.split(":")[0]
+        g = self._groups.get(gid)
+        if g is None:
+            return
+        keep = self._dup_objs.get(iid, g.objects[0])
+        drops = [o for o in g.objects if o is not keep]
+        usage = self.p._obj_usage or {}
+        files = libclean.files_using(usage, [d.name for d in drops])
+        msg = tr_template("Pastrez [{0}] si sterg {1} obiecte: {2}.\n\n{3} rutine trec pe [{0}].").format(
+            keep.name, len(drops), ", ".join(d.name for d in drops), len(files))
+        if not g.sure:
+            msg += "\n\n" + tr("Atentie: grupul e doar probabil (acelasi text). Verifica cu 👁 ca e acelasi element.")
+        if not messagebox.askyesno("Uneste dublurile", msg, parent=self):
+            return
+        res = self.p.merge_objects(keep, drops)
+        self._report([res])
+        self.refresh()
+
+    def merge_all_sure(self):
+        groups = [g for g in self._groups.values() if g.sure]
+        if not groups:
+            messagebox.showinfo("Uneste dublurile", "Nu sunt grupuri sigure.", parent=self)
+            return
+        n = sum(len(g.objects) - 1 for g in groups)
+        if not messagebox.askyesno("Uneste dublurile", tr_template(
+                "Unesc {0} grupuri sigure (acelasi locator): raman {0} obiecte, se sterg {1}. Pasii din rutine trec pe "
+                "obiectul pastrat. Continui?").format(len(groups), n), parent=self):
+            return
+        results = [self.p.merge_objects(g.objects[0], g.objects[1:]) for g in groups]
+        self._report(results)
+        self.refresh()
+
+    def _report(self, results):
+        removed = sum(len(r.removed) for r in results)
+        steps = sum(r.steps_changed for r in results)
+        routines = len({p for r in results for p in r.routines_changed})
+        errors = [e for r in results for e in r.errors]
+        text = tr_template("Unite: {0} obiecte sterse, {1} pasi mutati in {2} rutine.").format(removed, steps, routines)
+        if results and results[-1].backup_folder:
+            text += "\n" + tr_template("Copie de rezerva: {0}").format(os.path.dirname(results[-1].backup_folder))
+        if errors:
+            text += "\n\n" + tr("Rutine care nu s-au putut schimba:") + "\n" + "\n".join(errors[:10])
+        self.p.set_status(text.split("\n")[0])
+        messagebox.showinfo("Uneste dublurile", text, parent=self)
+
+    # ── 🗑 Nefolosite / stricate ──
+    def _build_unused(self, host):
+        C, p = self.C, self.p
+        top = tk.Frame(host, bg=C["bg_main"])
+        top.pack(fill="x", pady=(6, 0))
+        self.v_unused = tk.BooleanVar(value=True)
+        self.v_broken = tk.BooleanVar(value=True)
+        for text, var in (("⚪ Nefolosite in rutine", self.v_unused), ("❌ Stricate la ultimul test", self.v_broken)):
+            tk.Checkbutton(top, text=text, variable=var, command=self._fill_unused, bg=C["bg_main"], fg=C["text"],
+                           selectcolor=C["bg_input"], activebackground=C["bg_main"], font=("Segoe UI", 10)).pack(
+                side="left", padx=(0, 12))
+        self.unused_info = tk.Label(host, text="", bg=C["bg_main"], fg=C["text_dim"], font=("Segoe UI", 9),
+                                    wraplength=700, justify="left", anchor="w")
+        self.unused_info.pack(fill="x")
+        self.unused = self._tree(host, ("tip", "ecran", "motiv"), ["Obiect", "Tip", "Ecran", "Motiv"],
+                                 [280, 110, 190, 110], mode="extended")
+        row = tk.Frame(host, bg=C["bg_main"])
+        row.pack(fill="x")
+        p._btn(row, "Selecteaza tot", lambda: self.unused.selection_set(self.unused.get_children())).pack(
+            side="left", padx=2)
+        p._btn(row, "🗑 Sterge selectate", self.delete_selected, color=C["danger"]).pack(side="left", padx=2)
+        self._unused_objs: Dict[str, UiObject] = {}
+
+    def _fill_unused(self):
+        tv = self.unused
+        tv.delete(*tv.get_children())
+        self._unused_objs = {}
+        rows = libclean.cleanup_candidates(self.p.repo, self.p._obj_usage or {}, self.p._obj_state,
+                                           self.v_unused.get(), self.v_broken.get())
+        for i, (o, why) in enumerate(rows):
+            iid = f"u{i}"
+            self._unused_objs[iid] = o
+            tv.insert("", "end", iid=iid, text=o.name, values=(o.object_type, " / ".join(x for x in (o.site, o.page) if x),
+                                                               tr(why) if " + " not in why else
+                                                               " + ".join(tr(w) for w in why.split(" + "))))
+        self.unused_info.configure(text=tr_template("{0} obiecte. Favoritele si containerele cu obiecte inauntru nu "
+                                                    "apar. „Nefolosit” = in nicio rutina din folderul rutinelor.")
+                                   .format(len(rows)))
+
+    def delete_selected(self):
+        objs = [self._unused_objs[i] for i in self.unused.selection() if i in self._unused_objs]
+        if not objs:
+            return
+        if not messagebox.askyesno("Sterge obiectele", tr_template("Sterg {0} obiecte din biblioteca? (se face intai "
+                                                                   "o copie de rezerva)").format(len(objs)), parent=self):
+            return
+        n, folder = self.p.delete_unused_objects(objs)
+        self.p.set_status(tr_template("🗑 {0} obiecte sterse. Copie de rezerva: {1}").format(n, folder))
+        self.refresh()
+
+    def refresh(self):
+        self.p._ensure_usage()
+        self._fill_dups()
+        self._fill_unused()
 
 
 class SitesDialog(DialogBase):

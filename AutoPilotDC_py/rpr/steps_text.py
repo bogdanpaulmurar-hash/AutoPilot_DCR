@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # ============================================================
-# AutoPilot DC v4.24 — rutina existenta -> text "Pasi AutoPilot" (inversul importului)
+# AutoPilot DC v4.30 — rutina existenta -> text "Pasi AutoPilot" (inversul importului)
 #
 # Folosit de 🔧 Repara rutina (🤖 Asistent AI): rutina se scrie ca text, AI-ul o corecteaza, iar textul
 # corectat trece prin StepImporter ca la 📥 Import AI.

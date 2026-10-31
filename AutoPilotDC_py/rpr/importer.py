@@ -264,7 +264,7 @@ class StepImporter:
 
     def __init__(self, repo: Optional[ObjectRepository] = None, keep: Optional[Dict[str, RprNode]] = None):
         self.repo = repo or ObjectRepository()
-        self.keep = keep or {}   # v4.24: 🔧 Repara rutina — PASTREAZA #n = pasul n din rutina originala
+        self.keep = keep or {}   # v4.30: 🔧 Repara rutina — PASTREAZA #n = pasul n din rutina originala
 
     # ── intrarea ──
     def parse(self, text: str) -> ImportResult:
@@ -354,6 +354,13 @@ class StepImporter:
         return res
 
     def _add(self, node: RprNode) -> None:
+        params = getattr(self, "_pending_params", None)
+        if params:   # v4.28: [Obiect](Text=Salveaza) -> valorile parametrilor pasului
+            if isinstance(node, ActionNode):
+                node.params = params
+            elif isinstance(getattr(node, "condition", None), Condition) and node.condition.target:
+                node.condition.params = params
+        self._pending_params = None
         if self._todo:   # in Studio, TODO-ul ramane in comentariul pasului
             node.comment = "\n".join(([node.comment] if node.comment else []) + self._todo)
             self._todo = []
@@ -669,9 +676,13 @@ class StepImporter:
         t = text.strip()
         if not t:
             raise _LineError(_t("Lipseste obiectul (ex: buton \"Salveaza\" sau [Nume din biblioteca])."))
-        m = re.fullmatch(r"\[(.+)\]", t)
-        if m:   # obiect existent in biblioteca
+        m = re.fullmatch(r"\[([^\]]+)\]\s*(?:\((.*)\))?", t)
+        if m:   # obiect existent in biblioteca; v4.28: [Nume](Param=valoare, ...) = obiect cu parametru
             name = m.group(1).strip()
+            if m.group(2):
+                self._pending_params = {k.strip(): _unquote(v.strip()) for k, v in
+                                        (x.split("=", 1) for x in re.split(r",\s*(?=[^,=]+=)", m.group(2)) if "=" in x)
+                                        if k.strip()}
             obj = self.repo.find(name) or next((o for o in self._new.values() if o.name.lower() == name.lower()), None)
             if obj is None:
                 self._res.issues.append(ImportIssue(0, name, _t("Obiectul [{0}] nu e in biblioteca: il marchezi cu "
@@ -827,7 +838,10 @@ def _split_outside_quotes(s: str, sep: str) -> List[str]:
 
 
 def _split_eq(rest: str, example: str) -> Tuple[str, str]:
-    i = _find_outside_quotes(rest, "=")
+    m = re.match(r"\s*\[[^\]]+\]\s*\([^)]*\)", rest)   # v4.28: "=" din [Obiect](Param=valoare) nu desparte
+    skip = m.end() if m else 0
+    i = _find_outside_quotes(rest[skip:], "=")
+    i = i + skip if i >= 0 else -1
     if i < 0:
         raise _LineError(_t("Lipseste \"=\". Exemplu: {0}").format(example))
     return rest[:i].strip(), rest[i + 1:].strip()
@@ -921,7 +935,11 @@ def ai_prompt(lang: str = "ro", objects: Optional[List[UiObject]] = None, repair
         lines += ["", t("OBIECTE DEJA IN BIBLIOTECA (foloseste [Nume] cand se potrivesc):")]
         for o in objs:
             hint = o.captured_text or (str(o.active_locators[0].value) if o.active_locators else "")
-            lines.append(f"  [{o.name}]  —  {o.object_type or o.technology}" + (f": \"{hint[:60]}\"" if hint else ""))
+            ref = f"[{o.name}]" + (f"({', '.join(p + '=...' for p in o.params)})" if o.params else "")
+            lines.append(f"  {ref}  —  {o.object_type or o.technology}" + (f": \"{hint[:60]}\"" if hint else ""))
+        if any(o.params for o in objs):
+            lines.append(t("  [Nume](Text=Salveaza) = obiect cu parametru: un singur obiect pentru toate butoanele "
+                           "de acelasi fel; dai valoarea parametrului in paranteze."))
     lines += ["", t("EXEMPLU:"), "```text", _EXAMPLE_EN if en else _EXAMPLE_RO, "```", "",
               t("Sursa de transformat:"), ""]
     return "\n".join(lines)

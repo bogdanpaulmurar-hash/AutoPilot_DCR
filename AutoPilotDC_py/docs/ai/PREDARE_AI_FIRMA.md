@@ -1,6 +1,6 @@
 # 🤖 Asistent AI — predare pentru Claude-ul din rețeaua firmei
 
-Citește întâi `CLAUDE.md` din rădăcina repo-ului (regulile proiectului). Acest fișier spune ce s-a făcut în afara rețelei firmei (v4.24.0) și ce rămâne de verificat acolo, unde există acces la AI. Documentația pentru utilizator: `docs/instructiuni/ro.md`, capitolul 34.
+Citește întâi `CLAUDE.md` din rădăcina repo-ului (regulile proiectului). Acest fișier spune ce s-a făcut în afara rețelei firmei (v4.30.0) și ce rămâne de verificat acolo, unde există acces la AI. Documentația pentru utilizator: `docs/instructiuni/ro.md`, capitolul 38.
 
 ## Ce există
 - `rpr/assistant.py`: motorul, fără Tk și fără pachete noi (doar `urllib`).

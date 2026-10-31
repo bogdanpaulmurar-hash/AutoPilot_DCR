@@ -13,3 +13,6 @@ pystray>=0.19     # pictograma langa ceas (tray)
 playwright>=1.44      # Web (foloseste Edge / Chrome instalat, nu descarca browsere)
 pywin32>=306          # SAP GUI Scripting (COM)
 uiautomation>=2.0.20  # aplicatii desktop Windows (UI Automation)
+
+# 📱 Mobil (optional, doar pentru teste pe telefon Android; plus Appium: npm install -g appium)
+# Appium-Python-Client>=4.0

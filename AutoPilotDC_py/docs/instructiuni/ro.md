@@ -412,7 +412,77 @@ Formatul (cuvinte cheie în română sau engleză, fără diferență mare / mic
 
 > Exemplu: în fereastra de import apasă **📝 Exemplu**: apare o procedură de introducere a comenzilor dintr-un Excel; în dreapta vezi rutina cu bucla și condiția; ✅ Creează rutina o deschide în Studio.
 
-## 34. 🤖 Asistent AI: întrebări, rutine din proceduri, reparare
+## 34. 🔍 Caută în bibliotecă: filtre, stare, favorite, „Folosit în”
+
+Când ai sute sau mii de obiecte, nu le mai cauți în arbore: scrii ce vezi pe ecran.
+
+1. În **📚 Bibliotecă** scrie în câmpul de căutare textul de pe buton, de ex. `salv`. Găsește „Salvează” și „Save”, fără diacritice și fără litere mari, și trece peste o greșeală de tastare.
+2. Rezultatele apar ca **listă simplă**, cele mai bune primele (☰). Butonul ☰ / 🌳 schimbă în arborele Aplicație → Ecran.
+3. Restrânge cu listele de sub căutare: **tipul** (Buton, Câmp text, ComboBox, Tabel, RefList…) și **starea**: ✅ a mers la ultimul test, ❌ stricat, ⚪ nefolosit în nicio rutină, 🕐 folosit în ultimele 7 zile, ⭐ favorit.
+4. Sau scrie prescurtări direct în căutare: `tip:combo`, `app:SAP`, `ecran:VA03`, `stare:stricat`, `#eticheta`. Ecranele cu spații merg între ghilimele: `ecran:"Lista comenzi"`.
+5. Click pe obiect: sub listă vezi textul de pe ecran, aplicația / ecranul, primul locator, rezultatul ultimului test și în câte rutine e folosit. **👁** îl arată în aplicație (Web, SAP, Desktop), **⭐** îl pune la favorite, **📋** deschide „Folosit în”: rutinele și pașii care îl folosesc (dublu click = rutina se deschide la pas).
+
+- **🔎 Găsește din ecran** (lângă ☰): alegi Web / SAP GUI / Desktop și marchezi elementul ca la Spy (Web: click în browser; SAP / Desktop: mouse-ul pe element + F2). Nu se salvează nimic: biblioteca scoate filtrele și selectează obiectul salvat. Dacă găsește mai multe obiecte pentru același element, le arată în listă (sunt dubluri). Dacă nu găsește niciunul, te întreabă dacă îl salvezi acum. Sensul invers: din listă, **👁** arată obiectul în aplicație.
+- Favoritele și obiectele folosite recent stau sus, în grupul **⭐ Favorite și recente**.
+- Starea se notează singură la 🧪 Test, la 🩺 Verifică și când pui obiectul într-o rutină. Stă în `obiecte.stare.json`, lângă bibliotecă; `obiecte.json` nu se schimbă.
+- „Folosit în” citește rutinele din folderul rutinelor (📋 Rutine → 📁 Folder) și din folderul `rutine` de lângă bibliotecă.
+- **🧪 Biblioteca de test** (lângă 📁): creează un folder `Biblioteca_test` cu 3000 de obiecte inventate (Web, SAP, Desktop) și 25 de rutine, ca să încerci căutarea. Alegi tu unde se face folderul. **🧪 → Șterge** șterge doar un folder creat așa și te întoarce la biblioteca implicită. **🧪 → Deschide altă bibliotecă** schimbă folderul.
+
+> Exemplu: ai 3000 de obiecte și cauți butonul de salvare din VA03. Scrii `salv app:sap ecran:va03`, apare un singur rând; 👁 îl arată pe ecranul SAP, iar 📋 îți spune că e folosit în 4 rutine.
+
+## 35. 🧹 Curăță biblioteca: dubluri, nefolosite, stricate
+
+Mai puține obiecte înseamnă o bibliotecă mai ușor de folosit. **🧹** (în 📚 Bibliotecă, lângă 🧪) deschide două liste.
+
+1. **🔁 Dubluri**: obiecte salvate de mai multe ori pentru același element. *Sigur* = același locator (id, css, xpath, SAP id…). *Probabil* = același text vizibil și același tip pe același ecran. ⭐ arată obiectul propus de păstrat (cel folosit în mai multe rutine).
+2. Alege obiectul pe care îl păstrezi și apasă **⭐ Păstrează acesta și unește grupul**. Celelalte dispar. Cel păstrat primește locatorii lor (de rezervă) și etichetele. Pașii și condițiile din rutine trec pe numele lui, la fel obiectele din containerele lor și rutinele deschise în Studio.
+3. **🔁 Unește toate grupurile sigure** face același lucru, într-un singur pas, pentru toate grupurile cu același locator. Grupurile *probabile* le verifici întâi cu **👁**.
+4. **🗑 Nefolosite / stricate**: obiectele din nicio rutină din folderul rutinelor și cele care n-au mers la ultimul test. Favoritele și containerele cu obiecte înăuntru nu apar. Selectezi și apeși **🗑 Șterge selectate**.
+
+- Înainte de fiecare unire sau ștergere, biblioteca și rutinele atinse se copiază în `_backup_biblioteca\<data>` lângă bibliotecă. Pentru revenire, copiezi fișierele înapoi (`de_unde.json` spune de unde au venit).
+- „Nefolosit” vede doar rutinele din folderul rutinelor și din `rutine` de lângă bibliotecă. O rutină ținută în altă parte nu e văzută.
+
+> Exemplu: în biblioteca de test (🧪), 🧹 → 🔁 Dubluri arată perechi ca `Buton_Anuleaza_Standard` și `Buton_Anuleaza_Standard_copie` (sigur). 🔁 Unește toate grupurile sigure le unește; rutinele care foloseau `_copie` folosesc acum obiectul păstrat.
+
+## 36. 🧩 Obiecte cu parametru și 📌 părți comune
+
+Multe butoane diferă doar prin text (Salvează, Anulează, Trimite…). În loc de câte un obiect pentru fiecare, ții **un singur obiect cu parametru**: în locatori, textul devine `{Text}`, iar fiecare pas spune ce valoare are.
+
+1. În 📚 Bibliotecă, click dreapta pe un buton salvat → **🧩 Fă un obiect cu parametru din acesta...**. Dai numele parametrului (implicit `Text`) și numele obiectului nou.
+2. Obiectul nou are textul butonului înlocuit cu `{Text}` în locatori. Locatorii fără text (id, css, xpath…) se dezactivează, fiindcă aceia ar găsi mereu același buton.
+3. În pas alegi obiectul. Sub el apare câmpul **Parametru: Text**: scrii `Salvează`. Merge și o variabilă, ex. `{Rand.Nume}`. La fel în condiții (Dacă apare…).
+4. **🧪 Testează** și **👁 Arată** întreabă întâi valoarea parametrului.
+5. Pentru elementele care apar pe toate ecranele aplicației (bara SAP, antetul site-ului, meniul): click dreapta → **📌 Comun pe toată aplicația**. Obiectul trece în grupul **📌 Comun (toate ecranele)** și e găsit pe orice ecran al aplicației.
+
+- Poți scrie parametrii și de mână: în ✎ Editează, câmpul **Parametri** (ex. `Text`), iar în locatori `{Text}`.
+- În 📥 Import AI: `CLICK [Buton_cu_Text](Text=Salvează)`.
+- Rutinele și bibliotecile vechi se deschid ca înainte; parametrii sunt câmpuri noi, opționale.
+
+> Exemplu: din `Buton_Salveaza` faci `Buton_cu_Text` (locatorul `text=Salvează` devine `text={Text}`). Pașii „Click Buton_cu_Text (Text=Salvează)” și „Click Buton_cu_Text (Text=Anulează)” folosesc același obiect.
+
+## 37. 📱 Teste pe telefon Android
+
+AutoPilot poate rula rutine pe un telefon sau o tabletă Android, prin **Appium** (un program separat care controlează telefonul). Appium pornește doar când rutina are pași pe telefon, deci restul aplicației merge la fel de repede. iOS urmează: are nevoie de un Mac sau de o fermă de telefoane în cloud.
+
+**O singură dată, pe laptop:**
+1. Android platform-tools (`adb`) în PATH sau în `ANDROID_HOME`.
+2. Node.js, apoi `npm install -g appium` și `appium driver install uiautomator2`.
+3. `py -m pip install --user Appium-Python-Client`.
+4. Pe telefon: Opțiuni dezvoltator → **Depanare USB** pornită; la prima conectare accepți „Permite depanarea USB”.
+
+**Rutina:**
+1. Primul pas: **📱 Mobil: conectează telefonul**. Valoarea: `telefon | pachet/activitate`, de ex. `R58M12 | com.firma.app/.MainActivity`. Telefonul gol = primul conectat.
+2. Apasă **📱 Verifică telefonul** în proprietățile pasului: vezi dacă adb, telefonul (conectat, deblocat), aplicația, bateria și Appium sunt în regulă, fără să rulezi nimic.
+3. Obiectele de pe telefon au tehnologia **Mobil (Android)** și locatori **AccessibilityId**, **ResourceId** (ex. `com.firma.app:id/login`), **UiAutomator**, **XPath** sau **Text**. Le vezi pe telefon cu Appium Inspector.
+4. Pașii obișnuiți merg pe telefon: Click (atingere), Dublu click, Click dreapta (apăsare lungă), Scrie text, Citește, Bifează, Alege din listă, Apasă tasta (Enter, Back, Home...). În plus: **Mobil: glisează** (sus / jos / stânga / dreapta), **Mobil: înapoi**, **Mobil: captură ecran**, **Mobil: închide aplicația**.
+
+**Rezultatele** fiecărei rulări stau în folderul de rezultate (sau în folderul comun): `mobil\<data_ora>_<rutina>\<telefon>\`, cu capturile, filmul ecranului telefonului (`ecran_telefon.mp4`), `logcat.txt`, `telefon.txt` și raportul Excel al rulării.
+
+- La conectare, telefonul se verifică întâi. Dacă ceva nu e în regulă (blocat, aplicația lipsă...), rutina se oprește cu lista problemelor, nu atinge nimic.
+- Fără interfață: `py -m rpr device "R58M12 | com.firma.app"` face doar verificarea.
+- Datele aplicației nu se șterg la conectare (rămâi logat).
+
+## 38. 🤖 Asistent AI: întrebări, rutine din proceduri, reparare
 
 Un AI care cunoaște AutoPilot: răspunde la întrebări despre aplicație și despre rutina deschisă, face o rutină dintr-o procedură și repară o rutină care nu mai merge. **AI-ul nu rulează nimic**: tot ce propune trece prin 📥 Import, unde verifici, apoi prin 🎯 Completează obiectele și sistemul de prevenție, ca orice rutină. Fereastra se deschide din bara din stânga, **🤖 Asistent AI**.
 
