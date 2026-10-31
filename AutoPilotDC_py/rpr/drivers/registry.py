@@ -100,3 +100,9 @@ def register_all(provider: DriverProvider, settings: Optional[StudioSettings] = 
 
     provider.register(UiTechnology.Desktop, desktop)
     provider.register(UiTechnology.Sap, sap)
+
+    def mobile():   # v4.29: 📱 Android prin Appium (pachetul appium se importa doar la conectare)
+        from .mobile import MobileDriver
+        return MobileDriver(results_folder=RprPaths.output())
+
+    provider.register(UiTechnology.Mobile, mobile)

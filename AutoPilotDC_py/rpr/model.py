@@ -73,6 +73,7 @@ class UiTechnology(_StrEnum):
     WebSelenium = "WebSelenium"
     Desktop = "Desktop"
     Sap = "Sap"
+    Mobile = "Mobile"   # v4.29: aplicatii pe telefon / tableta (Android prin Appium)
 
 
 class LocatorKind(_StrEnum):
@@ -91,6 +92,9 @@ class LocatorKind(_StrEnum):
     UiaPath = "UiaPath"
     SapId = "SapId"
     SapName = "SapName"
+    AccessibilityId = "AccessibilityId"   # v4.29 Mobile: content-desc (Android) / accessibility id (iOS)
+    ResourceId = "ResourceId"             # v4.29 Mobile: resource-id Android (ex. com.app:id/login)
+    UiAutomator = "UiAutomator"           # v4.29 Mobile: new UiSelector().text("...") (Android)
 
 
 class RprAction(_StrEnum):
@@ -129,6 +133,11 @@ class RprAction(_StrEnum):
     LaunchApp = "LaunchApp"
     AttachWindow = "AttachWindow"
     CloseWindow = "CloseWindow"
+    MobileConnect = "MobileConnect"       # v4.29: doar in Python
+    MobileBack = "MobileBack"
+    MobileSwipe = "MobileSwipe"
+    MobileScreenshot = "MobileScreenshot"
+    MobileCloseApp = "MobileCloseApp"
 
 
 class ConditionKind(_StrEnum):
@@ -209,10 +218,11 @@ class ActionInfo:
     technologies: Tuple[UiTechnology, ...]
 
 
-_ALL = (UiTechnology.Web, UiTechnology.WebSelenium, UiTechnology.Desktop, UiTechnology.Sap)
+_ALL = (UiTechnology.Web, UiTechnology.WebSelenium, UiTechnology.Desktop, UiTechnology.Sap, UiTechnology.Mobile)
 _WEB = (UiTechnology.Web, UiTechnology.WebSelenium)
 _SAP = (UiTechnology.Sap,)
 _DESK = (UiTechnology.Desktop,)
+_MOB = (UiTechnology.Mobile,)
 A = RprAction
 
 ACTIONS: List[ActionInfo] = [
@@ -252,6 +262,12 @@ ACTIONS: List[ActionInfo] = [
     ActionInfo(A.LaunchApp, "Porneste aplicatie", False, False, "Cale .exe [argumente]", False, _DESK),
     ActionInfo(A.AttachWindow, "Ataseaza fereastra", False, False, "Titlu (regex) sau proces:nume.exe", False, _DESK),
     ActionInfo(A.CloseWindow, "Inchide fereastra", False, False, None, False, _DESK),
+    ActionInfo(A.MobileConnect, "Mobil: conecteaza telefonul", False, False,
+               "Telefon | aplicatie (ex: R58M12 | com.firma.app/.MainActivity)", False, _MOB),
+    ActionInfo(A.MobileBack, "Mobil: inapoi", False, False, None, False, _MOB),
+    ActionInfo(A.MobileSwipe, "Mobil: gliseaza", False, False, "sus / jos / stanga / dreapta", False, _MOB),
+    ActionInfo(A.MobileScreenshot, "Mobil: captura ecran", False, False, "Fisier (optional)", True, _MOB),
+    ActionInfo(A.MobileCloseApp, "Mobil: inchide aplicatia", False, False, None, False, _MOB),
 ]
 _ACTION_INDEX = {a.action: a for a in ACTIONS}
 
