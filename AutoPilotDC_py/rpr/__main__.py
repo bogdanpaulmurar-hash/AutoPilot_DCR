@@ -260,11 +260,76 @@ def main(argv=None) -> int:
     r.add_argument("--var", action="append", default=[], metavar="NUME=VALOARE", help="suprascrie o variabila")
     r.add_argument("--fara-chenar", action="store_true", help="fara chenarul RUN pe ecran")
     r.add_argument("--anunta", action="store_true", help="mesaj cu rezultatul la final + istoric (programari)")
+    ai = sub.add_parser("ai", help="🤖 Asistent AI din linia de comanda (conexiunea din Studio → 🤖 → ⚙ Conexiune)")
+    ai.add_argument("ce", choices=["test", "intreaba", "rutina", "repara"],
+                    help="test = verifica conexiunea; intreaba = o intrebare; rutina = procedura (.docx/.txt) -> pasi; "
+                         "repara = rutina .rpr.json + --nota -> rutina reparata (fisier nou)")
+    ai.add_argument("text", nargs="?", default="", help="intrebarea, fisierul procedurii sau rutina de reparat")
+    ai.add_argument("-o", "--out", default="", help="rutina: pasii (.txt); repara: rutina noua (.rpr.json)")
+    ai.add_argument("--nota", default="", help="repara: ce s-a schimbat / ce nu merge")
+    ai.add_argument("--lang", default="ro")
     a = p.parse_args(argv)
     if a.cmd == "run":
         variables = dict(v.split("=", 1) for v in a.var if "=" in v)
         return run_file(a.file, variables, show_frame=not a.fara_chenar, announce=a.anunta)
+    if a.cmd == "ai":
+        return ai_command(a.ce, a.text, a.out, a.lang, a.nota)
     return 2
+
+
+def ai_command(what: str, text: str, out: str = "", lang: str = "ro", note: str = "") -> int:
+    """Pentru testarea conexiunii fara interfata (si pentru Claude Code din firma).
+    Cod de iesire: 0 = ok, 1 = rutina cu erori ramase, 2 = conexiune / fisier."""
+    from . import assistant as ai
+    s = ai.AiSettings.load()
+    try:
+        client = ai.AiClient(s)
+        if what == "test":
+            print(s.label())
+            print(client.test().strip())
+            return 0
+        if what == "intreaba":
+            print(ai.ask(client, text, lang).strip())
+            return 0
+        if what == "repara":
+            original = RoutineStore.load(text)
+            repo = RepositoryStore.load(original.repository_path or None)
+            job = ai.prepare_repair(original, lang)
+            draft = ai.repair_routine(client, job, note, repo, progress=print)
+            for line in draft.log:
+                print(line)
+            for i in draft.result.issues:
+                print(("EROARE" if i.error else "TODO") + (f" rand {i.line}" if i.line else "") + f": {i.message}")
+            if not draft.result.ok:
+                return 1
+            job.finish(draft.result)
+            target = out or os.path.splitext(os.path.splitext(text)[0])[0] + "_reparata.rpr.json"
+            if os.path.abspath(target) == os.path.abspath(text):
+                print("EROARE: rutina reparata nu suprascrie originalul; alege alt -o", file=sys.stderr)
+                return 2
+            RoutineStore.save(draft.result.routine, target)
+            if draft.result.new_objects:
+                repo.objects.extend(draft.result.new_objects)
+                RepositoryStore.save(repo, original.repository_path or None)
+            print(f"Rutina reparata: {target}")
+            return 0
+        repo = RepositoryStore.load(None)
+        draft = ai.make_routine(client, ai.read_procedure(text), repo, lang, progress=print)
+    except (ai.AiError, OSError, ValueError) as ex:
+        print(f"EROARE: {ex}", file=sys.stderr)
+        return 2
+    for line in draft.log:
+        print(line)
+    for i in draft.result.issues:
+        print(("EROARE" if i.error else "TODO") + (f" rand {i.line}" if i.line else "") + f": {i.message}")
+    steps = ai.extract_text_block(draft.text) or draft.text
+    if out:
+        with open(out, "w", encoding="utf-8") as f:
+            f.write(steps)
+        print(f"Pasii: {out}  (Studio → 📥 Import AI → 📂 Deschide fisier)")
+    else:
+        print(steps)
+    return 0 if draft.result.ok else 1
 
 
 if __name__ == "__main__":

@@ -223,6 +223,8 @@ COMMANDS: List[Command] = [
     Command("run_routine", ("ruleaza rutina",), ("run routine",), "RULEAZA RUTINA <cale.rpr.json>",
             "RUN ROUTINE <path.rpr.json>", "Ruleaza o rutina salvata ca pas."),
     Command("stop", ("opreste",), ("stop",), "OPRESTE [\"<mesaj>\"]", "STOP [\"<message>\"]", "Opreste rutina."),
+    Command("keep", ("pastreaza",), ("keep",), "PASTREAZA #<n>", "KEEP #<n>",
+            "Doar la repararea unei rutine: pasul #n ramane exact cum era (nu il schimba si nu il sterge fara motiv)."),
 ]
 _ALL_KEYWORDS: List[Tuple[str, Command]] = sorted(
     ((kw, c) for c in COMMANDS for kw in c.ro + c.en), key=lambda x: -len(x[0]))
@@ -260,8 +262,9 @@ class _LineError(Exception):
 class StepImporter:
     """Textul "Pasi AutoPilot" (sau un .rpr.json) -> Routine + obiecte noi pentru biblioteca."""
 
-    def __init__(self, repo: Optional[ObjectRepository] = None):
+    def __init__(self, repo: Optional[ObjectRepository] = None, keep: Optional[Dict[str, RprNode]] = None):
         self.repo = repo or ObjectRepository()
+        self.keep = keep or {}   # v4.24: 🔧 Repara rutina — PASTREAZA #n = pasul n din rutina originala
 
     # ── intrarea ──
     def parse(self, text: str) -> ImportResult:
@@ -427,6 +430,15 @@ class StepImporter:
         obj = self._target(tgt)
         self._add(ActionNode(action=RprAction.SapScrollTable, target=obj.name, technology=obj.technology,
                              value=_unquote(val) or "+1", output_variable=var or "Pozitie"))
+
+    def _c_keep(self, no, rest):
+        m = re.match(r"#?\s*(\d+)", rest.strip())
+        node = self.keep.get(m.group(1)) if m else None
+        if node is None:
+            raise _LineError(_t("PASTREAZA {0}: pasul nu exista in rutina trimisa (PASTREAZA merge doar la "
+                                "🔧 Repara rutina).").format(rest.strip().split()[0] if rest.strip() else "#?"))
+        from .steps_text import fresh_copy
+        self._add(fresh_copy(node))
 
     def _c_run_routine(self, no, rest):
         self._add(RunRoutineNode(path=_unquote(rest)))
@@ -886,13 +898,15 @@ _P_INTRO = [
 ]
 
 
-def ai_prompt(lang: str = "ro", objects: Optional[List[UiObject]] = None) -> str:
+def ai_prompt(lang: str = "ro", objects: Optional[List[UiObject]] = None, repair: bool = False) -> str:
     """Textul de dat AI-ului impreuna cu sursa (document Word, cod, poze): explica formatul si regulile.
     `objects`: biblioteca curenta; AI-ul foloseste [Nume] pentru obiectele care exista deja."""
     en = lang != "ro"
     t = _t
     lines = [t(x) if x else "" for x in _P_INTRO] + ["", t("COMENZI:")]
     for c in COMMANDS:
+        if c.key == "keep" and not repair:   # PASTREAZA #n are sens doar la 🔧 Repara rutina
+            continue
         lines.append(f"  {c.syntax_en if en else c.syntax_ro}  —  {t(c.help)}")
     lines += ["", t("OBIECTE (<obiect> in comenzi):")]
     for ro, en_s, h in TARGET_HELP:
