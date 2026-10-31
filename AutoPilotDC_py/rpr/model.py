@@ -358,6 +358,7 @@ class Condition(_Json):
     negate: bool = False
     timeout_ms: int = 0
     children: List["Condition"] = field(default_factory=list)
+    params: Dict[str, str] = field(default_factory=dict)       # v4.28: valorile parametrilor obiectului
     extra: Dict[str, Any] = field(default_factory=dict, repr=False)
 
     _enum_fields = {"kind": ConditionKind, "operator": CompareOperator}
@@ -475,6 +476,7 @@ class ActionNode(RprNode):
     technology: UiTechnology = UiTechnology.Web
     timeout_ms: int = 10000
     direct_mode: bool = False
+    params: Dict[str, str] = field(default_factory=dict)       # v4.28: obiect cu parametru, ex. {"Text": "Salveaza"}
 
     _enum_fields = {**RprNode._enum_fields, "action": RprAction, "technology": UiTechnology}
 
@@ -483,6 +485,8 @@ class ActionNode(RprNode):
         s = _t(info.label)
         if self.target.strip():
             s += f" [{self.target}]"
+            if any(str(v).strip() for v in self.params.values()):
+                s += " (" + ", ".join(f"{k}={v}" for k, v in self.params.items() if str(v).strip()) + ")"
         if info.value_label and self.value.strip():
             s += f" = \"{self.value}\""
         if info.produces_output and self.output_variable.strip():
@@ -890,6 +894,38 @@ class Locator(_Json):
         return f"{self.kind}: {self.value}"
 
 
+_PARAM_RX = re.compile(r"\{([^{}.]+)\}")
+
+
+def param_names_in(obj: "UiObject") -> List[str]:
+    """Numele {X} din locatorii obiectului (fara {Rand.Coloana}), in ordinea aparitiei."""
+    out: List[str] = []
+    for l in obj.locators:
+        for m in _PARAM_RX.finditer(l.value or ""):
+            n = m.group(1).strip()
+            if n and n.lower() not in [x.lower() for x in out]:
+                out.append(n)
+    return out
+
+
+def fill_params(text: str, params: Optional[Dict[str, str]]) -> str:
+    """{Param} -> valoarea data de pas (doar parametrii cunoscuti; restul raman pentru variabile)."""
+    if not params or "{" not in (text or ""):
+        return text
+    low = {str(k).strip().lower(): str(v) for k, v in params.items()}
+
+    def sub(m):
+        key = m.group(1).strip().lower()
+        return low[key] if key in low else m.group(0)
+    return _PARAM_RX.sub(sub, text)
+
+
+def with_params(obj: "UiObject", params: Optional[Dict[str, str]], resolve: Callable[[str], str]) -> "UiObject":
+    """v4.28: obiect cu parametru: intai valorile pasului (care pot contine variabile), apoi variabilele."""
+    vals = {k: resolve(v) for k, v in (params or {}).items()} if params else {}
+    return with_variables(obj, lambda t: resolve(fill_params(t, vals)))
+
+
 def with_variables(obj: "UiObject", resolve: Callable[[str], str]) -> "UiObject":
     """v4.16.2: locatoarele cu variabile (ex. text "{Rand.UEID}") primesc valoarea de acum.
     Intoarce o copie (biblioteca nu se schimba); fara {…} intoarce chiar obiectul."""
@@ -927,6 +963,7 @@ class UiObject(_Json):
     folder: str = ""                                        # v4.11: folderul din tree-ul aplicatiei ("Comenzi/Export"); doar grupeaza, nu schimba cautarea
     url_patterns: List[str] = field(default_factory=list)   # link-uri unde e valid (* = orice); gol = ale site-ului
     tags: List[str] = field(default_factory=list)
+    params: List[str] = field(default_factory=list)          # v4.28: parametrii {X} din locatori, dati de pas
     extra: Dict[str, Any] = field(default_factory=dict, repr=False)
 
     _enum_fields = {"technology": UiTechnology}

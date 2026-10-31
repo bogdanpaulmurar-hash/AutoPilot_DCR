@@ -2165,5 +2165,18 @@
  "{0} obiecte. Favoritele si containerele cu obiecte inauntru nu apar. „Nefolosit” = in nicio rutina din folderul rutinelor.": "{0} Objekte. Favoriten und Container mit Objekten darin erscheinen nicht. „Unbenutzt“ = in keiner Routine des Routinenordners.",
  "Sterge obiectele": "Objekte löschen",
  "Sterg {0} obiecte din biblioteca? (se face intai o copie de rezerva)": "{0} Objekte aus der Bibliothek löschen? (zuerst wird eine Sicherungskopie erstellt)",
- "🗑 {0} obiecte sterse. Copie de rezerva: {1}": "🗑 {0} Objekte gelöscht. Sicherungskopie: {1}"
+ "🗑 {0} obiecte sterse. Copie de rezerva: {1}": "🗑 {0} Objekte gelöscht. Sicherungskopie: {1}",
+ "  [Nume](Text=Salveaza) = obiect cu parametru: un singur obiect pentru toate butoanele de acelasi fel; dai valoarea parametrului in paranteze.": "  [Name](Text=Speichern) = Objekt mit Parameter: ein einziges Objekt für alle gleichartigen Schaltflächen; den Parameterwert in Klammern angeben.",
+ "📌 Comun (toate ecranele)": "📌 Gemeinsam (alle Bildschirme)",
+ "🧩 Obiect cu parametru": "🧩 Objekt mit Parameter",
+ "Numele parametrului (in locatori devine {{Nume}}). Textul \"{0}\" se inlocuieste cu el; fiecare pas da alta valoare.": "Name des Parameters (in den Locatoren wird daraus {{Name}}). Der Text \"{0}\" wird dadurch ersetzt; jeder Schritt gibt einen anderen Wert.",
+ "Niciun locator nu contine textul \"{0}\". Obiectul nou are parametrul {{{1}}}, dar scrie-l tu in locatori (✎ Editeaza).": "Kein Locator enthält den Text \"{0}\". Das neue Objekt hat den Parameter {{{1}}}, aber trage ihn selbst in die Locatoren ein (✎ Bearbeiten).",
+ "🧩 [{0}]: {1} locatori cu {{{2}}}. In pas alegi obiectul si scrii valoarea parametrului.": "🧩 [{0}]: {1} Locatoren mit {{{2}}}. Im Schritt das Objekt wählen und den Parameterwert eintragen.",
+ "📌 [{0}] e comun pe toata aplicatia {1}.": "📌 [{0}] gilt jetzt in der ganzen Anwendung {1}.",
+ "🧩 Fa un obiect cu parametru din acesta...": "🧩 Daraus ein Objekt mit Parameter machen...",
+ "📌 Comun pe toata aplicatia (toate ecranele)": "📌 Gemeinsam in der ganzen Anwendung (alle Bildschirme)",
+ "Valoarea parametrului {0}:": "Wert des Parameters {0}:",
+ "Parametru: {0}": "Parameter: {0}",
+ "Valoarea intra in locatorii obiectului in locul {Parametru}. Poti folosi variabile, ex: {Rand.Nume}.": "Der Wert kommt in die Locatoren des Objekts anstelle von {Parametru}. Variablen sind möglich, z. B. {Rand.Nume}.",
+ "Parametri (v4.28; separati prin virgula, ex: Text). In locatori scrii {Text}; valoarea o da fiecare pas.": "Parameter (v4.28; durch Komma getrennt, z. B. Text). In den Locatoren {Text} schreiben; den Wert gibt jeder Schritt."
 }

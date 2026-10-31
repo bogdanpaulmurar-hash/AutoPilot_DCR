@@ -460,3 +460,32 @@ def find_matches(objects: Iterable[UiObject], captured: UiObject) -> List[Tuple[
             weak.append((o, MATCH_TEXT))
     key = lambda x: x[0].name.lower()  # noqa: E731
     return sorted(strong, key=key) + sorted(weak, key=key)
+
+
+# ─────────────────────────────────────────────────────────────
+# 6. 🧩 Obiect cu parametru (v4.28): textul vizibil devine {Parametru}
+# ─────────────────────────────────────────────────────────────
+# locatorii care tintesc un singur element anume (id, css...): in obiectul general se dezactiveaza
+_SPECIFIC_LOCATORS = {"TestId", "Id", "Css", "XPath", "AutomationId", "SapId", "UiaPath"}
+
+
+def parametrize(obj: UiObject, param: str, label: str = "") -> Tuple[UiObject, int]:
+    """Copie a obiectului in care textul `label` din locatori devine {param}. Locatorii specifici
+    (id, css, xpath...) fara text se dezactiveaza. Intoarce (copia, cati locatori au primit parametrul)."""
+    twin = UiObject.from_dict(obj.to_dict())
+    label = (label or object_label(obj)).strip()
+    token = "{" + param + "}"
+    n = 0
+    for l in twin.locators:
+        if label and label.lower() in (l.value or "").lower():
+            l.value = re.sub(re.escape(label), lambda _m: token, l.value, flags=re.IGNORECASE)
+            n += 1
+        elif str(l.kind) in _SPECIFIC_LOCATORS:
+            l.enabled = False
+    twin.params = [param]
+    twin.captured_text = ""
+    twin.screenshot = ""
+    twin.description = (f"Obiect cu parametru {token} (din {obj.name})").strip()
+    if "parametru" not in twin.tags:
+        twin.tags = list(twin.tags) + ["parametru"]
+    return twin, n

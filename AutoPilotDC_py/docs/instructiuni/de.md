@@ -445,3 +445,19 @@ Weniger Objekte machen die Bibliothek leichter zu benutzen. **🧹** (in 📚 Bi
 - „Unbenutzt“ sieht nur Routinen im Routinenordner und in `rutine` neben der Bibliothek. Eine anderswo abgelegte Routine wird nicht gesehen.
 
 > Beispiel: in der Testbibliothek (🧪) zeigt 🧹 → 🔁 Duplikate Paare wie `Buton_Anuleaza_Standard` und `Buton_Anuleaza_Standard_copie` (sicher). 🔁 Alle sicheren Gruppen zusammenführen vereint sie; Routinen, die `_copie` benutzten, verwenden jetzt das behaltene Objekt.
+
+## 36. 🧩 Objekte mit Parameter und 📌 gemeinsame Teile
+
+Viele Schaltflächen unterscheiden sich nur durch ihren Text (Speichern, Abbrechen, Senden…). Statt je eines Objekts behältst du **ein einziges Objekt mit Parameter**: in den Locatoren wird der Text zu `{Text}`, und jeder Schritt sagt, welchen Wert er hat.
+
+1. In 📚 Bibliothek Rechtsklick auf eine gespeicherte Schaltfläche → **🧩 Daraus ein Objekt mit Parameter machen...**. Gib den Namen des Parameters (Standard `Text`) und den Namen des neuen Objekts an.
+2. Im neuen Objekt ist der Text der Schaltfläche in den Locatoren durch `{Text}` ersetzt. Locatoren ohne Text (id, css, xpath…) werden deaktiviert, weil sie immer dieselbe Schaltfläche finden würden.
+3. Im Schritt das Objekt wählen. Darunter erscheint das Feld **Parameter: Text**: `Speichern` eintragen. Eine Variable geht auch, z. B. `{Rand.Nume}`. Ebenso in Bedingungen (Wenn erscheint…).
+4. **🧪 Testen** und **👁 Zeigen** fragen zuerst nach dem Parameterwert.
+5. Für Elemente, die auf allen Bildschirmen der Anwendung erscheinen (SAP-Leiste, Kopfzeile der Website, Menü): Rechtsklick → **📌 Gemeinsam in der ganzen Anwendung**. Das Objekt kommt in die Gruppe **📌 Gemeinsam (alle Bildschirme)** und wird auf jedem Bildschirm der Anwendung gefunden.
+
+- Parameter kannst du auch von Hand schreiben: in ✎ Bearbeiten das Feld **Parameter** (z. B. `Text`) und `{Text}` in den Locatoren.
+- Im 📥 KI-Import: `CLICK [Schaltflaeche_mit_Text](Text=Speichern)`.
+- Alte Routinen und Bibliotheken öffnen sich wie bisher; Parameter sind neue, optionale Felder.
+
+> Beispiel: aus `Schaltflaeche_Speichern` machst du `Schaltflaeche_mit_Text` (der Locator `text=Speichern` wird `text={Text}`). Die Schritte „Click Schaltflaeche_mit_Text (Text=Speichern)“ und „Click Schaltflaeche_mit_Text (Text=Abbrechen)“ nutzen dasselbe Objekt.

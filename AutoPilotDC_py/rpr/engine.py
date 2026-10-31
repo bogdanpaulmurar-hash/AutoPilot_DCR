@@ -39,7 +39,8 @@ from . import subroutine
 from .model import (ActionNode, BreakNode, CellColor, ErrorPolicy, ForEachRowNode, GroupNode, IfNode,
                     LegacyStepNode, LogNode, LoopMode, LoopNode, ObjectRepository, QuestionNode, Routine,
                     RoutineSettings, RprAction, RprLogLevel, RprNode, RuleAfter, RuleNode, RunRoutineNode, SetVariableNode, StopNode, TryNode,
-                    UiTechnology, VariableOperation, WaitMode, WaitNode, WriteExcelNode, action_info, with_variables)
+                    UiTechnology, VariableOperation, WaitMode, WaitNode, WriteExcelNode, action_info,
+                    with_params, with_variables)
 from .variables import VariableStore
 
 
@@ -505,7 +506,8 @@ class RprEngine:
             if obj is None:
                 raise RprStepException(f"Obiectul [{a.target}] nu exista in Object Repository.")
             self._repo.link_parents(obj)   # cautare in containerul obiectului (biblioteca)
-            obj = with_variables(obj, self._vars.resolve)   # v4.16.2: text "{Rand.UEID}" -> valoarea randului
+            # v4.16.2: text "{Rand.UEID}" -> valoarea randului; v4.28: {Param} -> valoarea data de pas
+            obj = with_params(obj, a.params, self._vars.resolve)
         elif info.needs_target:
             raise RprStepException(f"Pasul \"{info.label}\" are nevoie de un obiect. Alege-l in proprietatile pasului.")
 

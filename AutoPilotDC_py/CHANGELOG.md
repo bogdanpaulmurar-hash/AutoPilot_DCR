@@ -2,6 +2,16 @@
 
 Pornirea aplicației: **`AutoPilot_DC.pyw`** (sau scurtătura „AutoPilot DC” de pe Desktop). Numele fișierelor nu se mai schimbă de la o versiune la alta, deci scurtăturile și pornirea cu Windows rămân valabile.
 
+## 4.28.0 — 2026-10-31
+- **🧩 Obiecte cu parametru** (etapa 3b „mai puține obiecte”): un singur obiect pentru toate butoanele de același fel. În locatori scrii `{Text}`; fiecare pas (acțiune sau condiție) dă valoarea în câmpul nou **Parametru: Text** (merge și o variabilă, ex. `{Rand.Nume}`). Titlul pasului arată valoarea: „Click Buton_cu_Text (Text=Salvează)”.
+  - Click dreapta în 📚 Bibliotecă → **🧩 Fă un obiect cu parametru din acesta...**: copie a obiectului în care textul butonului devine `{Text}`; locatorii fără text (id, css, xpath, SAP id…) se dezactivează. ✎ Editează are câmpul **Parametri**.
+  - **🧪 Testează** și **👁 Arată** întreabă valoarea parametrului (ține minte ultima valoare).
+  - **📥 Import AI**: `CLICK [Buton_cu_Text](Text=Salvează)`; promptul pentru AI arată obiectele cu parametri.
+- **📌 Părți comune pe aplicație**: click dreapta → **📌 Comun pe toată aplicația** scoate ecranul și adresele obiectului (bara SAP, antetul site-ului, meniul). Grupul fără ecran se numește acum **📌 Comun (toate ecranele)**.
+- Format: câmpuri noi, opționale: `params` în obiecte (`obiecte.json`, listă de nume), în pași și în condiții (`.rpr.json`, nume → valoare). Fișierele vechi se deschid neschimbate. Motor: `model.with_params`, `libsearch.parametrize`.
+- Instrucțiuni: capitolul 36, în RO / EN / DE; textele noi în EN / DE.
+- Teste (Linux, Python 3.12, Xvfb): `test_params` nou (8: salvare / citire și fișiere vechi, parametrii înaintea variabilelor fără a schimba biblioteca, parametrizarea locatorilor, condiția rezolvată în motor, sintaxa din import și promptul, în Studio real: 🧩 obiect nou, 📌 comun, câmpul Parametru în pas și în condiție, 🧪 întreabă valoarea / Anulează nu testează). Suita: 278 rulate, 20 sărite; aceleași 4 eșecuri vechi ca pe main (Windows / PIL). Netestat pe Windows: rularea reală pe Web / SAP / Desktop cu parametri.
+
 ## 4.27.0 — 2026-10-31
 - **🧹 Curăță biblioteca** (📚 Bibliotecă, lângă 🧪), etapa 3a „mai puține obiecte”:
   - **🔁 Dubluri**: grupuri *sigure* (același locator id / css / xpath / SAP id, același tip, pe același ecran) și *probabile* (același text vizibil și tip pe același ecran; locatorii după text, ca Text / UiaName, intră aici). Propus de păstrat: cel folosit în mai multe rutine, apoi cel cu mai mulți locatori.

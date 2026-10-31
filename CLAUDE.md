@@ -11,7 +11,7 @@ Reguli generale (v1.1; textul complet: repo `dev-framework`, GLOBAL_RULES.md):
 Tool RPA + Data Cleansing: recorder/player de pași desktop și browser, plus **Studio RPR** (rutine pe obiecte Web / SAP GUI / Desktop + Excel, fără cod, în stilul SilkTest). Doar varianta Python (`AutoPilotDC_py/`); varianta C# a fost scoasă în v4.25.0 (rămâne în istoricul git).
 
 ## Formatul fișierelor
-- `.rpr.json`, `obiecte.json` și `.pregatire.json` sunt doar ale aplicației Python; formatul se poate extinde, dar rutinele și bibliotecile vechi trebuie să se deschidă în continuare (câmpuri noi opționale, cu valori implicite).
+- `.rpr.json`, `obiecte.json` și `.pregatire.json` sunt doar ale aplicației Python; formatul se poate extinde, dar rutinele și bibliotecile vechi trebuie să se deschidă în continuare (câmpuri noi opționale, cu valori implicite). Ex. v4.28: `params` în obiecte, pași și condiții (obiecte cu parametru `{Text}`).
 
 ## Comenzi (Python)
 - Instalare pe un PC: `AutoPilotDC_py\INSTALEAZA.bat`; verificare: `python verifica_instalare.py`

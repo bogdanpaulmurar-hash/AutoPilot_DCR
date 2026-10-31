@@ -445,3 +445,19 @@ Fewer objects make the library easier to use. **🧹** (in 📚 Library, next to
 - "Unused" only sees routines in the routines folder and in `rutine` next to the library. A routine kept elsewhere is not seen.
 
 > Example: in the test library (🧪), 🧹 → 🔁 Duplicates shows pairs like `Buton_Anuleaza_Standard` and `Buton_Anuleaza_Standard_copie` (sure). 🔁 Merge all sure groups merges them; routines that used `_copie` now use the kept object.
+
+## 36. 🧩 Objects with a parameter and 📌 shared parts
+
+Many buttons differ only by their text (Save, Cancel, Send…). Instead of one object for each, keep **one object with a parameter**: in the locators the text becomes `{Text}`, and each step says which value it has.
+
+1. In 📚 Library, right-click a saved button → **🧩 Make an object with a parameter from this...**. Give the parameter name (default `Text`) and the name of the new object.
+2. In the new object the button text is replaced by `{Text}` in the locators. Locators without text (id, css, xpath…) are disabled, because they would always find the same button.
+3. In the step choose the object. Below it the field **Parameter: Text** appears: write `Save`. A variable works too, e.g. `{Rand.Nume}`. The same in conditions (If it appears…).
+4. **🧪 Test** and **👁 Show** first ask for the parameter value.
+5. For elements that appear on every screen of the application (SAP toolbar, site header, menu): right-click → **📌 Shared across the whole application**. The object moves to the group **📌 Shared (all screens)** and is found on any screen of the application.
+
+- You can also write parameters by hand: in ✎ Edit, the field **Parameters** (e.g. `Text`), and `{Text}` in the locators.
+- In 📥 AI import: `CLICK [Button_with_Text](Text=Save)`.
+- Old routines and libraries open as before; parameters are new, optional fields.
+
+> Example: from `Button_Save` you make `Button_with_Text` (the locator `text=Save` becomes `text={Text}`). The steps "Click Button_with_Text (Text=Save)" and "Click Button_with_Text (Text=Cancel)" use the same object.

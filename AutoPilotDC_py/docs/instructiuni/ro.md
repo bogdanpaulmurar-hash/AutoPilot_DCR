@@ -443,3 +443,19 @@ Mai puține obiecte înseamnă o bibliotecă mai ușor de folosit. **🧹** (în
 - „Nefolosit” vede doar rutinele din folderul rutinelor și din `rutine` de lângă bibliotecă. O rutină ținută în altă parte nu e văzută.
 
 > Exemplu: în biblioteca de test (🧪), 🧹 → 🔁 Dubluri arată perechi ca `Buton_Anuleaza_Standard` și `Buton_Anuleaza_Standard_copie` (sigur). 🔁 Unește toate grupurile sigure le unește; rutinele care foloseau `_copie` folosesc acum obiectul păstrat.
+
+## 36. 🧩 Obiecte cu parametru și 📌 părți comune
+
+Multe butoane diferă doar prin text (Salvează, Anulează, Trimite…). În loc de câte un obiect pentru fiecare, ții **un singur obiect cu parametru**: în locatori, textul devine `{Text}`, iar fiecare pas spune ce valoare are.
+
+1. În 📚 Bibliotecă, click dreapta pe un buton salvat → **🧩 Fă un obiect cu parametru din acesta...**. Dai numele parametrului (implicit `Text`) și numele obiectului nou.
+2. Obiectul nou are textul butonului înlocuit cu `{Text}` în locatori. Locatorii fără text (id, css, xpath…) se dezactivează, fiindcă aceia ar găsi mereu același buton.
+3. În pas alegi obiectul. Sub el apare câmpul **Parametru: Text**: scrii `Salvează`. Merge și o variabilă, ex. `{Rand.Nume}`. La fel în condiții (Dacă apare…).
+4. **🧪 Testează** și **👁 Arată** întreabă întâi valoarea parametrului.
+5. Pentru elementele care apar pe toate ecranele aplicației (bara SAP, antetul site-ului, meniul): click dreapta → **📌 Comun pe toată aplicația**. Obiectul trece în grupul **📌 Comun (toate ecranele)** și e găsit pe orice ecran al aplicației.
+
+- Poți scrie parametrii și de mână: în ✎ Editează, câmpul **Parametri** (ex. `Text`), iar în locatori `{Text}`.
+- În 📥 Import AI: `CLICK [Buton_cu_Text](Text=Salvează)`.
+- Rutinele și bibliotecile vechi se deschid ca înainte; parametrii sunt câmpuri noi, opționale.
+
+> Exemplu: din `Buton_Salveaza` faci `Buton_cu_Text` (locatorul `text=Salvează` devine `text={Text}`). Pașii „Click Buton_cu_Text (Text=Salvează)” și „Click Buton_cu_Text (Text=Anulează)” folosesc același obiect.
