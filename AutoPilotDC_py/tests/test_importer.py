@@ -204,6 +204,10 @@ class ImporterTests(unittest.TestCase):
             i18n.load(lang)
             p = ai_prompt(lang)
             for c in COMMANDS:
+                if c.key == "keep":   # v4.24: PASTREAZA #n doar in promptul de reparare
+                    self.assertNotIn(c.syntax_en if lang == "en" else c.syntax_ro, p)
+                    self.assertIn(c.syntax_en if lang == "en" else c.syntax_ro, ai_prompt(lang, repair=True))
+                    continue
                 self.assertIn(c.syntax_en if lang == "en" else c.syntax_ro, p)
         i18n.load("en")
         self.assertIn("RULES:", ai_prompt("en"))

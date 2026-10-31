@@ -876,7 +876,7 @@ class StudioPanel(tk.Frame):
         self._rail = studio_views.ActivityBar(self, C, [
             ("steps", "🧱", "Pasi", "panel"), ("library", "📚", "Biblioteca", "panel"),
             ("routines", "📋", "Rutine", "panel"), ("films", "🎬", "Filme", "panel"),
-            ("import", "📥", "Import AI", "action"), None,
+            ("import", "📥", "Import AI", "action"), ("assistant", "🤖", "Asistent AI", "action"), None,
             ("settings", "🌐", "Setari", "action"), ("guide", "❓", "Ghid", "action")],
             on_panel=self._on_rail, on_action=self._on_rail_action)
         self._rail.pack(side="left", fill="y")
@@ -1504,6 +1504,8 @@ class StudioPanel(tk.Frame):
             self.show_guide()
         elif key == "import":
             self.show_import()
+        elif key == "assistant":
+            self.show_assistant()
 
     # =========================================================================
     # v4.16: 📥 Import AI — pasi scrisi de un AI (dintr-un document Word) -> rutina
@@ -1516,6 +1518,16 @@ class StudioPanel(tk.Frame):
             return
         from import_ui import ImportDialog
         self._import_win = ImportDialog(self)
+
+    # v4.30: 🤖 Asistent AI — intrebari despre aplicatie si rutine din proceduri (modulul se incarca doar aici)
+    def show_assistant(self):
+        w = getattr(self, "_assistant_win", None)
+        if w is not None and w.winfo_exists():
+            w.deiconify()
+            w.lift()
+            return
+        from assistant_ui import AssistantDialog
+        self._assistant_win = AssistantDialog(self)
 
     def open_imported(self, routine: Routine, new_objects: List[UiObject]) -> bool:
         """Rutina importata intr-un tab nou (nesalvata); obiectele noi intra in biblioteca curenta."""
